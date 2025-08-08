@@ -1,0 +1,259 @@
+{
+    "version": {
+        "description": "Model version",
+        "exclusiveMinimum": 0,
+        "type": "integer"
+    },
+    "dataset": {
+        "path": {
+            "train": {
+                "anyOf": [
+                    {
+                        "format": "path",
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "description": "Train dataset directory path"
+            },
+            "validation": {
+                "anyOf": [
+                    {
+                        "format": "path",
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "description": "Validation dataset directory path"
+            },
+            "test": {
+                "anyOf": [
+                    {
+                        "format": "path",
+                        "type": "string"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "description": "Test dataset directory path"
+            }
+        },
+        "exposure": {
+            "description": "Training dataset exposure value",
+            "minimum": 0.0,
+            "type": "number"
+        },
+        "tonemapper": {
+            "description": "Tonemapping method for dataset",
+            "enum": [
+                "reinhard",
+                "karis",
+                "log",
+                "log10",
+                "log_norm",
+                "aces"
+            ],
+            "type": "string"
+        },
+        "health_check": {
+            "description": "Run health check on given dataset",
+            "type": "boolean"
+        },
+        "recurrent_samples": {
+            "description": "Number of recurrent samples",
+            "exclusiveMinimum": 1,
+            "type": "integer"
+        },
+        "gt_augmentation": {
+            "description": "Enable dataset augmentations e.g flips, rotations",
+            "type": "boolean"
+        },
+        "num_workers": {
+            "description": "Number of dataloader workers to use",
+            "minimum": 1,
+            "type": "integer"
+        },
+        "prefetch_factor": {
+            "description": "Number of batches loaded in advance by each dataloader worker",
+            "minimum": 1,
+            "type": "integer"
+        }
+    },
+    "output": {
+        "dir": {
+            "description": "Directory path for storing training output",
+            "format": "path",
+            "type": "string"
+        },
+        "export_frame_png": {
+            "description": "Export frames to PNG (for visualization) during model evaluation",
+            "type": "boolean"
+        },
+        "tensorboard_output_dir": {
+            "anyOf": [
+                {
+                    "format": "path",
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Output directory for tensorboard logs. If null is passed, disable tensorboard"
+        },
+        "export": {
+            "dynamic_shape": {
+                "description": "Enable dynamic input shapes for the exported model ",
+                "type": "boolean"
+            },
+            "vgf_output_dir": {
+                "description": "Output directory for the VGF file",
+                "format": "path",
+                "type": "string"
+            }
+        }
+    },
+    "train": {
+        "batch_size": {
+            "description": "Number of samples processed together in one pass before updating model weights",
+            "minimum": 1,
+            "type": "integer"
+        },
+        "resume": {
+            "description": "Resume training from the most recent saved checkpoint",
+            "type": "boolean"
+        },
+        "scale": {
+            "default": 2.0,
+            "description": "Upscale parameter for the NSS model. Note only 2x for now is supported in this version",
+            "maximum": 2.0,
+            "minimum": 2.0,
+            "type": "number"
+        },
+        "seed": {
+            "description": "Seed for random number generation",
+            "minimum": 0,
+            "type": "integer"
+        },
+        "finetune": {
+            "description": "Fine-tune using pretrained_weights",
+            "type": "boolean"
+        },
+        "pretrained_weights": {
+            "anyOf": [
+                {
+                    "format": "path",
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Path to the weights of the pretrained model"
+        },
+        "perform_validate": {
+            "description": "Perform validation at the end of each training epoch",
+            "type": "boolean"
+        },
+        "fp32": {
+            "number_of_epochs": {
+                "description": "Number of epochs",
+                "minimum": 1,
+                "type": "integer"
+            },
+            "checkpoints": {
+                "dir": {
+                    "description": "Save directory for checkpoints",
+                    "format": "path",
+                    "type": "string"
+                },
+                "save_frequency": {
+                    "description": "How often to save checkpoints during training",
+                    "exclusiveMinimum": 0,
+                    "type": "integer"
+                }
+            },
+            "learning_rate": {
+                "description": "The learning rate. Scheduler may override this value",
+                "exclusiveMinimum": 0.0,
+                "maximum": 1.0,
+                "type": "number"
+            },
+            "cosine_annealing_scheduler_config": {
+                "warmup_percentage": {
+                    "description": "Proportion of training steps to linearly warm up the learning rate",
+                    "exclusiveMaximum": 1.0,
+                    "minimum": 0.0,
+                    "type": "number"
+                },
+                "min_lr": {
+                    "description": "Minimum learning rate reached after cosine decay.",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "type": "number"
+                }
+            }
+        },
+        "qat": {
+            "number_of_epochs": {
+                "description": "Number of epochs",
+                "minimum": 1,
+                "type": "integer"
+            },
+            "checkpoints": {
+                "dir": {
+                    "description": "Save directory for checkpoints",
+                    "format": "path",
+                    "type": "string"
+                },
+                "save_frequency": {
+                    "description": "How often to save checkpoints during training",
+                    "exclusiveMinimum": 0,
+                    "type": "integer"
+                }
+            },
+            "learning_rate": {
+                "description": "The learning rate. Scheduler may override this value",
+                "exclusiveMinimum": 0.0,
+                "maximum": 1.0,
+                "type": "number"
+            },
+            "cosine_annealing_scheduler_config": {
+                "warmup_percentage": {
+                    "description": "Proportion of training steps to linearly warm up the learning rate",
+                    "exclusiveMaximum": 1.0,
+                    "minimum": 0.0,
+                    "type": "number"
+                },
+                "min_lr": {
+                    "description": "Minimum learning rate reached after cosine decay.",
+                    "maximum": 1.0,
+                    "minimum": 0.0,
+                    "type": "number"
+                }
+            }
+        }
+    },
+    "optimizer": {
+        "learning_rate_scheduler": {
+            "description": "Learning rate scheduler to use when training",
+            "enum": [
+                "cosine_annealing",
+                "exponential",
+                "static"
+            ],
+            "type": "string"
+        }
+    },
+    "processing": {
+        "shader_accurate": {
+            "description": "Use slang shaders that match deployment shaders",
+            "type": "boolean"
+        }
+    }
+}

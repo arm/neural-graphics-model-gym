@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# its affiliates <open-source-office@arm.com></text>
+# SPDX-License-Identifier: Apache-2.0
+
+[blocklint]
+# Do not allow any non-inclusive language
+max_issue_threshold = 1
+
+# Blocklist: Words to lint in any context, with possibly special characters between,
+# case insensitive
+blocklist = master,slave,blacklist,whitelist,dummy,woman,women
+
+# Word list: Words to lint as whole words, with possibly special characters between,
+# case insensitive
+wordlist = he,she,him,her,his,hers,dumb,neurotic,sane,woman,gal,lady,babe,bimbo,chick,guy,lad,fellow,dude,bro,gentleman,women,girls,gals,ladies,men,guys,dudes,gents,gentlemen
+
+# Exact list: Words to lint as whole words exactly as entered
+; exactlist =
+
+# Files that should not be checked by blocklint.
+# skip_files =

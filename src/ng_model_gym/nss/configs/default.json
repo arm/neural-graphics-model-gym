@@ -1,0 +1,68 @@
+{
+    "version": 1,
+    "dataset": {
+        "path": {
+            "train": null,
+            "validation": null,
+            "test": null
+        },
+        "exposure": 2,
+        "tonemapper": "reinhard",
+        "health_check": false,
+        "recurrent_samples": 16,
+        "gt_augmentation": true,
+        "num_workers": 4,
+        "prefetch_factor": 1
+    },
+    "output": {
+        "dir": "./output",
+        "export_frame_png": false,
+        "tensorboard_output_dir": "./tensorboard-logs",
+        "export": {
+            "dynamic_shape": true,
+            "vgf_output_dir": "./output/vgf"
+        }
+    },
+
+    "train": {
+        "batch_size": 8,
+        "scale": 2.0,
+        "seed": 123456,
+        "perform_validate": false,
+        "finetune": false,
+        "resume": false,
+        "pretrained_weights": null,
+
+        "fp32": {
+            "number_of_epochs": 15,
+            "checkpoints": {
+                "dir": "./checkpoints",
+                "save_frequency": "1"
+            },
+            "learning_rate": "2e-3",
+            "cosine_annealing_scheduler_config": {
+                "warmup_percentage": 0.05,
+                "min_lr": 2e-4
+            }
+        },
+
+        "qat": {
+            "number_of_epochs": 2,
+            "checkpoints": {
+                "dir": "./checkpoints/qat_checkpoints",
+                "save_frequency": "1"
+            },
+            "learning_rate": "6e-4",
+            "cosine_annealing_scheduler_config": {
+                "warmup_percentage": 0.05,
+                "min_lr": 1e-5
+            }
+        }
+    },
+    "optimizer": {
+        "learning_rate_scheduler": "cosine_annealing"
+    },
+    "processing": {
+        "shader_accurate": false
+    }
+}

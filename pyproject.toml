@@ -1,0 +1,156 @@
+# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# its affiliates <open-source-office@arm.com></text>
+# SPDX-License-Identifier: Apache-2.0
+
+[build-system]
+requires = ["hatchling>=1.18", "packaging>=24.0"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ng-model-gym"
+dynamic = ["version"]
+description = "Neural Graphics Model Gym for training and evaluating neural graphics models."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10, <3.13"
+authors = [
+    { name = "Arm Limited" },
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+    "Operating System :: POSIX :: Linux",
+]
+
+dependencies = [
+    "gpustat==1.1.1",
+    "gputil==1.4.0",
+    "lpips==0.1.4",
+    "memory-profiler==0.61.0",
+    "numpy==2.0.0",
+    "openexr==3.3.3",
+    "pillow==10.2.0",
+    "psutil==5.9.8",
+    "pydantic==2.10.4",
+    "requests==2.32.3",
+    "rich==13.9.3",
+    "safetensors==0.5.3",
+    "slangtorch==1.3.11",
+    "tensorboard==2.17.1",
+    "torcheval==0.0.7",
+    "torchmetrics==1.7.0",
+    "torch @ https://download.pytorch.org/whl/cu118/torch-2.7.1%2Bcu118-cp310-cp310-manylinux_2_28_x86_64.whl ; python_version=='3.10'",
+    "torch @ https://download.pytorch.org/whl/cu118/torch-2.7.1%2Bcu118-cp311-cp311-manylinux_2_28_x86_64.whl ; python_version=='3.11'",
+    "torch @ https://download.pytorch.org/whl/cu118/torch-2.7.1%2Bcu118-cp312-cp312-manylinux_2_28_x86_64.whl ; python_version=='3.12'",
+    "torchvision @ https://download.pytorch.org/whl/cu118/torchvision-0.22.1%2Bcu118-cp310-cp310-manylinux_2_28_x86_64.whl ; python_version=='3.10'",
+    "torchvision @ https://download.pytorch.org/whl/cu118/torchvision-0.22.1%2Bcu118-cp311-cp311-manylinux_2_28_x86_64.whl ; python_version=='3.11'",
+    "torchvision @ https://download.pytorch.org/whl/cu118/torchvision-0.22.1%2Bcu118-cp312-cp312-manylinux_2_28_x86_64.whl ; python_version=='3.12'",
+    "executorch @ https://download.pytorch.org/whl/nightly/cpu/executorch-0.8.0.dev20250702%2Bcpu-cp310-cp310-manylinux_2_28_x86_64.whl ; python_version=='3.10'",
+    "executorch @ https://download.pytorch.org/whl/nightly/cpu/executorch-0.8.0.dev20250702%2Bcpu-cp311-cp311-manylinux_2_28_x86_64.whl ; python_version=='3.11'",
+    "executorch @ https://download.pytorch.org/whl/nightly/cpu/executorch-0.8.0.dev20250702%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl ; python_version=='3.12'",
+    "tosa_serialization_lib @ git+https://git.gitlab.arm.com/tosa/tosa-serialization.git@6454bc0f",
+    "ml-dtypes==0.5.1",
+    "torchao==0.11.0",
+    "tqdm==4.66.0",
+    "typer==0.15.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "autoflake==2.3.1",
+    "bandit==1.7.6",
+    "black==23.12.1",
+    "blocklint==0.2.4",
+    "coverage==7.3.2",
+    "expecttest==0.3.0",
+    "hatch==1.14.1",
+    "isort==5.13.2",
+    "jsonref==1.1.0",
+    "pre-commit==3.6.0",
+    "pylint==3.0.1",
+    "reuse==3.0.1",
+    "huggingface-hub==0.34.3"
+]
+
+[project.urls]
+Homepage = "https://www.arm.com"
+Repository = "https://github.com/arm/neural-graphics-model-gym"
+
+[tool.hatch.version]
+path = "src/ng_model_gym/__init__.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/ng_model_gym",
+]
+include = [
+  "src/ng_model_gym/bin/model-converter"
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/ng_model_gym",
+    "src/ng_model_gym/bin/model-converter"
+]
+
+[project.scripts]
+# Name of variable is the name of the CLI program
+ng-model-gym = "ng_model_gym.cli:main"
+model-converter  = "ng_model_gym.bin.model_converter_launcher:main"
+
+
+[tool.isort]
+profile = "black"
+known_third_party = ["torch"]
+known_first_party = ["ng_model_gym", "tests"]
+force_sort_within_sections = false
+order_by_type = false
+lines_between_types = 0
+
+[tool.autoflake]
+exclude = ["./venv", "./build", "./checkpoints", "./data", "./dist", "./output"]
+
+[tool.bandit]
+exclude_dirs = [
+    "build",
+    "dist",
+    "tests",
+    "__pycache__",
+    "data",
+    "directory_env",
+    "venv",
+]
+
+[tool.bandit.assert_used]
+skips = ["*/test_*.py"]
+
+[tool.pylint.MASTER]
+init-hook = "import os, sys; sys.path.insert(0, os.getcwd()); sys.path.insert(0, os.path.join(os.getcwd(), 'src'));"
+[tool.pylint."MESSAGES CONTROL"]
+disable = [
+    "attribute-defined-outside-init",
+    "consider-iterating-dictionary",
+    "fixme",
+    "import-error",
+    "missing-module-docstring",
+    "protected-access",
+    "too-few-public-methods",
+    "too-many-instance-attributes",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-statements",
+    "unnecessary-lambda-assignment",
+    "useless-parent-delegation",
+    "c-extension-no-member",
+    "logging-fstring-interpolation",
+    "arguments-differ",
+    "invalid-name",
+    "not-callable",
+    "subprocess-run-check"
+]

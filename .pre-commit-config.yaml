@@ -1,0 +1,91 @@
+# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# its affiliates <open-source-office@arm.com></text>
+# SPDX-License-Identifier: Apache-2.0
+repos:
+  -   repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v3.2.0
+      hooks:
+        # See https://github.com/pre-commit/pre-commit-hooks to add more hooks.
+        -   id: trailing-whitespace
+        -   id: check-yaml
+        -   id: check-json
+  -   repo: https://github.com/fsfe/reuse-tool
+      rev: v3.0.0
+      hooks:
+        - id: reuse
+          name: Run copyright check
+  -   repo: local
+      hooks:
+        # Run autoflake
+        -   id: autoflake
+            name: Run autoflake to remove unused imports
+            entry: autoflake
+            language: system
+            types: [ python ]
+            require_serial: true
+            args:
+              [
+                "--remove-all-unused-imports",
+                "--remove-unused-variables",
+                "--recursive",
+                "--in-place"
+              ]
+        # Run isort
+        -   id: isort
+            name: Run isort to reorder imports
+            entry: isort src/ scripts/ tests/ *.py
+            language: system
+            types: [ python ]
+            require_serial: true
+        # Run formatting tool on all scripts
+        -   id: format
+            name: Run formatting
+            entry: black
+            language: python
+            types: [ python ]
+            require_serial: true
+        # Run pylint for all Python scripts, excluding tests directory.
+        -   id: pylint
+            name: Run pylint src
+            entry: pylint
+            language: python
+            types: [ python ]
+            exclude: "^tests/"
+            require_serial: true
+            args:
+              []
+        # Run pylint for all Python scripts in tests directory.
+        -   id: pylint
+            name: Run pylint tests
+            entry: pylint
+            language: python
+            types: [ python ]
+            files: "^tests/"
+            require_serial: true
+            args:
+              [
+                "--disable=invalid-name" # Disable due to unittest setUp and tearDown functions not following conventions.
+              ]
+        # Run bandit security checks
+        -   id: bandit
+            name: Run security checks
+            entry: bandit
+            language: python
+            'types': [ python ]
+            args:
+              [
+                "--configfile=pyproject.toml",
+                "-r",
+                "-f=html",
+                "-o=report.html"
+              ]
+        # Run blocklint non-inclusive language checks
+        -   id: blocklint
+            name: Run blocklint non-inclusive language checks
+            entry: blocklint
+            language: python
+            args: [
+              "--skip-files=src/ng_model_gym/nss/model/shaders/depth_clip.slang,scripts/safetensors_generator/fsr2_methods.py,pyproject.toml"
+            ]
+            files: ^(docs/|src/|tests/|scripts/)
+            require_serial: true
