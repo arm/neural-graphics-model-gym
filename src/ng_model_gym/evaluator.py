@@ -10,7 +10,7 @@ from typing import Optional
 
 import torch
 import torchvision
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 
 from ng_model_gym.dataloader import get_dataloader
 from ng_model_gym.nss.dataloader.utils import DataLoaderMode
