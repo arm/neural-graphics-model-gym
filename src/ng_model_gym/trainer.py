@@ -313,7 +313,7 @@ class Trainer:
         )
 
         self.model.eval()
-        for iteration, (inputs_dataset, ground_truth_data) in val_pbar:
+        for _, (inputs_dataset, ground_truth_data) in val_pbar:
             # Move tensors to device.
             inputs_dataset = {
                 key: tensor.to(self.device) for key, tensor in inputs_dataset.items()
@@ -333,11 +333,9 @@ class Trainer:
 
             val_pbar.set_description(progress_bar)
 
-            #  Push validation set results to Tensorboard.
-            tb_values = self._get_values_for_logging(
-                {}, self.metrics, name="Validation/"
-            )
-            self._tensorboard_update(tb_values, iteration + epoch * len(val_dataloader))
+        #  Push validation set results to Tensorboard.
+        tb_values = self._get_values_for_logging({}, self.metrics, name="Validation/")
+        self._tensorboard_update(tb_values, epoch)
 
     def _save_checkpoint(self, save_frequency, current_epoch, total_epochs):
         """Save checkpoint if end or configured save frequency epoch"""
