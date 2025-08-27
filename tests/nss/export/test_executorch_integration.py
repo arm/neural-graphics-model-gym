@@ -168,7 +168,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         tosa_out_dir = Path(params.output.export.vgf_output_dir)
         self.assertFalse(tosa_out_dir.exists())
 
-        do_export(params, "./tests/nss/weights/nss_v0.1.0_int8.pt", ExportType.QAT_INT8)
+        do_export(params, "./tests/nss/weights/nss_v0.1.1_int8.pt", ExportType.QAT_INT8)
 
         # Verify tosa folder and output files created
         output_tosa_files = glob.glob(f"{tosa_out_dir}/*.tosa")
@@ -231,7 +231,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         params.dataset.path.test = None
 
         # Point to pretrained weights to load
-        qat_model_path = "tests/nss/weights/nss_v0.1.0_int8.pt"
+        qat_model_path = "tests/nss/weights/nss_v0.1.1_int8.pt"
 
         fp32_model_path = "tests/nss/weights/nss_v0.1.0_fp32.pt"
 
