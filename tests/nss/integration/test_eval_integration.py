@@ -189,10 +189,10 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
         self.assertTrue(Path(expected_results_path).exists())
 
         # Check that the logged metric values are reasonably high.
-        expected_psnr = 24
-        expected_tpsnr = 21
-        expected_recpsnr = 23.95
-        expected_ssim = 0.8
+        expected_psnr = 26.4
+        expected_tpsnr = 24.4
+        expected_recpsnr = 26.3
+        expected_ssim = 0.89
         ssim_max = 1.0
 
         # Test PSNR value.
@@ -233,7 +233,7 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
 
     def test_evaluate_from_checkpoints_qat(self):
         """E2E test of evaluating a previously trained model from checkpoints QAT"""
-        model_path = "./tests/nss/weights/nss_v0.1.0_int8.pt"
+        model_path = "./tests/nss/weights/nss_v0.1.1_int8.pt"
         sub_proc = subprocess.run(
             [
                 "ng-model-gym",
@@ -257,10 +257,10 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
         self.assertTrue(Path(expected_results_path).exists())
 
         # Check that the logged metric values are reasonably high.
-        expected_psnr = 23.7
-        expected_tpsnr = 20.9
-        expected_recpsnr = 20
-        expected_ssim = 0.8
+        expected_psnr = 26.6
+        expected_tpsnr = 24.6
+        expected_recpsnr = 26.6
+        expected_ssim = 0.89
         ssim_max = 1.0
 
         # Test PSNR value.

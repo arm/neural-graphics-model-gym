@@ -15,7 +15,7 @@ def download_pretrained_weights():
         repo_id="Arm/neural-super-sampling",
         allow_patterns=["nss_*.pt"],
         local_dir=weights_dir,
-        revision="f724cf3a0cb0218d58f8e6efa5b69da5e3a81d10",
+        revision="a90431d1ddf116ef713d39e2507f86550ed09793",
     )
     print(f"Downloaded pretrained weights to {weights_dir}")
 
@@ -38,7 +38,7 @@ def validate_downloads():
 
     # Validate pretrained weights
     weights_dir = Path("tests/nss/weights")
-    expected_weights = ["nss_v0.1.0_fp32.pt", "nss_v0.1.0_int8.pt"]
+    expected_weights = ["nss_v0.1.0_fp32.pt", "nss_v0.1.1_int8.pt"]
     for file_name in expected_weights:
         weights_path = weights_dir / file_name
         assert weights_path.exists(), f"Missing weight file: {file_name}"
