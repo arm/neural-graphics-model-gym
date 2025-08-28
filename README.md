@@ -454,6 +454,7 @@ Additional optional flags:
 Please see the documentation [here](./docs/nss_dataset_specification.md) for more details on the expected dataset format and layout.
 
 ## Code contributions
+The full contribution guide can be seen in [CONTRIBUTING.md](./CONTRIBUTING.md)
 
 Before making a pull request for any code changes, you must run the following checks:
 
