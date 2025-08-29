@@ -5,7 +5,7 @@ import logging
 
 import torch
 from torcheval.metrics.functional import peak_signal_noise_ratio as psnr
-from tqdm.autonotebook import tqdm
+from tqdm.auto import tqdm
 
 from ng_model_gym.nss.dataloader.utils import DataLoaderMode
 from ng_model_gym.nss.model.layers.dense_warp import DenseWarp

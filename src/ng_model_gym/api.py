@@ -299,6 +299,30 @@ def logging_config(
             module=r"slangtorch\.slangtorch",
         )
 
+        warnings.filterwarnings(
+            "ignore",
+            message=r"pkg_resources is deprecated as an API.*",
+            category=UserWarning,
+            module=r"executorch\.exir\.dialects\.edge\._ops",
+        )
+
+        warnings.filterwarnings(
+            "ignore",
+            message=(
+                r"To copy construct from a tensor, it is recommended to use "
+                r"sourceTensor\.detach\(\)\.clone\(\)*"
+            ),
+            category=UserWarning,
+            module=r"executorch\.backends\.arm\.quantizer\.quantization_config",
+        )
+
+        warnings.filterwarnings(
+            "ignore",
+            message=r"erase_node*",
+            category=UserWarning,
+            module=r"torch\.fx\.graph",
+        )
+
     if log_level == logging.DEBUG:
         # Setup PyTorch logger, which will write to the same output file.
         setup_logging("torch", logging.INFO, params.output.dir)
