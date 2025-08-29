@@ -16,6 +16,7 @@ from ng_model_gym.dataloader import get_dataloader
 from ng_model_gym.nss.dataloader.utils import DataLoaderMode
 from ng_model_gym.nss.metrics import get_metrics
 from ng_model_gym.nss.model.recurrent_model import FeedbackModel
+from ng_model_gym.nss.model.shaders.slang_utils import load_slang_module
 from ng_model_gym.utils.general_utils import create_directory
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,8 @@ class BaseModelEvaluator:
 
     def evaluate(self, profiler: Optional[torch.profiler.profile] = None):
         """Do evaluation."""
+        # Load slang shaders before creating the tqdm bar to prevent it being interrupted/duplicated
+        load_slang_module()
 
         # Initialise start of evaluation.
         self._test_begin()

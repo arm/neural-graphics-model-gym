@@ -18,6 +18,7 @@ from ng_model_gym.nss.metrics import get_metrics
 from ng_model_gym.nss.model.lr_scheduler import CosineAnnealingWithWarmupLR
 from ng_model_gym.nss.model.model import create_model
 from ng_model_gym.nss.model.model_v1 import QATNSSModel
+from ng_model_gym.nss.model.shaders.slang_utils import load_slang_module
 from ng_model_gym.optimizers.lars_adam import lars_adam_torch
 from ng_model_gym.utils.checkpoint_utils import latest_checkpoint_path
 from ng_model_gym.utils.config_model import ConfigModel, TrainingConfig
@@ -216,6 +217,8 @@ class Trainer:
 
     def train(self, profiler: Optional[torch.profiler.profile] = None):
         """Start training loop"""
+        # Load slang shaders before creating the tqdm bar to prevent it being interrupted/duplicated
+        load_slang_module()
 
         total_epochs = self.training_mode_params.number_of_epochs
         self.model.train()
