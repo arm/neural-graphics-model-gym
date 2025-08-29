@@ -25,7 +25,7 @@ SPDX-License-Identifier: Apache-2.0
 ## Introduction
 
 This document describes the specification for data that needs to be captured from your game engine of choice to train Neural Super Sampling (NSS).
-Python [scripts](./scripts/safetensors_generator/safetensors_writer.py) included within this repository expect your engine captured data to be in the format described by this document.
+Python [scripts](../scripts/safetensors_generator/safetensors_writer.py) included within this repository expect your engine captured data to be in the format described by this document.
 
 ## Dataset contents
 
