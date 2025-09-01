@@ -33,13 +33,13 @@ RUN locale-gen en_GB.UTF-8 && \
 ENV LANG=en_GB.UTF-8
 ENV LC_ALL=en_GB.UTF-8
 
-# Install NVIDIA CUDA 11.8 toolkit
+# Install NVIDIA CUDA 12.8 toolkit
 RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb && \
     dpkg -i cuda-keyring_1.1-1_all.deb && \
     apt-get update && \
-    apt-get install -y cuda-toolkit-11-8
+    apt-get install -y cuda-toolkit-12-8
 
-ENV CUDA_HOME=/usr/local/cuda-11.8
+ENV CUDA_HOME=/usr/local/cuda-12.8
 ENV PATH=$CUDA_HOME/bin:$PATH
 ENV LD_LIBRARY_PATH=$CUDA_HOME/lib64
 
