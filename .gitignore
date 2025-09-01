@@ -26,3 +26,5 @@ checkpoints/*
 *.pt
 !tests/nss/unit/data/nss_v1_golden_values/*.pt
 *.safetensors
+config.json
+schema_config.json
