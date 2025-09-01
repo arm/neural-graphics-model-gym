@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+from typing import TYPE_CHECKING
 
 __version__ = "0.1.0"
 # pylint: disable=import-outside-toplevel, too-many-return-statements
@@ -20,7 +21,6 @@ __all__ = [
     "__version__",
 ]
 
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ng_model_gym.api import (
