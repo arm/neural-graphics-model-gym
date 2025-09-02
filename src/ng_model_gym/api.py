@@ -19,8 +19,6 @@ from rich.console import Console
 from rich.table import Column, Table
 from torch.profiler import schedule
 
-# pylint: disable-next=unused-import
-import ng_model_gym.utils.executorch_patcher  # Patch ExecuTorch
 from ng_model_gym.nss.evaluators import ModelEvaluator
 from ng_model_gym.trainer import Trainer
 from ng_model_gym.utils.checkpoint_utils import load_checkpoint
