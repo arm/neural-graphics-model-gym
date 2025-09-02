@@ -284,7 +284,9 @@ class Trainer:
                 tb_values = self._get_values_for_logging(
                     {"Loss": avg_loss}, self.metrics, name="Train/"
                 )
-                self._tensorboard_update(tb_values, iteration + epoch * total_batches)
+                self._tensorboard_update(
+                    tb_values, iteration + (epoch - 1) * total_batches
+                )
 
             for metric in self.metrics:
                 metric.reset()
