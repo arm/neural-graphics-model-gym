@@ -49,7 +49,7 @@ To build and run Neural Graphics Model Gym, the following are required:
 * 3.10 <= Python < 3.13
 * Python development package (e.g. `python3-dev`)
 * NVIDIA® CUDA® capable GPU
-* CUDA Toolkit v11.8 or later
+* CUDA Toolkit v12.8 or later
 
 ## Setup
 
