@@ -29,6 +29,7 @@ def download_unit_test_datasets():
         allow_patterns=["*.safetensors"],
         repo_type="dataset",
         local_dir=datasets_dir,
+        revision="42c92f5193aead4fd4281ce8ff5258f66b03ef10",
     )
     print(f"Downloaded datasets to {datasets_dir}")
 
