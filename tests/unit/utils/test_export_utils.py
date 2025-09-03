@@ -12,8 +12,6 @@ from unittest.mock import DEFAULT, patch
 
 import torch
 
-# pylint: disable-next=unused-import
-import ng_model_gym.utils.executorch_patcher  # Patch ExecuTorch
 from ng_model_gym.utils.export_utils import (
     DataLoaderMode,
     executorch_vgf_export,

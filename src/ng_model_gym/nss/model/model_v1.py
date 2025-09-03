@@ -356,9 +356,7 @@ class QATNSSModel(NSSModel):
         )
 
         # Configure TOSA Quantizer
-        quantizer = TOSAQuantizer(
-            tosa_spec=TosaSpecification.create_from_string(tosa_spec)
-        )
+        quantizer = TOSAQuantizer(TosaSpecification.create_from_string(tosa_spec))
 
         # Activations get asymmetric per-tensor with moving average of min/max
         extra_args: Dict[str, Any] = {"eps": 2e-12}
