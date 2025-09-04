@@ -14,6 +14,7 @@ SPDX-License-Identifier: Apache-2.0
 3. [Setup](#setup)
     * [Setup locally](#setup-locally)
     * [Docker® image](#how-to-build-a-docker-image-for-neural-graphics-model-gym)
+    * [(Optional) Sample datasets and pretrained weights](#optional-sample-datasets-and-pretrained-weights)
 4. [Usage](#usage)
     * [CLI](#command-line)
     * [Python® package](#python-package)
@@ -50,6 +51,7 @@ To build and run Neural Graphics Model Gym, the following are required:
 * Python development package (e.g. `python3-dev`)
 * NVIDIA® CUDA® capable GPU
 * CUDA Toolkit v12.8 or later
+* Git LFS
 
 ## Setup
 
@@ -90,7 +92,7 @@ pip install dist/ng_model_gym-{version}-py3-none-any.whl
 
 ### How to build a Docker image for Neural Graphics Model Gym
 
-A Docker file to help build and run Neural Graphics Model Gym is [provided](./Dockerfile).
+A Dockerfile to help build and run Neural Graphics Model Gym is [provided](./Dockerfile).
 
 This will build and install everything required, such as Python and system packages, into a Docker image.
 
@@ -98,7 +100,7 @@ To create a Docker image for Neural Graphics Model Gym, including all the requir
 
 Run the following command to build the Docker image:
 
-```console
+```bash
 bash build_docker_image.sh
 ```
 
@@ -113,11 +115,27 @@ For NVIDIA GPUs, install the [NVIDIA Container Toolkit](https://docs.nvidia.com/
 #### Run the Docker container
 
 To run the container, specify the shared memory size and access to all GPUs using the following command:
-```console
+```bash
 docker run -it --shm-size=2gb --gpus all ng-model-gym-image
 ```
 
 You can then run any of the commands in the next sections from within your Docker container.
+
+### (Optional) Sample datasets and pretrained weights
+Sample datasets and pretrained weights are provided on Hugging Face, mainly used for [testing](#testing) and demonstration purposes.
+
+To quickly try out the repository without preparing your own data, run:
+
+```bash
+# Install huggingface_hub (if not already installed)
+make install-dev
+
+# Download pretrained model weights and datasets from Hugging Face
+make test-download
+```
+
+* Example datasets will be placed under `tests/nss/datasets/`.
+* Pretrained weights will be placed under `tests/nss/weights/`.
 
 ## Usage
 
@@ -146,7 +164,7 @@ ng-model-gym init
 This command creates two files in your working directory:
 
 - `config.json`
-    - Template populated with default values. Some entries have placeholder values (e.g. "<...>"). Make sure to replace those with your own settings.
+    - Template populated with default values. Some entries have placeholder values (e.g. "<...>"). Make sure to replace those with your own settings. Dataset paths are expected to be folders containing datasets, not individual files.
 
 - `schema_config.json`
   -  An accompanying file detailing all available configuration parameters
@@ -167,12 +185,40 @@ ng-model-gym config-options
 ```
 
 #### Training
-> **The --config-path flag is required when running this command.**
+> **The --config-path (or -c) flag is required when running this command.**
 
 To perform training and evaluation, run:
 
 ```bash
-ng-model-gym train
+ng-model-gym -c <path/to/config/file> train
+```
+
+To perform training without evaluation, run:
+
+```bash
+ng-model-gym -c <path/to/config/file> train --no-evaluate
+```
+
+To load a set of previously trained model weights and perform finetuning:
+
+Specify the path to the pretrained weights file in your [configuration file](#configuration-file) under
+
+```json
+"train": {
+  "pretrained_weights": "path/to/pretrained_weights.pt"
+}
+```
+
+Then run:
+
+```bash
+ng-model-gym -c <path/to/config/file> train --finetune
+```
+
+To resume training from the latest saved checkpoint specified in your configuration file, run:
+
+```bash
+ng-model-gym -c <path/to/config/file> train --resume
 ```
 
 Other actions can be specified using additional flags.
@@ -183,31 +229,13 @@ To see all available flags, run:
 ng-model-gym train --help
 ```
 
-To perform training without evaluation, run:
-
-```bash
-ng-model-gym train --no-evaluate
-```
-
-To load a set of previously trained model weights and perform finetuning, run:
-
-```bash
-ng-model-gym train --finetune
-```
-
-To resume training from the latest saved checkpoint specified in your configuration file, run:
-
-```bash
-ng-model-gym train --resume
-```
-
 #### Evaluation
 > **The --config-path flag is required when running this command.**
 
 To perform evaluation of a trained model, run:
 
 ```bash
-ng-model-gym evaluate --model-path=<path/to/model.pt> --model-type=<fp32|qat_int8>
+ng-model-gym -c <path/to/config/file> evaluate --model-path=<path/to/model.pt> --model-type=<fp32|qat_int8>
 ```
 
 Ensure you select the correct `--model-type` to match the format of your saved model.
@@ -220,7 +248,25 @@ Neural Graphics Model Gym supports quantization aware training.
 To perform QAT, run:
 
 ```bash
-ng-model-gym qat
+ng-model-gym -c <path/to/config/file> qat
+```
+
+To perform QAT without evaluation, run:
+
+```bash
+ng-model-gym -c <path/to/config/file> qat --no-evaluate
+```
+
+To load a set of previously trained model weights and perform finetuning, run:
+
+```bash
+ng-model-gym -c <path/to/config/file> qat --finetune
+```
+
+To resume QAT from the latest saved checkpoint specified in your configuration file, run:
+
+```bash
+ng-model-gym -c <path/to/config/file> qat --resume
 ```
 
 Other actions can be specified using additional flags.
@@ -231,24 +277,6 @@ To see all available flags, run:
 ng-model-gym qat --help
 ```
 
-To perform QAT without evaluation, run:
-
-```bash
-ng-model-gym qat --no-evaluate
-```
-
-To load a set of previously trained model weights and perform finetuning, run:
-
-```bash
-ng-model-gym qat --finetune
-```
-
-To resume QAT from the latest saved checkpoint specified in your configuration file, run:
-
-```bash
-ng-model-gym qat --resume
-```
-
 #### Export
 > **The --config-path flag is required when running this command.**
 
@@ -257,7 +285,7 @@ Neural Graphics Model Gym uses ExecuTorch with the Arm backend to export models 
 To export a trained model to a VGF file, run:
 
 ```bash
-ng-model-gym export --model-path=<path/to/model.pt> --export-type=<fp32|qat_int8|ptq_int8>
+ng-model-gym -c <path/to/config/file> export --model-path=<path/to/model.pt> --export-type=<fp32|qat_int8|ptq_int8>
 ```
 
 Ensure you select an export-type of fp32, qat_int8, or ptq_int8 with `--export-type`. Only QAT trained models can be exported to qat_int8.
@@ -302,7 +330,7 @@ Jupyter® notebook tutorials on how to use the package, including:
 * Quantization-aware training and exporting
 * Evaluation
 
-can be found at https://github.com/arm/neural-graphics-model-gym-examples
+can be found in the [neural-graphics-model-gym-examples](https://github.com/arm/neural-graphics-model-gym-examples) repository.
 
 ### Profile training
 
@@ -311,7 +339,7 @@ For detailed performance metrics, you can enable the trace profiler.
 
 ```bash
 # PyTorch profiling
-ng-model-gym --profiler=trace train
+ng-model-gym --profiler=trace -c <path/to/config/file> train
 ```
 This produces a JSON file viewable in a browser at https://ui.perfetto.dev/
 
@@ -321,7 +349,7 @@ Measure GPU memory usage during training.
 
 ```bash
 # Profiling CUDA memory usage.
-ng-model-gym --profiler=gpu_memory train
+ng-model-gym --profiler=gpu_memory -c <path/to/config/file> train
 ```
 
 The output pickle file is viewable in a browser at https://pytorch.org/memory_viz
@@ -344,13 +372,13 @@ The logging mode is customizable by using flags with the `ng-model-gym` CLI comm
 `--log-level=quiet` can be added to silence all logs, except errors.
 
 ```bash
-ng-model-gym --log-level=quiet train
+ng-model-gym --log-level=quiet -c <path/to/config/file> train
 ```
 
 `--log-level=debug` can be added to print even more information during the process.
 
 ```bash
-ng-model-gym --log-level=debug train
+ng-model-gym --log-level=debug -c <path/to/config/file> train
 ```
 
 Logging can also be specified when importing the package as follows.
@@ -368,11 +396,13 @@ ngmg.logging_config(parameters)
 
 ## Testing
 
-A collection of unit and integration tests are provided to ensure the functionality of Neural Graphics Model Gym. The tests depend on
-pretrained weights and datasets from HuggingFace. To automatically download the required files, run the following make command:
+A collection of unit and integration tests are provided to ensure the functionality of Neural Graphics Model Gym. The tests depend on pretrained weights and datasets from Hugging Face. To automatically download the required files, run the following make commands:
 
 ```bash
-# Download pretrained model weights and datasets from HuggingFace
+# Install additional dependencies required for testing
+make install-dev
+
+# Download pretrained model weights and datasets from Hugging Face
 make test-download
 ```
 
@@ -391,7 +421,7 @@ make test-unit
 make test-integration
 ```
 
-To run unit tests for a specific usecase (e.g. NSS):
+To run unit tests for a specific use case (e.g. NSS):
 
 ```bash
 make test-unit USECASE=nss
@@ -403,14 +433,14 @@ To run unit tests from one specific file with tests:
 python -m unittest tests.nss.unit.test_nss_checkpoints
 ```
 
-To run integration tests for a specific usecase:
+To run integration tests for a specific use case:
 
 ```bash
 make test-integration USECASE=nss
 ```
 
 To run export integration tests:
-```console
+```bash
 make test-export
 ```
 
@@ -436,7 +466,7 @@ Once you have captured data from your game engine, and it is in the expected for
 
 This script can be run using the following:
 
-```console
+```bash
 python -m scripts.safetensors_generator.safetensors_writer -src="path/to/exr/root/dir"
 ```
 

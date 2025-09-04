@@ -45,11 +45,11 @@ class TestGeneratingConfigFile(unittest.TestCase):
             config_data = json.load(f)
 
         self.assertEqual(
-            config_data["dataset"]["path"]["train"], "<PATH/TO/TRAIN_DATA>"
+            config_data["dataset"]["path"]["train"], "<PATH/TO/TRAIN_DATA_DIR>"
         )
         self.assertEqual(
             config_data["train"]["fp32"]["checkpoints"]["dir"],
-            "<OUTPUT/PATH/FOR/CHECKPOINTS>",
+            "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>",
         )
 
     def test_incrementing_config_name_if_already_exists(self):

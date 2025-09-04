@@ -59,11 +59,11 @@ def generate_config_file(save_dir: Union[str, Path, None] = None) -> Tuple[Path,
         output_dir = Path(".")
 
     placeholders = {
-        "dataset.path.train": "<PATH/TO/TRAIN_DATA>",
-        "dataset.path.validation": "<PATH/TO/VALIDATION_DATA>",
-        "dataset.path.test": "<PATH/TO/TEST_DATA>",
-        "train.fp32.checkpoints.dir": "<OUTPUT/PATH/FOR/CHECKPOINTS>",
-        "train.qat.checkpoints.dir": "<OUTPUT/PATH/FOR/CHECKPOINTS>",
+        "dataset.path.train": "<PATH/TO/TRAIN_DATA_DIR>",
+        "dataset.path.validation": "<PATH/TO/VALIDATION_DATA_DIR>",
+        "dataset.path.test": "<PATH/TO/TEST_DATA_DIR>",
+        "train.fp32.checkpoints.dir": "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>",
+        "train.qat.checkpoints.dir": "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>",
     }
 
     # Load internal default config

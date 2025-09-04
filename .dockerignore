@@ -22,3 +22,5 @@ logs/
 tensorboard-logs/*
 checkpoints/*
 .cache/*
+config.json
+schema_config.json

@@ -113,11 +113,11 @@ class CLIIntegrationTest(BaseIntegrationTest):
 
             self.assertEqual(
                 config_data["dataset"]["path"]["train"],
-                "<PATH/TO/TRAIN_DATA>",
+                "<PATH/TO/TRAIN_DATA_DIR>",
             )
             self.assertEqual(
                 config_data["train"]["fp32"]["checkpoints"]["dir"],
-                "<OUTPUT/PATH/FOR/CHECKPOINTS>",
+                "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>",
             )
 
             # Test loading config with placeholder fails
