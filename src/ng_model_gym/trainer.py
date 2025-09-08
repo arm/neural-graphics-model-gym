@@ -294,8 +294,18 @@ class Trainer:
             save_frequency = int(self.training_mode_params.checkpoints.save_frequency)
             self._save_checkpoint(save_frequency, epoch, total_epochs)
 
-            # Evaluate on the validation set.
-            if self.params.train.perform_validate:
+            # Evaluate on the validation set, depending on the epoch number
+            validate_frequency = self.params.train.validate_frequency
+            if self.params.train.perform_validate and (
+                (
+                    isinstance(validate_frequency, int)
+                    and epoch % validate_frequency == 0
+                )
+                or (
+                    isinstance(validate_frequency, (list))
+                    and epoch in validate_frequency
+                )
+            ):
                 with torch.no_grad():
                     self.validate(epoch)
 

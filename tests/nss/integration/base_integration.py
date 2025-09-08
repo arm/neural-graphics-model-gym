@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from importlib.resources import files
 from pathlib import Path
+from typing import List
 
 import torch
 
@@ -69,7 +70,7 @@ class BaseIntegrationTest(unittest.TestCase):
         """Clean up the temporary directory."""
         shutil.rmtree(self.test_dir)
 
-    def check_log(self, msgs):
+    def check_log(self, msgs: List):
         """Verify that the log file contents matches the log."""
         log_file_path = Path(self.model_out_dir, "output.log")
         with open(log_file_path, "r", encoding="utf-8") as file:
