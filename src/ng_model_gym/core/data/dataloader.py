@@ -179,6 +179,20 @@ class NSSDataset(Dataset):
         return data_frame
 
 
+def seed_worker(worker_id):  # pylint: disable=unused-argument
+    """
+    Make random functions that are run from workers be deterministic -
+    see https://pytorch.org/docs/stable/notes/randomness.html#dataloader
+    """
+    # Torch will automatically set a seed for this worker based on a random number generated
+    # from the torch instance running in the main process, but it doesn't handle seeds for other
+    # libraries that we use such as numpy.
+    # So we copy the auto-generated torch seed to these other libraries.
+    worker_seed = torch.initial_seed() % 2**32
+    np.random.seed(worker_seed)
+    random.seed(worker_seed)
+
+
 def get_dataloader(
     config_params: ConfigModel,
     num_workers=1,
@@ -224,13 +238,6 @@ def get_dataloader(
             "Number of recurrent samples must be greater than 1 for training."
         )
 
-    def seed_worker(worker_id):  # pylint: disable=unused-argument
-        """Fix worker seed https://pytorch.org/docs/stable/notes/randomness.html#dataloader"""
-        torch.manual_seed(config_params.train.seed)
-        worker_seed = torch.initial_seed() % 2**32
-        np.random.seed(worker_seed)
-        random.seed(worker_seed)
-
     g = torch.Generator()
     g.manual_seed(config_params.train.seed)
 
@@ -240,9 +247,9 @@ def get_dataloader(
         batch_size=batch_size,
         num_workers=num_workers,
         pin_memory=True,
-        prefetch_factor=prefetch_factor,
+        prefetch_factor=prefetch_factor if num_workers > 0 else None,
         drop_last=True,
-        persistent_workers=True,
+        persistent_workers=num_workers > 0,
         worker_init_fn=seed_worker,
         generator=g,
     )

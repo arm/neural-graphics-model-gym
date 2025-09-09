@@ -83,10 +83,11 @@ class Dataset(PydanticConfigModel):
     gt_augmentation: bool = Field(
         description="Enable dataset augmentations e.g flips, rotations"
     )
-    num_workers: int = Field(ge=1, description="Number of dataloader workers to use")
+    num_workers: int = Field(ge=0, description="Number of dataloader workers to use")
     prefetch_factor: int = Field(
-        ge=1,
-        description="Number of batches loaded in advance by each dataloader worker",
+        ge=0,
+        description="Number of batches loaded in advance by each dataloader worker. "
+        "Used only if num_workers > 0",
     )
 
 
