@@ -28,13 +28,15 @@ if TYPE_CHECKING:
         do_export,
         do_training,
         ExportType,
-        generate_config_file,
-        load_config_file,
-        logging_config,
-        print_config_options,
         ProfilerType,
         TrainEvalMode,
     )
+    from ng_model_gym.utils.config_utils import (
+        generate_config_file,
+        load_config_file,
+        print_config_options,
+    )
+    from ng_model_gym.utils.logging import logging_config
 else:
 
     def __getattr__(attr):
@@ -51,19 +53,19 @@ else:
 
             return do_export
         if attr == "load_config_file":
-            from ng_model_gym.api import load_config_file
+            from ng_model_gym.utils.config_utils import load_config_file
 
             return load_config_file
         if attr == "print_config_options":
-            from ng_model_gym.api import print_config_options
+            from ng_model_gym.utils.config_utils import print_config_options
 
             return print_config_options
         if attr == "logging_config":
-            from ng_model_gym.api import logging_config
+            from ng_model_gym.utils.logging import logging_config
 
             return logging_config
         if attr == "generate_config_file":
-            from ng_model_gym.api import generate_config_file
+            from ng_model_gym.utils.config_utils import generate_config_file
 
             return generate_config_file
 

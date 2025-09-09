@@ -5,7 +5,7 @@ import io
 import unittest
 from contextlib import redirect_stdout
 
-from ng_model_gym.api import print_config_options
+from ng_model_gym.utils.config_utils import print_config_options
 
 
 class TestPrintConfigOptions(unittest.TestCase):

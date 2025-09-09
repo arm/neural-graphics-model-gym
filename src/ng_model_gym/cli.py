@@ -19,7 +19,6 @@ if TYPE_CHECKING:
 
 # pylint: disable=import-outside-toplevel, line-too-long
 
-
 # Create a logger using the root module name 'src', to be used throughout project.
 ROOT_MODULE_NAME = "ng_model_gym"
 logger = logging.getLogger(ROOT_MODULE_NAME)
@@ -55,7 +54,7 @@ def generate_config(
 
     console = Console()
     with console.status("[bold green]Generating config…", spinner="dots") as _:
-        from ng_model_gym import generate_config_file
+        from ng_model_gym.utils.config_utils import generate_config_file
 
     config_output_path, schema_path = generate_config_file(out_dir)
 
@@ -311,9 +310,11 @@ def cli_root(
         )
 
     console = Console()
+
     with console.status("[bold green] Loading modules...", spinner="dots") as _:
-        from ng_model_gym import load_config_file, logging_config
-        from ng_model_gym.utils.general_utils import fix_randomness, log_machine_info
+        from ng_model_gym.utils.config_utils import load_config_file
+        from ng_model_gym.utils.general_utils import fix_randomness
+        from ng_model_gym.utils.logging import log_machine_info, logging_config
 
     # Create a globally accessible "Click" ctx to check if program was invoked from the CLI
     ctx.ensure_object(dict)
