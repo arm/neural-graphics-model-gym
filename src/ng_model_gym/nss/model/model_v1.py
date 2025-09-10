@@ -10,6 +10,17 @@ from executorch.backends.arm.tosa_specification import TosaSpecification
 from torch import nn
 from torch.fx import GraphModule
 from torch.nn.modules.module import T
+from torchao.quantization.pt2e import (
+    move_exported_model_to_eval,
+    move_exported_model_to_train,
+    MovingAverageMinMaxObserver,
+    MovingAveragePerChannelMinMaxObserver,
+)
+from torchao.quantization.pt2e.quantize_pt2e import prepare_qat_pt2e
+from torchao.quantization.pt2e.quantizer import (
+    FixedQParamsQuantizationSpec,
+    QuantizationSpec,
+)
 
 from ng_model_gym.nss.dataloader.utils import tonemap_forward
 from ng_model_gym.nss.history_buffer import HistoryBuffer
@@ -27,6 +38,11 @@ from ng_model_gym.nss.model.pre_processing import (
     PreProcessV1_ShaderAccurate,
 )
 from ng_model_gym.nss.model.recurrent_model import FeedbackModel
+from ng_model_gym.optimization.quantization.observers import (
+    enable_all_observers,
+    freeze_all_observers,
+    FusedMovingAvgObsFakeQuantizeFix,
+)
 from ng_model_gym.utils.config_model import ConfigModel
 from ng_model_gym.utils.tensor_types import TensorData
 from ng_model_gym.utils.types import (
@@ -288,13 +304,6 @@ class QATNSSModel(NSSModel):
 
     def train(self: T, mode: bool = True):  # pylint: disable=unused-argument
         """Overrides PyTorch mode hint, model.train()"""
-        from torchao.quantization.pt2e import (  # pylint: disable=import-outside-toplevel
-            move_exported_model_to_train,
-        )
-
-        from ng_model_gym.optimization.quantization.observers import (  # pylint: disable=import-outside-toplevel
-            enable_all_observers,
-        )
 
         if not self.modules_quantized:
             raise RuntimeError(
@@ -309,13 +318,6 @@ class QATNSSModel(NSSModel):
 
     def _eval(self: T):
         """Quant specific model.eval(), we freeze observers and move to eval mode."""
-        from torchao.quantization.pt2e import (  # pylint: disable=import-outside-toplevel
-            move_exported_model_to_eval,
-        )
-
-        from ng_model_gym.optimization.quantization.observers import (  # pylint: disable=import-outside-toplevel
-            freeze_all_observers,
-        )
 
         if not self.modules_quantized:
             raise RuntimeError(
@@ -338,21 +340,6 @@ class QATNSSModel(NSSModel):
         from executorch.backends.arm.quantizer.arm_quantizer import (  # pylint: disable=import-outside-toplevel
             QuantizationConfig,
             TOSAQuantizer,
-        )
-        from torchao.quantization.pt2e import (  # pylint: disable=import-outside-toplevel
-            MovingAverageMinMaxObserver,
-            MovingAveragePerChannelMinMaxObserver,
-        )
-        from torchao.quantization.pt2e.quantize_pt2e import (  # pylint: disable=import-outside-toplevel
-            prepare_qat_pt2e,
-        )
-        from torchao.quantization.pt2e.quantizer import (  # pylint: disable=import-outside-toplevel
-            FixedQParamsQuantizationSpec,
-            QuantizationSpec,
-        )
-
-        from ng_model_gym.optimization.quantization.observers import (  # pylint: disable=import-outside-toplevel
-            FusedMovingAvgObsFakeQuantizeFix,
         )
 
         # Configure TOSA Quantizer
