@@ -10,7 +10,7 @@ from importlib.resources import files
 from io import StringIO
 from pathlib import Path
 
-from ng_model_gym.api import load_config_file
+from ng_model_gym.utils.config_utils import load_config_file
 from ng_model_gym.utils.general_utils import create_directory
 from scripts.generate_config_schema import generate_schema
 from tests.unit.utils.utils import create_simple_params

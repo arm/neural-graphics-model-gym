@@ -2,15 +2,12 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
-import platform
 import random
 from pathlib import Path
 from typing import Union
 
 import click
-import GPUtil
 import numpy as np
-import psutil
 import torch
 
 logger = logging.getLogger(__name__)
@@ -24,35 +21,6 @@ def create_directory(dir_path: Union[str, Path]):
     except (FileExistsError, PermissionError, ValueError) as e:
         logger.error(e)
         raise
-
-
-def log_machine_info():
-    """Log info about training machine."""
-    sys_lines = [
-        "\n-------------- Training machine info --------------",
-        f"Name: {platform.uname().node}",
-        f"CPU: {platform.processor()}",
-        f"Physical cores: {psutil.cpu_count(logical=False)}",
-        f"Total cores: {psutil.cpu_count(logical=True)}",
-        f"Total RAM: {psutil.virtual_memory().total / (1024**3):.2f} GB",
-        f"System: {platform.uname().system}",
-        f"Version: {platform.uname().version}",
-        "---------------------------------------------------",
-    ]
-    logger.info("\n".join(sys_lines))
-
-    try:
-        gpus = GPUtil.getGPUs()
-        if gpus:
-            for i, gpu in enumerate(gpus):
-                logger.info(
-                    f"GPU {i} memory — total: {gpu.memoryTotal} MB; "
-                    f"free: {gpu.memoryFree} Mb; Currently in use: {gpu.memoryUsed} MB"
-                )
-        else:
-            logger.info("No GPUs found.")
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        logger.info(f"Something is wrong with GPU drivers: {e}")
 
 
 def fix_randomness(seed, use_deterministic_cuda=False):

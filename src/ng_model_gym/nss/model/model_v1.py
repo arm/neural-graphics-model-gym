@@ -6,6 +6,10 @@ import logging
 from typing import Any, Dict, Optional, Tuple
 
 import torch
+from executorch.backends.arm.quantizer.arm_quantizer import (
+    QuantizationConfig,
+    TOSAQuantizer,
+)
 from executorch.backends.arm.tosa_specification import TosaSpecification
 from torch import nn
 from torch.fx import GraphModule
@@ -336,11 +340,6 @@ class QATNSSModel(NSSModel):
         """Trace module and insert FakeQuantizer nodes. Must be done before training starts"""
 
         logger.info("Preparing model for QAT")
-
-        from executorch.backends.arm.quantizer.arm_quantizer import (  # pylint: disable=import-outside-toplevel
-            QuantizationConfig,
-            TOSAQuantizer,
-        )
 
         # Configure TOSA Quantizer
         quantizer = TOSAQuantizer(TosaSpecification.create_from_string(tosa_spec))

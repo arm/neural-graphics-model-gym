@@ -8,7 +8,7 @@ import unittest
 from importlib.resources import files
 from pathlib import Path
 
-from ng_model_gym.api import DEFAULT_PATH, generate_config_file
+from ng_model_gym.utils.config_utils import DEFAULT_PATH, generate_config_file
 
 
 class TestGeneratingConfigFile(unittest.TestCase):
