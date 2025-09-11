@@ -4,7 +4,7 @@
 import logging
 import unittest
 
-from ng_model_gym.utils.memory_log_decorator import memory_log_decorator
+from ng_model_gym.core.utils.memory_log_decorator import memory_log_decorator
 
 
 @memory_log_decorator

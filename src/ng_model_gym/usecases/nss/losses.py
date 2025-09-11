@@ -9,8 +9,8 @@ from typing import Any, Dict, List, Union
 import lpips
 import torch
 
-from ng_model_gym.nss.model.layers.dense_warp import DenseWarp
-from ng_model_gym.utils.general_utils import lerp_tensor
+from ng_model_gym.core.utils.general_utils import lerp_tensor
+from ng_model_gym.usecases.nss.model.layers.dense_warp import DenseWarp
 
 logger = logging.getLogger(__name__)
 

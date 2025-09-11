@@ -12,12 +12,12 @@ import torch
 import torchvision
 from tqdm.auto import tqdm
 
-from ng_model_gym.dataloader import get_dataloader
-from ng_model_gym.nss.dataloader.utils import DataLoaderMode
-from ng_model_gym.nss.metrics import get_metrics
-from ng_model_gym.nss.model.recurrent_model import FeedbackModel
-from ng_model_gym.nss.model.shaders.slang_utils import load_slang_module
-from ng_model_gym.utils.general_utils import create_directory
+from ng_model_gym.core.dataloader import get_dataloader
+from ng_model_gym.core.utils.general_utils import create_directory
+from ng_model_gym.usecases.nss.dataloader.utils import DataLoaderMode
+from ng_model_gym.usecases.nss.metrics import get_metrics
+from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
+from ng_model_gym.usecases.nss.model.shaders.slang_utils import load_slang_module
 
 logger = logging.getLogger(__name__)
 

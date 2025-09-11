@@ -224,7 +224,7 @@ license text is included in, or next to, those files.
   These files are:
 
    -  `scripts/safetensors_generator/fsr2_methods.py`
-   -  `src/ng_model_gym/nss/model/shaders/depth_clip.slang`
+   -  `src/ng_model_gym/usecases/nss/model/shaders/depth_clip.slang`
 
 - The [ML SDK Model Converter](https://github.com/arm/ai-ml-sdk-model-converter) project.
   This is licensed under the Apache License, Version 2.0.

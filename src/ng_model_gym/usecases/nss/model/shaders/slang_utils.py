@@ -7,7 +7,7 @@ from importlib.resources import files
 
 from rich.console import Console
 
-from ng_model_gym.utils.general_utils import is_invoked_cli
+from ng_model_gym.core.utils.general_utils import is_invoked_cli
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +21,7 @@ def load_slang_module(slang_shader="nss_v1.slang"):
     # pylint: disable-next=import-outside-toplevel
     import slangtorch
 
-    shader_folder_path = "ng_model_gym.nss.model.shaders"
+    shader_folder_path = "ng_model_gym.usecases.nss.model.shaders"
     shader_path = files(shader_folder_path) / slang_shader
 
     # Check if program was invoked by CLI

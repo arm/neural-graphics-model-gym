@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from ng_model_gym.utils.tensor_types import TensorData
+from ng_model_gym.core.utils.tensor_types import TensorData
 
 
 class FeedbackModel(nn.Module):

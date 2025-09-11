@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import torch
 
-from ng_model_gym.utils.types import HistoryBufferResetFunction
+from ng_model_gym.core.utils.types import HistoryBufferResetFunction
 
 
 class HistoryBuffer:

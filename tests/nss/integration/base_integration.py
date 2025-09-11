@@ -11,11 +11,11 @@ from pathlib import Path
 
 import torch
 
-from ng_model_gym.utils.checkpoint_utils import (
+from ng_model_gym.core.utils.checkpoint_utils import (
     latest_checkpoint_path,
     latest_training_run_dir,
 )
-from ng_model_gym.utils.general_utils import create_directory
+from ng_model_gym.core.utils.general_utils import create_directory
 
 
 class BaseIntegrationTest(unittest.TestCase):
@@ -35,7 +35,7 @@ class BaseIntegrationTest(unittest.TestCase):
         self.pretrained_weights = "tests/nss/weights/nss_v0.1.0_fp32.pt"
         self.tensorboard_dir = Path(self.test_dir, "tensorboard-logs")
         create_directory(self.tensorboard_dir)
-        config_path = files("ng_model_gym.nss.configs") / "default.json"
+        config_path = files("ng_model_gym.usecases.nss.configs") / "default.json"
         with open(config_path, encoding="utf-8") as f:
             self.cfg_json = json.load(f)
 

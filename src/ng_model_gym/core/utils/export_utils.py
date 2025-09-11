@@ -21,11 +21,11 @@ from executorch.exir import to_edge_transform_and_lower
 from rich.console import Console
 from torchao.quantization.pt2e.quantize_pt2e import convert_pt2e, prepare_pt2e
 
-from ng_model_gym.dataloader import DataLoaderMode, get_dataloader
-from ng_model_gym.utils.checkpoint_utils import load_checkpoint
-from ng_model_gym.utils.config_model import ConfigModel
-from ng_model_gym.utils.general_utils import is_invoked_cli
-from ng_model_gym.utils.types import ExportSpec, ExportType, TrainEvalMode
+from ng_model_gym.core.dataloader import DataLoaderMode, get_dataloader
+from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
+from ng_model_gym.core.utils.config_model import ConfigModel
+from ng_model_gym.core.utils.general_utils import is_invoked_cli
+from ng_model_gym.core.utils.types import ExportSpec, ExportType, TrainEvalMode
 
 logger = logging.getLogger(__name__)
 

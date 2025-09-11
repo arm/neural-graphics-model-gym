@@ -4,14 +4,14 @@
 import torch
 from torch import nn
 
-from ng_model_gym.utils.config_model import ConfigModel
+from ng_model_gym.core.utils.config_model import ConfigModel
 
 
 def create_model(params: ConfigModel, device: torch.device) -> nn.Module:
     """Create specified model."""
 
     if params.version == 1:
-        from ng_model_gym.nss.model.model_v1 import (  # pylint: disable=import-outside-toplevel
+        from ng_model_gym.usecases.nss.model.model_v1 import (  # pylint: disable=import-outside-toplevel
             create_feedback_model_with_nss,
         )
 

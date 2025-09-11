@@ -8,9 +8,9 @@ from typing import List, Optional
 
 import torch
 
-from ng_model_gym.nss.model.model import create_model
-from ng_model_gym.utils.config_model import ConfigModel
-from ng_model_gym.utils.types import TrainEvalMode
+from ng_model_gym.core.utils.config_model import ConfigModel
+from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.usecases.nss.model.model import create_model
 
 logger = logging.getLogger(__name__)
 
