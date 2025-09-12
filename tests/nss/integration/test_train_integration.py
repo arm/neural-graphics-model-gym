@@ -34,7 +34,7 @@ class TrainingIntegrationTest(BaseIntegrationTest):
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
-        # Override number_of_epochs to test resuming
+        # Override dataset paths
         cfg_json["dataset"]["path"]["train"] = None
         cfg_json["dataset"]["path"]["validation"] = None
         cfg_json["dataset"]["path"]["test"] = None
@@ -108,6 +108,128 @@ class TrainingIntegrationTest(BaseIntegrationTest):
         )
         self.assertEqual(sub_proc.returncode, 0)
         self.check_log("AMP is available: true")
+
+    def test_validation(self):
+        """Test train with validation"""
+        # Update config to enable validation
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        # Override validation dataset path and perform_validate
+        cfg_json["dataset"]["path"]["validation"] = "tests/nss/datasets/val"
+        cfg_json["train"]["perform_validate"] = True
+
+        self.test_cfg_path = Path(self.test_dir, "test_validate.json")
+
+        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
+
+        sub_proc = subprocess.run(
+            [
+                "ng-model-gym",
+                f"--config-path={self.test_cfg_path}",
+                "train",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(sub_proc.returncode, 0)
+        self.assertIn("Validation:", sub_proc.stdout + sub_proc.stderr)
+
+    def test_train_with_validation_missing_dataset(self):
+        """Test train with validation raises error if missing dataset path"""
+
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        # Override validation dataset path and perform_validate
+        cfg_json["dataset"]["path"]["validation"] = None
+        cfg_json["train"]["perform_validate"] = True
+
+        self.test_cfg_path = Path(self.test_dir, "test_validate_error.json")
+
+        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
+
+        with self.assertRaises(subprocess.CalledProcessError) as sub_proc_out:
+            subprocess.run(
+                ["ng-model-gym", f"--config-path={self.test_cfg_path}", "train"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+        exc = sub_proc_out.exception
+
+        self.assertNotEqual(
+            exc.returncode,
+            0,
+            f"Expected non zero exit code for missing dataset, got {exc.returncode}",
+        )
+
+        self.assertIn("config error", exc.stderr.lower())
+
+    def test_warning_train_with_validation_false_with_dataset(self):
+        """Test train with validation set to false raises warning if dataset path provided"""
+
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        # Override validation dataset path and perform_validate
+        cfg_json["dataset"]["path"]["validation"] = "tests/nss/datasets/val"
+        cfg_json["train"]["perform_validate"] = False
+
+        self.test_cfg_path = Path(self.test_dir, "test_validate_warning.json")
+
+        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
+
+        sub_proc = subprocess.run(
+            [
+                "ng-model-gym",
+                f"--config-path={self.test_cfg_path}",
+                "train",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertIn(
+            "[WARNING] Validation path is provided but perform_validate is set to false",
+            sub_proc.stdout,
+        )
+
+    def test_validation_false_no_dataset_provided(self):
+        """Test train without validation and no dataset provided"""
+        # Update config to enable validation
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        # Override validation dataset path and perform_validate
+        cfg_json["dataset"]["path"]["validation"] = None
+        cfg_json["train"]["perform_validate"] = False
+
+        self.test_cfg_path = Path(self.test_dir, "test_no_validate.json")
+
+        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
+
+        sub_proc = subprocess.run(
+            [
+                "ng-model-gym",
+                f"--config-path={self.test_cfg_path}",
+                "train",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(sub_proc.returncode, 0)
+        self.assertNotIn("Validation:", sub_proc.stdout + sub_proc.stderr)
 
 
 # pylint: enable=duplicate-code

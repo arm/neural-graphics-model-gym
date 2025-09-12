@@ -50,6 +50,7 @@ class BaseIntegrationTest(unittest.TestCase):
             self.qat_checkpoint_dir
         )
         self.cfg_json["train"]["pretrained_weights"] = str(self.pretrained_weights)
+        self.cfg_json["train"]["perform_validate"] = False
         self.cfg_json["output"]["dir"] = str(self.model_out_dir)
         # integration-test dataset
         self.cfg_json["dataset"]["path"]["train"] = self.train_data_dir

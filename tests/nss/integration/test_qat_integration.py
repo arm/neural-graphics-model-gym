@@ -51,7 +51,7 @@ class QATIntegrationTest(BaseIntegrationTest):
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
-        # Override number_of_epochs to test resuming
+        # Override dataset paths
         cfg_json["dataset"]["path"]["train"] = None
         cfg_json["dataset"]["path"]["validation"] = None
         cfg_json["dataset"]["path"]["test"] = None
