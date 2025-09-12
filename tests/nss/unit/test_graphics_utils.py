@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from ng_model_gym.nss.model.graphics_utils import (
+from ng_model_gym.usecases.nss.model.graphics_utils import (
     compute_luminance,
     generate_lr_to_hr_lut,
     length,

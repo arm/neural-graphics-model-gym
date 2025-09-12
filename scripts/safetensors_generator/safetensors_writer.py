@@ -15,7 +15,7 @@ import torch
 from safetensors.torch import save_file
 from tqdm.auto import tqdm
 
-from ng_model_gym.utils.logging import setup_logging
+from ng_model_gym.core.utils.logging import setup_logging
 from scripts.safetensors_generator.dataset_reader import (
     FeatureIterator,
     NSSEXRDatasetReader,

@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import torch
 
-from ng_model_gym.nss.dataloader.health_check import health_check_dataset
+from ng_model_gym.usecases.nss.dataloader.health_check import health_check_dataset
 
 
 class TestHealthCheckDataset(unittest.TestCase):
@@ -35,7 +35,7 @@ class TestHealthCheckDataset(unittest.TestCase):
             TestHealthCheckDataset.SampleDataset(), batch_size=1
         )
 
-    @patch("ng_model_gym.nss.dataloader.health_check.logger")
+    @patch("ng_model_gym.usecases.nss.dataloader.health_check.logger")
     def test_health_check_in_test_mode(self, mock_logger):
         """Test that we don't check in test mode,"""
         health_check_dataset(self.dataset, "test")
@@ -43,10 +43,10 @@ class TestHealthCheckDataset(unittest.TestCase):
             "DATASET: Health check is only supported for the train dataset"
         )
 
-    @patch("ng_model_gym.nss.dataloader.health_check.psnr")
-    @patch("ng_model_gym.nss.dataloader.health_check.DenseWarp")
-    @patch("ng_model_gym.nss.dataloader.health_check.DownSampling2D")
-    @patch("ng_model_gym.nss.dataloader.health_check.tqdm")
+    @patch("ng_model_gym.usecases.nss.dataloader.health_check.psnr")
+    @patch("ng_model_gym.usecases.nss.dataloader.health_check.DenseWarp")
+    @patch("ng_model_gym.usecases.nss.dataloader.health_check.DownSampling2D")
+    @patch("ng_model_gym.usecases.nss.dataloader.health_check.tqdm")
     def test_health_check_in_train_mode_failure(
         self, mock_tqdm, mock_down_sampling2d, mock_dense_warp, mock_psnr
     ):

@@ -28,3 +28,4 @@ checkpoints/*
 *.safetensors
 config.json
 schema_config.json
+!src/ng_model_gym/usecases/nss/configs/schema_config.json

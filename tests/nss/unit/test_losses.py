@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from ng_model_gym.nss.losses import LossV1
+from ng_model_gym.core.loss.losses import LossV1
 
 
 class TestLossV1(unittest.TestCase):

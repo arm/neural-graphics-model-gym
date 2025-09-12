@@ -7,10 +7,10 @@ import unittest
 
 import torch
 
-from ng_model_gym.nss.dataloader.utils import ToneMapperMode
-from ng_model_gym.nss.model.model_blocks import AutoEncoderV1
-from ng_model_gym.nss.model.model_v1 import initialize_nss_model_core
-from ng_model_gym.utils.types import TrainEvalMode
+from ng_model_gym.core.data.utils import ToneMapperMode
+from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
+from ng_model_gym.usecases.nss.model.model_v1 import initialize_nss_model_core
 from tests.unit.utils.utils import create_simple_params
 
 

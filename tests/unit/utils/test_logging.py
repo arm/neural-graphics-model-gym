@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ng_model_gym.utils.logging import add_file_handler, set_log_level
+from ng_model_gym.core.utils.logging import add_file_handler, set_log_level
 from tests.unit.utils.utils import clear_loggers
 
 

@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from ng_model_gym.nss.model.pre_processing import (
+from ng_model_gym.usecases.nss.model.pre_processing import (
     pre_process_v1_bwd,
     pre_process_v1_sa_bwd,
     PreProcessV1,
