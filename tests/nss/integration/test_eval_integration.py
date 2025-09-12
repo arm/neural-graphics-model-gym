@@ -361,6 +361,43 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
 
         self.assertEqual(sub_proc.returncode, 0)
 
+    def test_validation_validate_frequency_array(self):
+        """E2E test of evaluating on a validation set after specific training epochs"""
+        # Update config to enable validation
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        # Override number_of_epochs to test resuming
+        cfg_json["dataset"]["path"]["validation"] = "tests/nss/datasets/val"
+        cfg_json["train"]["perform_validate"] = True
+
+        # Set specific epochs to perform validation after
+        cfg_json["train"]["fp32"]["number_of_epochs"] = 4
+        cfg_json["train"]["validate_frequency"] = [1, 3, 4]
+        self.test_cfg_path = Path(self.test_dir, "test_validate.json")
+
+        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
+
+        sub_proc = subprocess.run(
+            [
+                "ng-model-gym",
+                f"--config-path={self.test_cfg_path}",
+                "train",
+                "--evaluate",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(sub_proc.returncode, 0)
+
+        # Ensure Validation only runs for specific epochs
+        self.assertIn("Validation: Epoch 1/4", sub_proc.stderr)
+        self.assertNotIn("Validation: Epoch 2/4", sub_proc.stderr)
+        self.assertIn("Validation: Epoch 3/4", sub_proc.stderr)
+        self.assertIn("Validation: Epoch 4/4", sub_proc.stderr)
+
     def test_train_command_with_validation_raises_error_missing_dataset(self):
         """Test train with validation raises error if missing dataset path"""
 

@@ -2,7 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import pathlib
-from typing import Optional
+from typing import List, Optional, Union
 
 from pydantic import (
     BaseModel,
@@ -171,7 +171,11 @@ class Train(PydanticConfigModel):
         description="Path to the weights of the pretrained model"
     )
     perform_validate: bool = Field(
-        description="Perform validation at the end of each training epoch"
+        description="Perform validation at the end of specific training epochs, as set by the validate_frequency field."
+    )
+    validate_frequency: Union[int, List[int]] = Field(
+        default=1,
+        description="For a single int, N, validate every N epochs. For a List of ints, run validation after each epoch in the List.",
     )
     fp32: TrainingConfig
     qat: TrainingConfig

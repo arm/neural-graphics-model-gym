@@ -28,6 +28,10 @@ class TinyModel(nn.Module):
         self.layer.weight.data = torch.full((1, 1), 0.5)
         self.layer.bias.data = torch.full((1, 1), 0.4)
 
+    def forward(self, _):
+        """Forward pass returns a dict containing a mock"""
+        return {"x": Mock()}
+
 
 class TestTrainerMethods(unittest.TestCase):
     """Tests for Trainer class"""
@@ -42,9 +46,72 @@ class TestTrainerMethods(unittest.TestCase):
             self.mock_trainer.model.parameters(), lr=0.001
         )
 
+        # --- Config ---
+        self.mock_trainer.training_mode_params = Mock()
+        self.mock_trainer.training_mode_params.number_of_epochs = 10
+        self.mock_trainer.training_mode_params.checkpoints.save_frequency = 999
+        self.mock_trainer.starting_epoch = 1
+        self.mock_trainer.device = torch.device("cpu")
+        self.mock_trainer.metrics = []
+
+        # --- Model ---
+        self.mock_trainer.model.nss_model = Mock()
+        self.mock_trainer.model.nss_model.reset_history_buffers = Mock()
+        self.mock_trainer.model.detach_buffers = Mock()
+
+        # --- Dataloader ---
+        mock_input = Mock()
+        mock_input.to = Mock(return_value=mock_input)
+        mock_ground_truth = Mock()
+        mock_ground_truth.to = Mock(return_value=mock_ground_truth)
+        self.mock_trainer.train_dataloader = [
+            ({"x": mock_input}, mock_ground_truth) for _ in range(10)
+        ]
+
+        # --- Loss / Criterion ---
+        mock_loss = Mock()
+        mock_loss.backward = Mock()
+        mock_loss.item = Mock(return_value=0.1)
+        self.mock_trainer.criterion = Mock(return_value=(mock_loss, None))
+
+        # --- Other ---
+        self.mock_trainer.lr_schedule = None
+        self.mock_trainer._save_checkpoint = Mock()
+        self.mock_trainer.validate = Mock()
+
     def tearDown(self):
         """Re-enable logging"""
         logging.disable(logging.NOTSET)
+
+    def test_train_calls_validate_every_3_epochs(self):
+        """Ensure Trainer.train() only triggers validate() on configured epochs"""
+        self.mock_trainer.params = Mock()
+        self.mock_trainer.params.train.perform_validate = True
+        self.mock_trainer.params.train.validate_frequency = 3
+        self.mock_trainer.validate_epochs = (
+            self.mock_trainer.params.train.validate_frequency
+        )
+
+        # Run the real training loop, passing mock as 'self'
+        Trainer.train(self.mock_trainer)
+
+        called_epochs = [c.args[0] for c in self.mock_trainer.validate.call_args_list]
+        self.assertEqual(called_epochs, [3, 6, 9])
+
+    def test_train_calls_validate_on_specific_epochs(self):
+        """Ensure Trainer.train() only triggers validate() on configured epochs"""
+        self.mock_trainer.params = Mock()
+        self.mock_trainer.params.train.perform_validate = True
+        self.mock_trainer.params.train.validate_frequency = [1, 2, 5, 9]
+        self.mock_trainer.validate_epochs = (
+            self.mock_trainer.params.train.validate_frequency
+        )
+
+        # Run the real training loop, passing mock as 'self'
+        Trainer.train(self.mock_trainer)
+
+        called_epochs = [c.args[0] for c in self.mock_trainer.validate.call_args_list]
+        self.assertEqual(called_epochs, [1, 2, 5, 9])
 
     def test_saving_checkpoints(self):
         """Test expected checkpoints are saved during mock training run"""

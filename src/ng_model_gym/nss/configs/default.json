@@ -29,6 +29,7 @@
         "scale": 2.0,
         "seed": 123456,
         "perform_validate": true,
+        "validate_frequency": 1,
         "finetune": false,
         "resume": false,
         "pretrained_weights": null,
