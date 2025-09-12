@@ -6,8 +6,8 @@ import tempfile
 
 import numpy as np
 
-from ng_model_gym.utils.config_model import ConfigModel
-from ng_model_gym.utils.general_utils import create_directory
+from ng_model_gym.core.utils.config_model import ConfigModel
+from ng_model_gym.core.utils.general_utils import create_directory
 
 
 def clear_loggers() -> None:

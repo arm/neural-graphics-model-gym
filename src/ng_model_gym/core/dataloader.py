@@ -12,11 +12,11 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 
-from ng_model_gym.nss.dataloader.health_check import health_check_dataset
-from ng_model_gym.nss.dataloader.process_functions import process_nss_data
-from ng_model_gym.nss.dataloader.utils import DataLoaderMode, DatasetType
-from ng_model_gym.nss.model.graphics_utils import fixed_normalize_mvs
-from ng_model_gym.utils.config_model import ConfigModel
+from ng_model_gym.core.utils.config_model import ConfigModel
+from ng_model_gym.usecases.nss.dataloader.health_check import health_check_dataset
+from ng_model_gym.usecases.nss.dataloader.process_functions import process_nss_data
+from ng_model_gym.usecases.nss.dataloader.utils import DataLoaderMode, DatasetType
+from ng_model_gym.usecases.nss.model.graphics_utils import fixed_normalize_mvs
 
 logger = logging.getLogger(__name__)
 

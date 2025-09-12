@@ -6,7 +6,7 @@ import unittest
 import torch
 from torch import nn
 
-from ng_model_gym.nss.model.model_blocks import AutoEncoderV1
+from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
 
 FEEDBACK_CH = 4
 

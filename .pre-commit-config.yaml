@@ -85,7 +85,7 @@ repos:
             entry: blocklint
             language: python
             args: [
-              "--skip-files=src/ng_model_gym/nss/model/shaders/depth_clip.slang,scripts/safetensors_generator/fsr2_methods.py,pyproject.toml"
+              "--skip-files=src/ng_model_gym/usecases/nss/model/shaders/depth_clip.slang,scripts/safetensors_generator/fsr2_methods.py,pyproject.toml"
             ]
             files: ^(docs/|src/|tests/|scripts/)
             require_serial: true

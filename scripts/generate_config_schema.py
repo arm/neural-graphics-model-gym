@@ -8,7 +8,7 @@ from pathlib import Path
 
 import jsonref
 
-from ng_model_gym.utils import config_model
+from ng_model_gym.core.utils.config_model import ConfigModel
 
 sys.path.append("..")
 
@@ -58,7 +58,7 @@ def generate_schema(output_path: Path):
     with open(output_path, "w", encoding="utf-8") as schema_file:
         # Inline the "refs" keys in the generated JSON schema spec
         schema = jsonref.replace_refs(
-            config_model.ConfigModel.model_json_schema(), merge_props=True
+            ConfigModel.model_json_schema(), merge_props=True
         )["properties"]
 
         json.dump(format_schema(schema), schema_file, indent=4)

@@ -7,7 +7,7 @@ import torch
 from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.image.ssim import StructuralSimilarityIndexMeasure
 
-from ng_model_gym.nss.metrics import (
+from ng_model_gym.usecases.nss.metrics import (
     get_metrics,
     Psnr,
     RecPsnr,

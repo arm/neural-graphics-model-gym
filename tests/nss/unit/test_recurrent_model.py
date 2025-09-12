@@ -5,9 +5,9 @@ import unittest
 
 import torch
 
-from ng_model_gym.nss.model.model_blocks import AutoEncoderV1
-from ng_model_gym.nss.model.model_v1 import create_feedback_model_with_nss
-from ng_model_gym.utils.types import TrainEvalMode
+from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
+from ng_model_gym.usecases.nss.model.model_v1 import create_feedback_model_with_nss
 from tests.unit.utils.utils import create_simple_params
 
 

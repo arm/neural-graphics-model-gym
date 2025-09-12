@@ -8,8 +8,8 @@ import unittest
 import torch
 from safetensors import safe_open
 
-from ng_model_gym.dataloader import NSSDataset
-from ng_model_gym.nss.dataloader.utils import DataLoaderMode, DatasetType
+from ng_model_gym.core.dataloader import NSSDataset
+from ng_model_gym.usecases.nss.dataloader.utils import DataLoaderMode, DatasetType
 from tests.unit.utils.utils import create_simple_params
 
 

@@ -12,7 +12,7 @@ from unittest.mock import DEFAULT, patch
 
 import torch
 
-from ng_model_gym.utils.export_utils import (
+from ng_model_gym.core.utils.export_utils import (
     DataLoaderMode,
     executorch_vgf_export,
     ExportType,
@@ -78,14 +78,14 @@ class TestExportUtils(unittest.TestCase):
         shutil.rmtree(self.tmp_path)
 
     # Patch the heavy or external dependencies on every test:
-    @patch("ng_model_gym.utils.export_utils._update_metadata_file", new=DEFAULT)
-    @patch("ng_model_gym.utils.export_utils.get_dataloader", side_effect=fake_dl)
+    @patch("ng_model_gym.core.utils.export_utils._update_metadata_file", new=DEFAULT)
+    @patch("ng_model_gym.core.utils.export_utils.get_dataloader", side_effect=fake_dl)
     @patch(
-        "ng_model_gym.utils.export_utils.load_checkpoint",
+        "ng_model_gym.core.utils.export_utils.load_checkpoint",
         new=lambda *a, **k: MockFeedbackModel(),
     )
-    @patch("ng_model_gym.utils.export_utils._export_module_to_vgf", new=DEFAULT)
-    @patch("ng_model_gym.utils.export_utils._check_cuda", new=lambda: None)
+    @patch("ng_model_gym.core.utils.export_utils._export_module_to_vgf", new=DEFAULT)
+    @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
     def test_qat_int8_path(
         self, mock_export_module_to_vgf, mock_get_dataloader, mock_update_metadata_file
     ):
@@ -125,14 +125,14 @@ class TestExportUtils(unittest.TestCase):
         )
         self.assertEqual(meta_path, expected_meta)
 
-    @patch("ng_model_gym.utils.export_utils._update_metadata_file", new=DEFAULT)
-    @patch("ng_model_gym.utils.export_utils.get_dataloader", side_effect=fake_dl)
+    @patch("ng_model_gym.core.utils.export_utils._update_metadata_file", new=DEFAULT)
+    @patch("ng_model_gym.core.utils.export_utils.get_dataloader", side_effect=fake_dl)
     @patch(
-        "ng_model_gym.utils.export_utils.load_checkpoint",
+        "ng_model_gym.core.utils.export_utils.load_checkpoint",
         new=lambda *a, **k: MockFeedbackModel(),
     )
-    @patch("ng_model_gym.utils.export_utils._export_module_to_vgf", new=DEFAULT)
-    @patch("ng_model_gym.utils.export_utils._check_cuda", new=lambda: None)
+    @patch("ng_model_gym.core.utils.export_utils._export_module_to_vgf", new=DEFAULT)
+    @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
     def test_fp32_path(
         self, mock_export_module_to_vgf, mock_get_dataloader, mock_update_metadata_file
     ):
@@ -172,14 +172,14 @@ class TestExportUtils(unittest.TestCase):
         )
         self.assertEqual(meta_path, expected_meta)
 
-    @patch("ng_model_gym.utils.export_utils._check_cuda", new=lambda: None)
+    @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
     @patch(
-        "ng_model_gym.utils.export_utils.load_checkpoint",
+        "ng_model_gym.core.utils.export_utils.load_checkpoint",
         new=lambda *a, **k: MockFeedbackModel(),
     )
-    @patch("ng_model_gym.utils.export_utils.get_dataloader", new=fake_dl)
+    @patch("ng_model_gym.core.utils.export_utils.get_dataloader", new=fake_dl)
     @patch(
-        "ng_model_gym.utils.export_utils._export_module_to_vgf",
+        "ng_model_gym.core.utils.export_utils._export_module_to_vgf",
         new=lambda *a, **k: None,
     )
     def test_metadata_file_is_created(self):

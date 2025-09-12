@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from ng_model_gym.nss.model.post_processing import (
+from ng_model_gym.usecases.nss.model.post_processing import (
     PostProcessV1,
     PostProcessV1_ShaderAccurate,
 )

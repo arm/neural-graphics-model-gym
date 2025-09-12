@@ -6,7 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ng_model_gym.utils.checkpoint_utils import (
+from ng_model_gym.core.utils.checkpoint_utils import (
     latest_checkpoint_path,
     latest_training_run_dir,
 )
