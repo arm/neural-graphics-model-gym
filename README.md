@@ -326,9 +326,10 @@ ngmg.do_export(config, trained_model_path, export_type=ngmg.ExportType.FP32)
 ```
 
 Jupyter® notebook tutorials on how to use the package, including:
-* Training, with and without finetuning
+* Training
 * Quantization-aware training and exporting
 * Evaluation
+* Fine-tuning
 
 can be found in the [neural-graphics-model-gym-examples](https://github.com/arm/neural-graphics-model-gym-examples) repository.
 

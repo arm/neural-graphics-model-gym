@@ -28,7 +28,7 @@
         "batch_size": 8,
         "scale": 2.0,
         "seed": 123456,
-        "perform_validate": false,
+        "perform_validate": true,
         "finetune": false,
         "resume": false,
         "pretrained_weights": null,
