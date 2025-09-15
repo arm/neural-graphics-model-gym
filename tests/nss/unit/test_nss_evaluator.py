@@ -9,8 +9,8 @@ from unittest.mock import Mock
 
 import torch
 
-from ng_model_gym.usecases.nss.evaluators import ModelEvaluator
 from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
+from ng_model_gym.usecases.nss.nss_evaluator import ModelEvaluator
 from tests.unit.utils.utils import create_simple_params
 
 
@@ -42,7 +42,7 @@ class NSSModelEvaluatorTest(unittest.TestCase):
         # Mock the dataloader to yield a single example batch
         sample_input = torch.rand((1, 1, 3, 256, 256))
         sample_target = torch.rand((1, 1, 3, 256, 256))
-        import ng_model_gym.core.evaluator as evaluator_module  # pylint: disable=import-outside-toplevel
+        import ng_model_gym.core.evaluator.evaluator as evaluator_module  # pylint: disable=import-outside-toplevel
 
         evaluator_module.get_dataloader = lambda *args, **kwargs: [
             (sample_input, sample_target)
@@ -57,7 +57,7 @@ class NSSModelEvaluatorTest(unittest.TestCase):
 
     def test_evaluate(self):
         """Test that evaluate() calls the necessary functions and outputs a JSON file"""
-        import ng_model_gym.core.evaluator as evaluator_module  # pylint: disable=import-outside-toplevel
+        import ng_model_gym.core.evaluator.evaluator as evaluator_module  # pylint: disable=import-outside-toplevel
 
         evaluator_module.get_dataloader = lambda *args, **kwargs: []
         # Stub the model to return a dict with the expected output key

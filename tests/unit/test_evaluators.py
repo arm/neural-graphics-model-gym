@@ -9,8 +9,8 @@ from unittest.mock import Mock, patch
 
 import torch
 
-from ng_model_gym.core.evaluator import BaseModelEvaluator
-from ng_model_gym.usecases.nss.dataloader.utils import DataLoaderMode
+from ng_model_gym.core.data.utils import DataLoaderMode
+from ng_model_gym.core.evaluator.evaluator import BaseModelEvaluator
 from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
 from tests.unit.utils.utils import create_simple_params
 
@@ -43,7 +43,7 @@ class BaseModelEvaluatorTest(unittest.TestCase):
         """Clean up the temporary directory."""
         shutil.rmtree(self.test_dir)
 
-    @patch("ng_model_gym.core.evaluator.get_dataloader")
+    @patch("ng_model_gym.core.evaluator.evaluator.get_dataloader")
     def test_prepare_datasets_evaluation(self, get_dataloader):
         """
         Test that prepare_datasets() calls get_dataloader() with the correct loader mode
@@ -64,7 +64,7 @@ class BaseModelEvaluatorTest(unittest.TestCase):
         # Assert that the returned dataloader object exists
         self.assertIsNotNone(model_evaluator.dataloader)
 
-    @patch("ng_model_gym.core.evaluator.get_dataloader")
+    @patch("ng_model_gym.core.evaluator.evaluator.get_dataloader")
     def test_prepare_datasets_validation(self, get_dataloader):
         """
         Test that prepare_datasets() calls get_dataloader() with the correct loader mode

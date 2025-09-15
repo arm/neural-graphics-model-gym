@@ -7,8 +7,8 @@ from typing import Dict
 import torch
 import torchvision.transforms.functional as transforms
 
+from ng_model_gym.core.data.utils import tonemap_forward, ToneMapperMode
 from ng_model_gym.core.utils.general_utils import clamp_tensor
-from ng_model_gym.usecases.nss.dataloader.utils import tonemap_forward, ToneMapperMode
 
 logger = logging.getLogger(__name__)
 

@@ -11,14 +11,14 @@ from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 
-from ng_model_gym.core.dataloader import get_dataloader
+from ng_model_gym.core.data.dataloader import get_dataloader
+from ng_model_gym.core.data.utils import DataLoaderMode
+from ng_model_gym.core.loss.losses import LossV1
 from ng_model_gym.core.optimizers.lars_adam import lars_adam_torch
 from ng_model_gym.core.utils.checkpoint_utils import latest_checkpoint_path
 from ng_model_gym.core.utils.config_model import ConfigModel, TrainingConfig
 from ng_model_gym.core.utils.general_utils import create_directory
 from ng_model_gym.core.utils.types import LearningRateScheduler, TrainEvalMode
-from ng_model_gym.usecases.nss.dataloader.utils import DataLoaderMode
-from ng_model_gym.usecases.nss.losses import LossV1
 from ng_model_gym.usecases.nss.metrics import get_metrics
 from ng_model_gym.usecases.nss.model.lr_scheduler import CosineAnnealingWithWarmupLR
 from ng_model_gym.usecases.nss.model.model import create_model
