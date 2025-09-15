@@ -26,7 +26,8 @@ from torchao.quantization.pt2e.quantizer import (
     QuantizationSpec,
 )
 
-from ng_model_gym.core.optimization.quantization.observers import (
+from ng_model_gym.core.data.utils import tonemap_forward
+from ng_model_gym.core.quantization.observers import (
     enable_all_observers,
     freeze_all_observers,
     FusedMovingAvgObsFakeQuantizeFix,
@@ -38,7 +39,6 @@ from ng_model_gym.core.utils.types import (
     HistoryBufferResetFunction,
     TrainEvalMode,
 )
-from ng_model_gym.usecases.nss.dataloader.utils import tonemap_forward
 from ng_model_gym.usecases.nss.history_buffer import HistoryBuffer
 from ng_model_gym.usecases.nss.model.graphics_utils import (
     compute_jitter_tile_offset,

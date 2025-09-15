@@ -14,8 +14,8 @@ from pydantic import (
 )
 from pydantic_core import PydanticCustomError
 
+from ng_model_gym.core.data.utils import ToneMapperMode
 from ng_model_gym.core.utils.types import LearningRateScheduler, TrainEvalMode
-from ng_model_gym.usecases.nss.dataloader.utils import ToneMapperMode
 
 # pylint: disable=line-too-long
 

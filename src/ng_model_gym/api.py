@@ -9,7 +9,7 @@ from typing import Callable, Union
 import torch
 from torch.profiler import schedule
 
-from ng_model_gym.core.trainer import Trainer
+from ng_model_gym.core.trainer.trainer import Trainer
 from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
 from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.general_utils import create_directory
@@ -18,7 +18,7 @@ from ng_model_gym.core.utils.logging import log_gpu_torch
 from ng_model_gym.core.utils.memory_log_decorator import memory_log_decorator
 from ng_model_gym.core.utils.time_decorator import time_decorator
 from ng_model_gym.core.utils.types import ExportType, ProfilerType, TrainEvalMode
-from ng_model_gym.usecases.nss.evaluators import ModelEvaluator
+from ng_model_gym.usecases.nss.nss_evaluator import ModelEvaluator
 
 logger = logging.getLogger(__name__)
 

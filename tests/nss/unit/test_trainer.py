@@ -11,7 +11,7 @@ from unittest.mock import Mock
 import torch
 from torch import nn, optim
 
-from ng_model_gym.core.trainer import Trainer
+from ng_model_gym.core.trainer.trainer import Trainer
 from ng_model_gym.core.utils.types import TrainEvalMode
 from tests.unit.utils.utils import create_simple_params
 

@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 import torch
 
-from ng_model_gym.usecases.nss.dataloader.utils import tonemap_inverse
+from ng_model_gym.core.data.utils import tonemap_inverse
 from ng_model_gym.usecases.nss.model.graphics_utils import swizzle
 from scripts.safetensors_generator.exr_utils import (
     create_depth_params,
