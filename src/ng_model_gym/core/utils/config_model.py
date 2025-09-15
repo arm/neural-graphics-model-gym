@@ -119,9 +119,6 @@ class Checkpoints(PydanticConfigModel):
     """Checkpoints configuration"""
 
     dir: pathlib.Path = Field(description="Save directory for checkpoints")
-    save_frequency: int = Field(
-        gt=0, description="How often to save checkpoints during training"
-    )
 
 
 class CosineAnnealingSchedulerConfig(PydanticConfigModel):

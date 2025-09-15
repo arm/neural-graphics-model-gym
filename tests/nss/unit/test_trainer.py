@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+import json
 import logging
 import tempfile
 import unittest
@@ -49,7 +50,6 @@ class TestTrainerMethods(unittest.TestCase):
         # --- Config ---
         self.mock_trainer.training_mode_params = Mock()
         self.mock_trainer.training_mode_params.number_of_epochs = 10
-        self.mock_trainer.training_mode_params.checkpoints.save_frequency = 999
         self.mock_trainer.starting_epoch = 1
         self.mock_trainer.device = torch.device("cpu")
         self.mock_trainer.metrics = []
@@ -88,9 +88,12 @@ class TestTrainerMethods(unittest.TestCase):
         self.mock_trainer.params = Mock()
         self.mock_trainer.params.train.perform_validate = True
         self.mock_trainer.params.train.validate_frequency = 3
-        self.mock_trainer.validate_epochs = (
-            self.mock_trainer.params.train.validate_frequency
-        )
+
+        # Bind the real method to the mock
+        # pylint: disable=E1120
+        self.mock_trainer._should_validate = Trainer._should_validate.__get__(
+            self.mock_trainer, Trainer
+        )  # pylint: enable=E1120
 
         # Run the real training loop, passing mock as 'self'
         Trainer.train(self.mock_trainer)
@@ -103,9 +106,12 @@ class TestTrainerMethods(unittest.TestCase):
         self.mock_trainer.params = Mock()
         self.mock_trainer.params.train.perform_validate = True
         self.mock_trainer.params.train.validate_frequency = [1, 2, 5, 9]
-        self.mock_trainer.validate_epochs = (
-            self.mock_trainer.params.train.validate_frequency
-        )
+
+        # Bind the real method to the mock
+        # pylint: disable=E1120
+        self.mock_trainer._should_validate = Trainer._should_validate.__get__(
+            self.mock_trainer, Trainer
+        )  # pylint: enable=E1120
 
         # Run the real training loop, passing mock as 'self'
         Trainer.train(self.mock_trainer)
@@ -113,86 +119,62 @@ class TestTrainerMethods(unittest.TestCase):
         called_epochs = [c.args[0] for c in self.mock_trainer.validate.call_args_list]
         self.assertEqual(called_epochs, [1, 2, 5, 9])
 
-    def test_saving_checkpoints(self):
-        """Test expected checkpoints are saved during mock training run"""
-        trainer = self.mock_trainer
+    def test_save_checkpoint_overwrites_best_ckpt_correctly(self):
+        """Test that best checkpoint is overwritten only when loss improves"""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            trainer = self.mock_trainer
+            trainer.model_save_path = temp_dir
+            trainer.params = Mock()
+            trainer.params.train.perform_validate = True
+            trainer.avg_val_loss = 0.25  # lower is better
 
-        # Test all possible combinations of starting epoch, max epoch and save_frequency
-        test_range = 25
-        for max_epochs in range(1, test_range):
-            for starting_epoch in range(1, max_epochs + 1):
-                for save_frequency in range(1, max_epochs + 1):
-                    with self.subTest(
-                        starting_epoch=starting_epoch,
-                        max_epochs=max_epochs,
-                        save_frequency=save_frequency,
-                    ):
-                        # Create temp dir for saving checkpoints
-                        with tempfile.TemporaryDirectory() as temp_dir:
-                            time_stamp = datetime.now().strftime("%y-%m-%d_%H-%M-%S-%f")
-                            save_dir = Path(temp_dir, time_stamp)
-                            save_dir.mkdir(parents=True, exist_ok=True)
-                            trainer.model_save_path = save_dir
+            # First save should store best
+            Trainer._save_checkpoint(trainer, current_epoch=1)
 
-                            # Mock training run
-                            total_epochs = max_epochs
-                            for mock_epoch in range(starting_epoch, total_epochs + 1):
-                                Trainer._save_checkpoint(
-                                    trainer,
-                                    save_frequency=save_frequency,
-                                    current_epoch=mock_epoch,
-                                    total_epochs=total_epochs,
-                                )
+            best_ckpt_path = Path(temp_dir, "best-validated-ckpt.pt")
+            best_meta_path = Path(temp_dir, "best-validated-ckpt.meta.json")
 
-                            # Saves are done every X epochs
-                            # and the last epoch in the range 1 ≤ X ≤ max_epoch.
-                            # If training is resumed, the cadence of saves should be from the range
-                            # 1 ≤ X ≤ max_epoch and not from the epoch resumed.
+            self.assertTrue(best_ckpt_path.exists(), "Best checkpoint was not saved")
+            self.assertTrue(
+                best_meta_path.exists(), "Best checkpoint metadata was not saved"
+            )
 
-                            # E.g. If saving every 2nd epoch.
-                            # Expected save epochs are 2, 4, 6, 8 etc.
-                            # Training resuming from epoch 3 should not save at epoch 5 but rather 4
+            with open(best_meta_path, "r", encoding="utf-8") as f:
+                from_json = json.load(f)
+            self.assertEqual(from_json["val_loss"], 0.25)
 
-                            # Expected epoch numbers that should be saved
-                            expected_saves_in_dir = []
-                            for mock_epoch in range(1, max_epochs + 1):
-                                # Skip anything before we resumed
-                                if mock_epoch < starting_epoch:
-                                    continue
+            # Simulate worse next epoch
+            trainer.avg_val_loss = 0.30
+            Trainer._save_checkpoint(trainer, current_epoch=2)
 
-                                # Epoch matches save frequency
-                                if mock_epoch % save_frequency == 0:
-                                    expected_saves_in_dir.append(mock_epoch)
-                                    continue
+            with open(best_meta_path, "r", encoding="utf-8") as f:
+                from_json2 = json.load(f)
 
-                                # Always save last epoch
-                                if mock_epoch == max_epochs:
-                                    expected_saves_in_dir.append(mock_epoch)
+            self.assertEqual(
+                from_json2["val_loss"], 0.25, "Metadata was overwritten by worse loss"
+            )
+            self.assertEqual(
+                from_json2["epoch"], 1, "Epoch should not change on worse loss"
+            )
 
-                            epoch_files = save_dir.glob("ckpt-*.pt")
-                            found_saves_in_dir = []
-                            for file in epoch_files:
-                                # E.g. file is called ckpt-3.pt
-                                num_str = file.name.removeprefix("ckpt-").removesuffix(
-                                    ".pt"
-                                )
-                                found_saves_in_dir.append(int(num_str))
+            # Simulate better epoch
+            trainer.avg_val_loss = 0.10
+            Trainer._save_checkpoint(trainer, current_epoch=3)
 
-                            # No guarantee of order files are read
-                            expected_saves_in_dir.sort()
-                            found_saves_in_dir.sort()
+            with open(best_meta_path, "r", encoding="utf-8") as f:
+                from_json3 = json.load(f)
 
-                            self.assertEqual(
-                                found_saves_in_dir,
-                                expected_saves_in_dir,
-                                f"save_frequency={save_frequency}, "
-                                f"starting_epoch={starting_epoch}, "
-                                f"max_epochs={max_epochs}: "
-                                f"expected {expected_saves_in_dir}, found {found_saves_in_dir}",
-                            )
+            self.assertEqual(
+                from_json3["val_loss"], 0.10, "Metadata was not updated on better loss"
+            )
+            self.assertEqual(
+                from_json3["epoch"], 3, "Epoch not updated correctly for new best"
+            )
 
     def test_restoring_model_weights(self):
         """Test model weights are restored correctly"""
+        self.mock_trainer.params = Mock()
+        self.mock_trainer.params.train.perform_validate = False
 
         # Create temp dir for saving checkpoints
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -207,9 +189,7 @@ class TestTrainerMethods(unittest.TestCase):
             self.mock_trainer.optimizer.state["state"]["mock_data"] = 0.1234
 
             self.mock_trainer.model_save_path = model_save_path
-            Trainer._save_checkpoint(
-                self.mock_trainer, save_frequency=1, current_epoch=10, total_epochs=15
-            )
+            Trainer._save_checkpoint(self.mock_trainer, current_epoch=10)
 
             # Fake a new training run (e.g. re-run training after interruption)
             mock_resume_trainer = Mock(spec=Trainer)

@@ -80,7 +80,6 @@ def create_simple_params(
                 "number_of_epochs": 1,
                 "checkpoints": {
                     "dir": checkpoints,
-                    "save_frequency": "1",
                 },
                 "learning_rate": "2e-3",
                 "cosine_annealing_scheduler_config": {
@@ -92,7 +91,6 @@ def create_simple_params(
                 "number_of_epochs": 1,
                 "checkpoints": {
                     "dir": f"{checkpoints}/qat_checkpoints",
-                    "save_frequency": "1",
                 },
                 "learning_rate": "6e-4",
                 "cosine_annealing_scheduler_config": {

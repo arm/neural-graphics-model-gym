@@ -186,11 +186,6 @@
                     "description": "Save directory for checkpoints",
                     "format": "path",
                     "type": "string"
-                },
-                "save_frequency": {
-                    "description": "How often to save checkpoints during training",
-                    "exclusiveMinimum": 0,
-                    "type": "integer"
                 }
             },
             "learning_rate": {
@@ -225,11 +220,6 @@
                     "description": "Save directory for checkpoints",
                     "format": "path",
                     "type": "string"
-                },
-                "save_frequency": {
-                    "description": "How often to save checkpoints during training",
-                    "exclusiveMinimum": 0,
-                    "type": "integer"
                 }
             },
             "learning_rate": {

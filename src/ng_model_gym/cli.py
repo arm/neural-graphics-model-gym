@@ -112,12 +112,9 @@ def train_cli(
             "Config error: Evaluation is specified but no test dataset path is provided"
         )
 
-    trained_model, model_path = do_training(
-        params, TrainEvalMode.FP32, cli_state["profiler"]
-    )
+    model_path = do_training(params, TrainEvalMode.FP32, cli_state["profiler"])
 
     if evaluate:
-        trained_model.nss_model.reset_history_buffers()
         do_evaluate(params, model_path, model_type=TrainEvalMode.FP32)
 
 
@@ -161,12 +158,9 @@ def qat_cli(
             "Config error: Evaluation is specified but no test dataset path is provided"
         )
 
-    trained_model, model_path = do_training(
-        params, TrainEvalMode.QAT_INT8, cli_state["profiler"]
-    )
+    model_path = do_training(params, TrainEvalMode.QAT_INT8, cli_state["profiler"])
 
     if evaluate:
-        trained_model.nss_model.reset_history_buffers()
         do_evaluate(params, model_path, model_type=TrainEvalMode.QAT_INT8)
 
 

@@ -107,21 +107,22 @@ def do_training(
 
     log_gpu_torch()
 
-    trained_model = Trainer(params)
+    trainer = Trainer(params)
 
     # Train the model (with optional profiling)
     if profile_setting == ProfilerType.TRACE:
-        _trace_profiler_wrapper(
-            trained_model.train, trace_output_dir=trained_model.model_save_path
-        )
+        _trace_profiler_wrapper(trainer.train, trace_output_dir=trainer.model_save_path)
     elif profile_setting == ProfilerType.GPU_MEMORY:
-        _cuda_profiler_wrapper(
-            trained_model.train, trace_output_dir=trained_model.model_save_path
-        )
+        _cuda_profiler_wrapper(trainer.train, trace_output_dir=trainer.model_save_path)
     else:
-        trained_model.train()
+        trainer.train()
 
-    return trained_model.model, trained_model.latest_model_save_path
+    if params.train.perform_validate:
+        # Return best model ckpt path (as measured by validation results)
+        return trainer.best_model_save_path
+
+    # Return final ckpt path if no validation was executed
+    return trainer.latest_model_save_path
 
 
 @memory_log_decorator
