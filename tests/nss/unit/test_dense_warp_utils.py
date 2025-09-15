@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from ng_model_gym.usecases.nss.model.dense_warp_utils import (
+from ng_model_gym.core.model.dense_warp_utils import (
     bilinear_oob_zero,
     interpolate_bilinear,
     interpolate_bilinear_w_zero_pad,

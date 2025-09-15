@@ -8,8 +8,8 @@ from torcheval.metrics.functional import peak_signal_noise_ratio as psnr
 from tqdm.auto import tqdm
 
 from ng_model_gym.core.data.utils import DataLoaderMode
-from ng_model_gym.usecases.nss.model.layers.dense_warp import DenseWarp
-from ng_model_gym.usecases.nss.model.layers.down_sampling_2d import DownSampling2D
+from ng_model_gym.core.model.layers.dense_warp import DenseWarp
+from ng_model_gym.core.model.layers.resampling import DownSampling2D
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from ng_model_gym.usecases.nss.model.layers.down_sampling_2d import DownSampling2D
+from ng_model_gym.core.model.layers.resampling import DownSampling2D
 
 
 class TestDownSampling2DLayer(unittest.TestCase):

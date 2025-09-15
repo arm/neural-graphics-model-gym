@@ -27,6 +27,10 @@ from torchao.quantization.pt2e.quantizer import (
 )
 
 from ng_model_gym.core.data.utils import tonemap_forward
+from ng_model_gym.core.model.graphics_utils import (
+    compute_jitter_tile_offset,
+    generate_lr_to_hr_lut,
+)
 from ng_model_gym.core.quantization.observers import (
     enable_all_observers,
     freeze_all_observers,
@@ -40,10 +44,6 @@ from ng_model_gym.core.utils.types import (
     TrainEvalMode,
 )
 from ng_model_gym.usecases.nss.history_buffer import HistoryBuffer
-from ng_model_gym.usecases.nss.model.graphics_utils import (
-    compute_jitter_tile_offset,
-    generate_lr_to_hr_lut,
-)
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
 from ng_model_gym.usecases.nss.model.post_processing import (
     PostProcessV1,
