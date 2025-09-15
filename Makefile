@@ -50,7 +50,7 @@ clean: # Remove temporary directories
 	@find . -type f -name "*.pyc" -delete
 	@rm -rf .egg* build
 	@find output -mindepth 1 -maxdepth 1 ! -name '.gitignore' -exec rm -rf {} +
-	@find src/ng_model_gym/nss/model/shaders -type d -name ".slangtorch_cache" -prune -exec rm -rf {} +
+	@find src/ng_model_gym/usecases/nss/model/shaders -type d -name ".slangtorch_cache" -prune -exec rm -rf {} +
 coverage: # Create coverage report
 	@echo "Creating unit tests coverage report"
 	python -m tests.run_tests --sequential --coverage --test-dirs tests/unit \
@@ -68,7 +68,7 @@ copyright: # Check that copyright headers exist for all required files
 blocklint: # Run blocklint non-inclusive language checks
 	@echo "Running blocklint to ensure no non-inclusive language"
 	find . -type f \( -path "./docs/*" -o -path "./src/*" -o -path "./tests/*" -o -path "./scripts/*" \) \
-	| xargs -r sh -c 'blocklint --skip-files=src/ng_model_gym/nss/model/shaders/depth_clip.slang,scripts/safetensors_generator/fsr2_methods.py "$$@"'
+	| xargs -r sh -c 'blocklint --skip-files=src/ng_model_gym/usecases/nss/model/shaders/depth_clip.slang,scripts/safetensors_generator/fsr2_methods.py "$$@"'
 build-wheel: # Build Python wheel
 	@echo "Building wheel and sdist"
 	hatch build

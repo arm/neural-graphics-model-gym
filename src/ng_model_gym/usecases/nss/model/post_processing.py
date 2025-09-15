@@ -7,7 +7,7 @@ from typing import List
 import numpy as np
 import torch
 
-from ng_model_gym.nss.model.shaders.slang_utils import load_slang_module
+from ng_model_gym.usecases.nss.model.shaders.slang_utils import load_slang_module
 
 # pylint: disable=abstract-method
 

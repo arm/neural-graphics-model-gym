@@ -10,8 +10,8 @@ from importlib.resources import files
 from io import StringIO
 from pathlib import Path
 
-from ng_model_gym.utils.config_utils import load_config_file
-from ng_model_gym.utils.general_utils import create_directory
+from ng_model_gym.core.utils.config_utils import load_config_file
+from ng_model_gym.core.utils.general_utils import create_directory
 from scripts.generate_config_schema import generate_schema
 from tests.unit.utils.utils import create_simple_params
 
@@ -206,7 +206,7 @@ class TestConfigSchemaGenerator(unittest.TestCase):
 
             # Path to schema_config.json in the repo. Possibly outdated
             current_schema_path = (
-                files("ng_model_gym.nss.configs") / "schema_config.json"
+                files("ng_model_gym.usecases.nss.configs") / "schema_config.json"
             )
             # Load files to compare contents
             with open(

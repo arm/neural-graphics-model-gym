@@ -6,9 +6,9 @@ import unittest
 from pathlib import Path
 
 from ng_model_gym.api import do_evaluate, do_export, do_training
-from ng_model_gym.utils.config_utils import load_config_file
-from ng_model_gym.utils.logging import logging_config
-from ng_model_gym.utils.types import ExportType, ProfilerType, TrainEvalMode
+from ng_model_gym.core.utils.config_utils import load_config_file
+from ng_model_gym.core.utils.logging import logging_config
+from ng_model_gym.core.utils.types import ExportType, ProfilerType, TrainEvalMode
 from tests.nss.integration.base_integration import BaseIntegrationTest
 
 

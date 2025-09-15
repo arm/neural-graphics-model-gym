@@ -8,9 +8,9 @@ from unittest import expectedFailure
 import numpy as np
 import torch
 
-from ng_model_gym.nss.model.lr_scheduler import CosineAnnealingWithWarmupLR
-from ng_model_gym.trainer import get_lr_schedule
-from ng_model_gym.utils.types import TrainEvalMode
+from ng_model_gym.core.trainer import get_lr_schedule
+from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.usecases.nss.model.lr_scheduler import CosineAnnealingWithWarmupLR
 from tests.unit.utils.utils import create_simple_params
 
 

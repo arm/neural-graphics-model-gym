@@ -7,7 +7,7 @@ from typing import List
 import torch
 from torch import nn
 
-from ng_model_gym.nss.model.dense_warp_utils import (
+from ng_model_gym.usecases.nss.model.dense_warp_utils import (
     backward_warp_nearest,
     bilinear_oob_zero,
     catmull_rom_warp,

@@ -5,7 +5,7 @@ import logging
 import time
 import unittest
 
-from ng_model_gym.utils.time_decorator import time_decorator
+from ng_model_gym.core.utils.time_decorator import time_decorator
 
 
 @time_decorator

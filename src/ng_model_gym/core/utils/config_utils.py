@@ -16,11 +16,11 @@ from rich import print_json
 from rich.console import Console
 from rich.table import Column, Table
 
-from ng_model_gym.utils.config_model import ConfigModel, OutputDirModel
-from ng_model_gym.utils.json_reader import read_json_file
-from ng_model_gym.utils.logging import setup_logging
+from ng_model_gym.core.utils.config_model import ConfigModel, OutputDirModel
+from ng_model_gym.core.utils.json_reader import read_json_file
+from ng_model_gym.core.utils.logging import setup_logging
 
-DEFAULT_PATH = "ng_model_gym.nss.configs"
+DEFAULT_PATH = "ng_model_gym.usecases.nss.configs"
 
 
 def generate_config_file(save_dir: Union[str, Path, None] = None) -> Tuple[Path, Path]:

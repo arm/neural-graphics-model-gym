@@ -26,34 +26,34 @@ from torchao.quantization.pt2e.quantizer import (
     QuantizationSpec,
 )
 
-from ng_model_gym.nss.dataloader.utils import tonemap_forward
-from ng_model_gym.nss.history_buffer import HistoryBuffer
-from ng_model_gym.nss.model.graphics_utils import (
-    compute_jitter_tile_offset,
-    generate_lr_to_hr_lut,
-)
-from ng_model_gym.nss.model.model_blocks import AutoEncoderV1
-from ng_model_gym.nss.model.post_processing import (
-    PostProcessV1,
-    PostProcessV1_ShaderAccurate,
-)
-from ng_model_gym.nss.model.pre_processing import (
-    PreProcessV1,
-    PreProcessV1_ShaderAccurate,
-)
-from ng_model_gym.nss.model.recurrent_model import FeedbackModel
-from ng_model_gym.optimization.quantization.observers import (
+from ng_model_gym.core.optimization.quantization.observers import (
     enable_all_observers,
     freeze_all_observers,
     FusedMovingAvgObsFakeQuantizeFix,
 )
-from ng_model_gym.utils.config_model import ConfigModel
-from ng_model_gym.utils.tensor_types import TensorData
-from ng_model_gym.utils.types import (
+from ng_model_gym.core.utils.config_model import ConfigModel
+from ng_model_gym.core.utils.tensor_types import TensorData
+from ng_model_gym.core.utils.types import (
     ExportSpec,
     HistoryBufferResetFunction,
     TrainEvalMode,
 )
+from ng_model_gym.usecases.nss.dataloader.utils import tonemap_forward
+from ng_model_gym.usecases.nss.history_buffer import HistoryBuffer
+from ng_model_gym.usecases.nss.model.graphics_utils import (
+    compute_jitter_tile_offset,
+    generate_lr_to_hr_lut,
+)
+from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
+from ng_model_gym.usecases.nss.model.post_processing import (
+    PostProcessV1,
+    PostProcessV1_ShaderAccurate,
+)
+from ng_model_gym.usecases.nss.model.pre_processing import (
+    PreProcessV1,
+    PreProcessV1_ShaderAccurate,
+)
+from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
 
 logger = logging.getLogger(__name__)
 
