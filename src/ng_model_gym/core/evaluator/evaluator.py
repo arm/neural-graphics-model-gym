@@ -14,8 +14,8 @@ from tqdm.auto import tqdm
 
 from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.data.utils import DataLoaderMode
+from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.utils.general_utils import create_directory
-from ng_model_gym.usecases.nss.metrics import get_metrics
 from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
 from ng_model_gym.usecases.nss.model.shaders.slang_utils import load_slang_module
 
