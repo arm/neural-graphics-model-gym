@@ -68,5 +68,13 @@ def generate_schema(output_path: Path):
 
 if __name__ == "__main__":
     generate_schema(
-        Path("..", "src", "ng_model_gym", "nss", "configs", "schema_config.json")
+        Path(
+            "..",
+            "src",
+            "ng_model_gym",
+            "usecases",
+            "nss",
+            "configs",
+            "schema_config.json",
+        )
     )
