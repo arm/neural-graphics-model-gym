@@ -137,6 +137,35 @@ make test-download
 * Example datasets will be placed under `tests/nss/datasets/`.
 * Pretrained weights will be placed under `tests/nss/weights/`.
 
+### Windows (experimental)
+
+Support for Windows is experimental. Known limitations:
+
+* There is no pre-built ML SDK Model Converter binary for Windows, so exporting a VGF will require additional setup steps.
+
+There are no prebuilt ExecuTorch wheels for Windows, 
+so it must be downloaded as source code and added to `PYTHONPATH`. Make sure to get the version of the source code that corresponds with the build version specified in the `pyproject.toml`.
+As the C++/runtime part of ExecuTorch isn't needed (only the ahead-of-time Python part is needed) 
+there is no need to build the downloaded source. Note that `PYTHONPATH` needs to be set to the folder _above_ the `executorch` folder.
+
+For example (in PowerShell):
+
+```
+cd <folder>
+git clone --depth=1 https://github.com/pytorch/executorch.git --branch 737916343a0c96ec36d678643dc01356a995f388
+cd executorch
+git submodule update --init --recursive -q
+$env:PYTHONPATH=<folder>
+```
+
+ExecuTorch also has some Python dependencies that we need to install. These can be found from ExecuTorch's pyproject.toml,
+which the following PowerShell snippet will extract and install:
+
+```
+cd executorch
+pip install @([regex]::Matches((Get-Content pyproject.toml -Raw), '(?s)dependencies\s*=\s*\[(.*?)\]').Groups[1].Value | % { [regex]::Matches($_, '"([^"]+)"') | % { $_.Groups[1].Value } })
+```
+
 ## Usage
 
 There are two ways to use Neural Graphics Model Gym after package installation:
