@@ -13,7 +13,7 @@ import torch
 
 from ng_model_gym.core.data.utils import tonemap_inverse
 from ng_model_gym.core.model.graphics_utils import swizzle
-from ng_model_gym.utils.exr_utils import read_exr_torch
+from ng_model_gym.core.utils.exr_utils import read_exr_torch
 from scripts.safetensors_generator.fsr2_methods import depth_to_view_space_params
 
 
