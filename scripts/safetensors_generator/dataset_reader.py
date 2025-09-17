@@ -13,11 +13,44 @@ import torch
 
 from ng_model_gym.core.data.utils import tonemap_inverse
 from ng_model_gym.core.model.graphics_utils import swizzle
-from scripts.safetensors_generator.exr_utils import (
-    create_depth_params,
-    read_exr_torch,
-    validate_exr_dataset_structure,
-)
+from ng_model_gym.utils.exr_utils import read_exr_torch
+from scripts.safetensors_generator.fsr2_methods import depth_to_view_space_params
+
+
+def validate_exr_dataset_structure(
+    src_root: Path, seq_path: Path, scale: float
+) -> None:
+    """Check the dataset is in the expected format."""
+    scale_str = str(float(scale)).replace(".", "_").replace("_0", "")
+
+    required_dirs = [
+        src_root / "ground_truth" / seq_path,
+        src_root / "motion_gt" / seq_path,
+        src_root / f"x{scale_str}" / "color" / seq_path,
+        src_root / f"x{scale_str}" / "depth" / seq_path,
+        src_root / f"x{scale_str}" / "motion" / seq_path,
+    ]
+
+    for required_dir in required_dirs:
+        if not required_dir.is_dir():
+            raise FileNotFoundError(f"Missing {required_dir} in expected structure.")
+        if not any(required_dir.iterdir()):
+            raise ValueError(f"{required_dir} is empty.")
+
+
+def create_depth_params(data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    """Create the depth parameters"""
+    make_image_like = lambda t: t.unsqueeze(-1).unsqueeze(-1)
+    depth_params = depth_to_view_space_params(
+        zNear=make_image_like(data["zNear"]),
+        zFar=make_image_like(data["zFar"]),
+        FovY=make_image_like(data["FovY"]),
+        infinite=make_image_like(data["infinite_zFar"]).to(torch.bool),
+        renderSizeWidth=make_image_like(data["render_size"])[:, 1:2, ...],
+        renderSizeHeight=make_image_like(data["render_size"])[:, 0:1, ...],
+        inverted=torch.tensor(False, dtype=torch.bool),
+    ).squeeze()
+    return depth_params
 
 
 def load_metadata(path: Union[str, Path]) -> Dict[Any, Any]:
