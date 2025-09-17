@@ -75,12 +75,12 @@
         },
         "num_workers": {
             "description": "Number of dataloader workers to use",
-            "minimum": 1,
+            "minimum": 0,
             "type": "integer"
         },
         "prefetch_factor": {
-            "description": "Number of batches loaded in advance by each dataloader worker",
-            "minimum": 1,
+            "description": "Number of batches loaded in advance by each dataloader worker. Used only if num_workers > 0",
+            "minimum": 0,
             "type": "integer"
         }
     },
