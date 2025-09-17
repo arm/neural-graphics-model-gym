@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 import torch
 
-from ng_model_gym.utils.exr_utils import read_exr_torch
+from ng_model_gym.core.utils.exr_utils import read_exr_torch
 
 
 class TestExrUtils(unittest.TestCase):
