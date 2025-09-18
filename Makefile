@@ -51,6 +51,7 @@ clean: # Remove temporary directories
 	@rm -rf .egg* build
 	@find output -mindepth 1 -maxdepth 1 ! -name '.gitignore' -exec rm -rf {} +
 	@find src/ng_model_gym/usecases/nss/model/shaders -type d -name ".slangtorch_cache" -prune -exec rm -rf {} +
+	@find src/ng_model_gym/usecases/nss/model/shaders -type f -name "*.lock" -delete
 coverage: # Create coverage report
 	@echo "Creating unit tests coverage report"
 	python -m tests.run_tests --sequential --coverage --test-dirs tests/unit \
