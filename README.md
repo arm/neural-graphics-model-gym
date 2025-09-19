@@ -143,9 +143,9 @@ Support for Windows is experimental. Known limitations:
 
 * There is no pre-built ML SDK Model Converter binary for Windows, so exporting a VGF will require additional setup steps.
 
-There are no prebuilt ExecuTorch wheels for Windows, 
+There are no prebuilt ExecuTorch wheels for Windows,
 so it must be downloaded as source code and added to `PYTHONPATH`. Make sure to get the version of the source code that corresponds with the build version specified in the `pyproject.toml`.
-As the C++/runtime part of ExecuTorch isn't needed (only the ahead-of-time Python part is needed) 
+As the C++/runtime part of ExecuTorch isn't needed (only the ahead-of-time Python part is needed)
 there is no need to build the downloaded source. Note that `PYTHONPATH` needs to be set to the folder _above_ the `executorch` folder.
 
 For example (in PowerShell):
