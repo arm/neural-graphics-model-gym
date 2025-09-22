@@ -386,7 +386,7 @@ def executorch_vgf_export(
     # Move inputs back to cpu (for tracing with ExecuTorch)
     autoencoder_trace_input = autoencoder_trace_input.detach().cpu()
 
-    autoencoder_module = feedback_model.nss_model.autoencoder
+    autoencoder_module = feedback_model.nss_model.get_neural_network()
 
     metadata_path = (
         Path(params.output.export.vgf_output_dir)
