@@ -27,6 +27,7 @@ from torchao.quantization.pt2e.quantizer import (
 )
 
 from ng_model_gym.core.data.utils import tonemap_forward
+from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.graphics_utils import (
     compute_jitter_tile_offset,
     generate_lr_to_hr_lut,
@@ -58,12 +59,12 @@ from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
 logger = logging.getLogger(__name__)
 
 
-class NSSModel(nn.Module):
+class NSSModel(BaseNGModel):
     """NSS Model"""
 
     def __init__(
         self,
-        params,
+        params: ConfigModel,
         feedback_ch: Optional[int] = 4,
     ):
         """Set up the model."""
@@ -93,63 +94,82 @@ class NSSModel(nn.Module):
             torch.tensor([0.5]), requires_grad=True
         )
 
-    def _init_history_buffers(self):
-        return {
-            "history": HistoryBuffer(
-                name="history",
-                # NOTE: motion is currently expected to be output resolution
-                reset_key="motion",
-                reset_func=HistoryBufferResetFunction.ZEROS,
-                update_key="output_linear",
-                channel_dim=3,
-            ),
-            "depth_tm1": HistoryBuffer(
-                name="depth_tm1",
-                reset_key="depth",
-                reset_func=HistoryBufferResetFunction.ZEROS,
-                update_key="depth_dilated",
-            ),
-            "true_depth_tm1": HistoryBuffer(
-                name="true_depth_tm1",
-                reset_key="depth",
-                update_key="depth",
-            ),
-            "jitter_tm1": HistoryBuffer(
-                name="jitter_tm1", reset_key="jitter", update_key="jitter"
-            ),
-            "feedback_tm1": HistoryBuffer(
-                name="feedback_tm1",
-                reset_key="depth",
-                reset_func=HistoryBufferResetFunction.ZEROS,
-                update_key="feedback",
-                channel_dim=self.feedback_ch,
-            ),
-            "derivative_tm1": HistoryBuffer(
-                name="derivative_tm1",
-                reset_key="depth",
-                reset_func=HistoryBufferResetFunction.ZEROS,
-                update_key="derivative",
-                channel_dim=2,
-            ),
-            "reset_event": HistoryBuffer(
-                name="reset_event",
-                reset_key="seq",
-                reset_func=HistoryBufferResetFunction.ZEROS,
-                update_key="seq",
-            ),
-        }
-
-    def reset_history_buffers(self):
-        """Reset history buffers"""
-        self.history_buffers = self._init_history_buffers()
+    def get_neural_network(self) -> nn.Module:
+        return self.autoencoder
 
     def forward(self, inputs):
         """Forward pass."""
-        # 1) PreProcess - Construct Input Tensor
+
         input_tensor, derivative, depth_dilated = self.preprocess(inputs)
 
-        # 2) Network Dispatch to estimate NSS Params
         kernels, temporal_params, feedback = self.autoencoder(input_tensor)
+
+        outputs = self.postprocess(
+            kernels, inputs, temporal_params, depth_dilated, derivative, feedback
+        )
+
+        return outputs
+
+    def preprocess(self, preprocess_input):
+        """Create the autoencoder input from preprocessing"""
+
+        preprocess_input["dm_scale"] = torch.clamp(
+            self.dm_scale_on_no_motion, min=0.0, max=1.0
+        )
+
+        preprocess_input = {
+            key: tensor.to(dtype=torch.float32, device=torch.device("cuda"))
+            for key, tensor in preprocess_input.items()
+        }
+
+        if self.shader_accurate:
+            # NOTE: depth_dilated here is actually the offset,
+            # Maintain same name as before to reuse history buffer
+            # from original code, so depth_tm1 ends up becoming offsets
+            (
+                input_tensor,
+                derivative,
+                depth_dilated,
+            ) = PreProcessV1_ShaderAccurate.apply(
+                preprocess_input["colour_linear"],
+                preprocess_input["history"],
+                preprocess_input["motion_lr"],
+                preprocess_input["depth"],
+                preprocess_input["true_depth_tm1"],
+                preprocess_input["depth_tm1"],  # nearest offset tm1
+                preprocess_input["jitter"],
+                preprocess_input["jitter_tm1"],
+                preprocess_input["feedback_tm1"],
+                preprocess_input["derivative_tm1"],
+                preprocess_input["depth_params"],
+                preprocess_input["exposure"],
+                preprocess_input["render_size"],
+                preprocess_input["dm_scale"],
+            )
+
+        else:
+            input_tensor, derivative, depth_dilated = PreProcessV1.apply(
+                preprocess_input["colour_linear"],
+                preprocess_input["history"],
+                preprocess_input["motion"],
+                preprocess_input["depth"],
+                preprocess_input["depth_tm1"],
+                preprocess_input["jitter"],
+                preprocess_input["jitter_tm1"],
+                preprocess_input["feedback_tm1"],
+                preprocess_input["derivative_tm1"],
+                preprocess_input["depth_params"],
+                preprocess_input["exposure"],
+                preprocess_input["render_size"],
+                preprocess_input["dm_scale"],
+            )
+
+        return input_tensor, derivative, depth_dilated
+
+    def postprocess(
+        self, kernels, inputs, temporal_params, depth_dilated, derivative, feedback
+    ):
+        """Postprocess neural network outputs"""
 
         # For convenience, we'll combine these kernels into the same buffer
         # (in deployment these are kept as separate textures)
@@ -231,64 +251,57 @@ class NSSModel(nn.Module):
                 inputs["colour_linear"] * inputs["exposure"], mode=self.tonemapper
             ),
         }
-
         return outputs
 
-    def preprocess(self, preprocess_input):
-        """Create the autoencoder input from preprocessing"""
-
-        preprocess_input["dm_scale"] = torch.clamp(
-            self.dm_scale_on_no_motion, min=0.0, max=1.0
-        )
-
-        preprocess_input = {
-            key: tensor.to(dtype=torch.float32, device=torch.device("cuda"))
-            for key, tensor in preprocess_input.items()
+    def _init_history_buffers(self):
+        return {
+            "history": HistoryBuffer(
+                name="history",
+                # NOTE: motion is currently expected to be output resolution
+                reset_key="motion",
+                reset_func=HistoryBufferResetFunction.ZEROS,
+                update_key="output_linear",
+                channel_dim=3,
+            ),
+            "depth_tm1": HistoryBuffer(
+                name="depth_tm1",
+                reset_key="depth",
+                reset_func=HistoryBufferResetFunction.ZEROS,
+                update_key="depth_dilated",
+            ),
+            "true_depth_tm1": HistoryBuffer(
+                name="true_depth_tm1",
+                reset_key="depth",
+                update_key="depth",
+            ),
+            "jitter_tm1": HistoryBuffer(
+                name="jitter_tm1", reset_key="jitter", update_key="jitter"
+            ),
+            "feedback_tm1": HistoryBuffer(
+                name="feedback_tm1",
+                reset_key="depth",
+                reset_func=HistoryBufferResetFunction.ZEROS,
+                update_key="feedback",
+                channel_dim=self.feedback_ch,
+            ),
+            "derivative_tm1": HistoryBuffer(
+                name="derivative_tm1",
+                reset_key="depth",
+                reset_func=HistoryBufferResetFunction.ZEROS,
+                update_key="derivative",
+                channel_dim=2,
+            ),
+            "reset_event": HistoryBuffer(
+                name="reset_event",
+                reset_key="seq",
+                reset_func=HistoryBufferResetFunction.ZEROS,
+                update_key="seq",
+            ),
         }
 
-        if self.shader_accurate:
-            # NOTE: depth_dilated here is actually the offset,
-            # Maintain same name as before to reuse history buffer
-            # from original code, so depth_tm1 ends up becoming offsets
-            (
-                input_tensor,
-                derivative,
-                depth_dilated,
-            ) = PreProcessV1_ShaderAccurate.apply(
-                preprocess_input["colour_linear"],
-                preprocess_input["history"],
-                preprocess_input["motion_lr"],
-                preprocess_input["depth"],
-                preprocess_input["true_depth_tm1"],
-                preprocess_input["depth_tm1"],  # nearest offset tm1
-                preprocess_input["jitter"],
-                preprocess_input["jitter_tm1"],
-                preprocess_input["feedback_tm1"],
-                preprocess_input["derivative_tm1"],
-                preprocess_input["depth_params"],
-                preprocess_input["exposure"],
-                preprocess_input["render_size"],
-                preprocess_input["dm_scale"],
-            )
-
-        else:
-            input_tensor, derivative, depth_dilated = PreProcessV1.apply(
-                preprocess_input["colour_linear"],
-                preprocess_input["history"],
-                preprocess_input["motion"],
-                preprocess_input["depth"],
-                preprocess_input["depth_tm1"],
-                preprocess_input["jitter"],
-                preprocess_input["jitter_tm1"],
-                preprocess_input["feedback_tm1"],
-                preprocess_input["derivative_tm1"],
-                preprocess_input["depth_params"],
-                preprocess_input["exposure"],
-                preprocess_input["render_size"],
-                preprocess_input["dm_scale"],
-            )
-
-        return input_tensor, derivative, depth_dilated
+    def reset_history_buffers(self):
+        """Reset history buffers"""
+        self.history_buffers = self._init_history_buffers()
 
     def get_additional_constants(self):
         """Return additional constants the model learns as a dict."""
