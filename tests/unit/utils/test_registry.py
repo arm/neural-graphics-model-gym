@@ -33,13 +33,14 @@ class TestRegistry(unittest.TestCase):
     """Test Registry class."""
 
     def setUp(self):
+        # Create registry without validator
         self.model_registry: Registry[MockBaseModel] = Registry("Model")
 
     def _register_NSS_model(self, name):
         """Register the NSS_Model in the model registry."""
 
         @self.model_registry.register(name)
-        class NSS_Model(MockBaseModel):
+        class NSSModel(MockBaseModel):
             """NSS model"""
 
             def __init__(self, params):  # pylint: disable=super-init-not-called
@@ -48,7 +49,7 @@ class TestRegistry(unittest.TestCase):
             def get_neural_network(self):
                 return super().get_neural_network()
 
-        return NSS_Model
+        return NSSModel
 
     def test_registering_model(self):
         """Test registering a model."""

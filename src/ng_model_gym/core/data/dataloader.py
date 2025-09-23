@@ -12,6 +12,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import Dataset
 
+from ng_model_gym.core.data.dataset_registry import register_dataset
 from ng_model_gym.core.data.utils import DataLoaderMode, DatasetType
 from ng_model_gym.core.model.graphics_utils import fixed_normalize_mvs
 from ng_model_gym.core.utils.config_model import ConfigModel
@@ -21,6 +22,7 @@ from ng_model_gym.usecases.nss.dataloader.process_functions import process_nss_d
 logger = logging.getLogger(__name__)
 
 
+@register_dataset(name="NSS", version="1")
 class NSSDataset(Dataset):
     """
     Dataset object providing training data for the Neural Super Sampling use-case.
