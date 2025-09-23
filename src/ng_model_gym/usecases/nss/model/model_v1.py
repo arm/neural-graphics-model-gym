@@ -32,6 +32,7 @@ from ng_model_gym.core.model.graphics_utils import (
     compute_jitter_tile_offset,
     generate_lr_to_hr_lut,
 )
+from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.quantization.observers import (
     enable_all_observers,
     freeze_all_observers,
@@ -59,6 +60,7 @@ from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
 logger = logging.getLogger(__name__)
 
 
+@register_model(name="NSS", version="1")
 class NSSModel(BaseNGModel):
     """NSS Model"""
 
@@ -312,6 +314,7 @@ class NSSModel(BaseNGModel):
         }
 
 
+@register_model(name="QATNSS", version="1")
 class QATNSSModel(NSSModel):
     """QAT instrumented NSS model"""
 
