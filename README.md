@@ -134,8 +134,8 @@ make install-dev
 make test-download
 ```
 
-* Example datasets will be placed under `tests/nss/datasets/`.
-* Pretrained weights will be placed under `tests/nss/weights/`.
+* Example datasets will be placed under `tests/usecases/nss/datasets/`.
+* Pretrained weights will be placed under `tests/usecases/nss/weights/`.
 
 ### Windows (experimental)
 
@@ -460,7 +460,7 @@ make test-unit USECASE=nss
 To run unit tests from one specific file with tests:
 
 ```bash
-python -m unittest tests.nss.unit.test_nss_checkpoints
+python -m unittest tests.core.unit.utils.test_checkpoint_utils
 ```
 
 To run integration tests for a specific use case:

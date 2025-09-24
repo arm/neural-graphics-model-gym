@@ -24,7 +24,7 @@ tensorboard-logs/*
 checkpoints/*
 .cache/*
 *.pt
-!tests/nss/unit/data/nss_v1_golden_values/*.pt
+!tests/usecases/nss/unit/data/nss_v1_golden_values/*.pt
 *.safetensors
 
 # These two files are generated if the user runs `init`
