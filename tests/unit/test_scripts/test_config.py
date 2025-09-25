@@ -43,7 +43,6 @@ class TestConfig(unittest.TestCase):
 
         params = create_simple_params()
         params.train.seed = 9876
-        params.train.fp32.checkpoints.save_frequency = 100
         params = params.model_dump_json()
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -58,7 +57,6 @@ class TestConfig(unittest.TestCase):
 
                 # Check user config overrides default params
                 self.assertEqual(user_config.train.seed, 9876)
-                self.assertEqual(user_config.train.fp32.checkpoints.save_frequency, 100)
 
     def test_config_validation(self):
         """Test validation logic is present"""

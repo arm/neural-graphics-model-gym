@@ -37,8 +37,7 @@
         "fp32": {
             "number_of_epochs": 15,
             "checkpoints": {
-                "dir": "./checkpoints",
-                "save_frequency": "1"
+                "dir": "./checkpoints"
             },
             "learning_rate": "2e-3",
             "cosine_annealing_scheduler_config": {
@@ -50,8 +49,7 @@
         "qat": {
             "number_of_epochs": 2,
             "checkpoints": {
-                "dir": "./checkpoints/qat_checkpoints",
-                "save_frequency": "1"
+                "dir": "./checkpoints/qat_checkpoints"
             },
             "learning_rate": "6e-4",
             "cosine_annealing_scheduler_config": {

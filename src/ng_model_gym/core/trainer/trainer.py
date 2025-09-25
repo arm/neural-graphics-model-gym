@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+import json
 import logging
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -78,6 +80,8 @@ class Trainer:
         self.metrics = get_metrics()
         for metric in self.metrics:
             metric.to(self.device)
+
+        self.avg_val_loss = float("inf")
 
         if (
             self.params.dataset.path.validation
@@ -162,10 +166,7 @@ class Trainer:
             )
             create_directory(self.model_save_path)
             logger.info(f"Model checkpoints save dir {self.model_save_path.absolute()}")
-            logger.info(
-                f"Checkpoint epoch save interval: "
-                f"{self.training_mode_params.checkpoints.save_frequency}"
-            )
+            logger.info("Saving checkpoints after each epoch")
 
     def _get_values_for_logging(self, values_to_log, metrics=None, name=""):
         """Gather all values and metrics to be logged into a dictionary."""
@@ -214,6 +215,20 @@ class Trainer:
             self.tensorboard.add_scalar(k, v, step)
 
         self.tensorboard.flush()
+
+    def _should_validate(self, epoch):
+        if self.params.train.perform_validate and (
+            (
+                isinstance(self.params.train.validate_frequency, int)
+                and epoch % self.params.train.validate_frequency == 0
+            )
+            or (
+                isinstance(self.params.train.validate_frequency, (list))
+                and epoch in self.params.train.validate_frequency
+            )
+        ):
+            return True
+        return False
 
     def train(self, profiler: Optional[torch.profiler.profile] = None):
         """Start training loop"""
@@ -291,23 +306,14 @@ class Trainer:
             for metric in self.metrics:
                 metric.reset()
 
-            save_frequency = int(self.training_mode_params.checkpoints.save_frequency)
-            self._save_checkpoint(save_frequency, epoch, total_epochs)
-
             # Evaluate on the validation set, depending on the epoch number
-            validate_frequency = self.params.train.validate_frequency
-            if self.params.train.perform_validate and (
-                (
-                    isinstance(validate_frequency, int)
-                    and epoch % validate_frequency == 0
-                )
-                or (
-                    isinstance(validate_frequency, (list))
-                    and epoch in validate_frequency
-                )
-            ):
+            if self._should_validate(epoch):
                 with torch.no_grad():
                     self.validate(epoch)
+            # Save after every epoch
+            self._save_checkpoint(epoch)
+
+        self.model.nss_model.reset_history_buffers()
 
     def validate(self, epoch):
         """Start validation loop."""
@@ -328,7 +334,8 @@ class Trainer:
         )
 
         self.model.eval()
-        for _, (inputs_dataset, ground_truth_data) in val_pbar:
+        running_val_loss = 0.0
+        for iteration, (inputs_dataset, ground_truth_data) in val_pbar:
             # Move tensors to device.
             inputs_dataset = {
                 key: tensor.to(self.device) for key, tensor in inputs_dataset.items()
@@ -340,7 +347,18 @@ class Trainer:
 
             inference_out = self.model(inputs_dataset)
 
-            progress_bar = f"Validation: Epoch {epoch}/{total_epochs}, "
+            loss, _ = self.criterion(ground_truth_data, inference_out | inputs_dataset)
+
+            # Accumulate the loss
+            running_val_loss += loss.item()
+
+            # Calculate average loss
+            self.avg_val_loss = running_val_loss / (iteration + 1)
+
+            progress_bar = (
+                f"Validation: Epoch {epoch}/{total_epochs}, "
+                f"Avg. Loss: {self.avg_val_loss:.4f}, "
+            )
 
             for metric in self.metrics:
                 metric.update(inference_out["output"], ground_truth_data)
@@ -349,31 +367,52 @@ class Trainer:
             val_pbar.set_description(progress_bar)
 
         #  Push validation set results to Tensorboard.
-        tb_values = self._get_values_for_logging({}, self.metrics, name="Validation/")
+        tb_values = self._get_values_for_logging(
+            {"Loss": self.avg_val_loss}, self.metrics, name="Validation/"
+        )
         self._tensorboard_update(tb_values, epoch)
+        self.model.nss_model.reset_history_buffers()
 
-    def _save_checkpoint(self, save_frequency, current_epoch, total_epochs):
+    def _save_checkpoint(self, current_epoch):
         """Save checkpoint if end or configured save frequency epoch"""
-        is_save_frequency_epoch = (current_epoch % save_frequency) == 0
-        is_final_epoch = current_epoch == total_epochs
-
         # Ensure the directory to save checkpoints to exists, if not then create the directory
         create_directory(self.model_save_path)
 
-        if is_save_frequency_epoch or is_final_epoch:
-            save_path = Path(self.model_save_path, f"ckpt-{current_epoch}.pt")
-            torch.save(
-                {
-                    "epoch": current_epoch,
-                    "model_state_dict": self.model.state_dict(),
-                    "optimizer_state_dict": self.optimizer.state_dict(),
-                },
-                save_path.absolute(),
-            )
+        save_path = Path(self.model_save_path, f"ckpt-{current_epoch}.pt")
+        torch.save(
+            {
+                "epoch": current_epoch,
+                "model_state_dict": self.model.state_dict(),
+                "optimizer_state_dict": self.optimizer.state_dict(),
+            },
+            save_path.absolute(),
+        )
 
-            self.latest_model_save_path = save_path
+        self.latest_model_save_path = save_path
+        logger.info(f"Saved to {save_path}")
 
-            logger.info(f"Saved to {save_path}")
+        # Track and update best checkpoint based on validation metric
+        if self.params.train.perform_validate:
+            best_ckpt_path = Path(self.model_save_path, "best-validated-ckpt.pt")
+            best_meta_path = Path(self.model_save_path, "best-validated-ckpt.meta.json")
+            current_val = self.avg_val_loss
+
+            best_val = float("inf")
+            if best_meta_path.exists():
+                with open(best_meta_path, "r", encoding="utf-8") as f:
+                    best_val = json.load(f).get("val_loss", best_val)
+
+            # Use lowest validation loss to determine best ckpt
+            if current_val < best_val:
+                shutil.copyfile(save_path, best_ckpt_path)
+                with open(best_meta_path, "w", encoding="utf-8") as f:
+                    json.dump({"epoch": current_epoch, "val_loss": current_val}, f)
+
+                self.best_model_save_path = best_ckpt_path
+                logger.info(
+                    f"New best checkpoint from epoch {current_epoch} copied to {best_ckpt_path}"
+                )
+            self.avg_val_loss = float("inf")  # Reset after saving
 
 
 def get_lr_schedule(
