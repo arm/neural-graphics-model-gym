@@ -103,7 +103,7 @@ def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device 
     # If model is QAT, make sure it is in a traced state for loading in weights
     if (
         params.model_train_eval_mode == TrainEvalMode.QAT_INT8
-        and not trained_model.nss_model.modules_quantized
+        and not trained_model.nss_model.is_network_quantized
     ):
         trained_model.nss_model.quantize_modules(
             (8, trained_model.nss_model.autoencoder.in_channels, 128, 128),

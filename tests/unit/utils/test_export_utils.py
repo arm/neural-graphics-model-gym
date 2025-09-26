@@ -30,6 +30,10 @@ class MockNSS:
         """Mock get_neural_network"""
         return self.autoencoder
 
+    def set_neural_network(self, nn):
+        """Mock set_neural_network"""
+        self.autoencoder = nn
+
     def get_additional_constants(self):
         """Mock method to return additional constants."""
         return {"foo": "bar"}
