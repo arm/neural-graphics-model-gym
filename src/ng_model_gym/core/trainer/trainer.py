@@ -24,7 +24,6 @@ from ng_model_gym.core.utils.config_model import ConfigModel, TrainingConfig
 from ng_model_gym.core.utils.general_utils import create_directory
 from ng_model_gym.core.utils.types import LearningRateScheduler, TrainEvalMode
 from ng_model_gym.usecases.nss.model.model import create_model
-from ng_model_gym.usecases.nss.model.model_v1 import QATNSSModel
 from ng_model_gym.usecases.nss.model.shaders.slang_utils import load_slang_module
 
 logger = logging.getLogger(__name__)
@@ -95,8 +94,8 @@ class Trainer:
         """Quantize modules if not already quantized"""
 
         if (
-            isinstance(self.model.nss_model, QATNSSModel)
-            and not self.model.nss_model.modules_quantized
+            self.model.nss_model.is_qat_model
+            and not self.model.nss_model.is_network_quantized
         ):
             autoencoder_input = self.model.get_model_input_for_tracing(
                 next(iter(self.train_dataloader))[0]

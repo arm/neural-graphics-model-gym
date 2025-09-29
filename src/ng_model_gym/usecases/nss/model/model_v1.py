@@ -3,28 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # pylint: disable=duplicate-code
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Optional
 
 import torch
-from executorch.backends.arm.quantizer.arm_quantizer import (
-    QuantizationConfig,
-    TOSAQuantizer,
-)
-from executorch.backends.arm.tosa_specification import TosaSpecification
 from torch import nn
-from torch.fx import GraphModule
-from torch.nn.modules.module import T
-from torchao.quantization.pt2e import (
-    move_exported_model_to_eval,
-    move_exported_model_to_train,
-    MovingAverageMinMaxObserver,
-    MovingAveragePerChannelMinMaxObserver,
-)
-from torchao.quantization.pt2e.quantize_pt2e import prepare_qat_pt2e
-from torchao.quantization.pt2e.quantizer import (
-    FixedQParamsQuantizationSpec,
-    QuantizationSpec,
-)
 
 from ng_model_gym.core.data.utils import tonemap_forward
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
@@ -33,18 +15,8 @@ from ng_model_gym.core.model.graphics_utils import (
     generate_lr_to_hr_lut,
 )
 from ng_model_gym.core.model.model_registry import register_model
-from ng_model_gym.core.quantization.observers import (
-    enable_all_observers,
-    freeze_all_observers,
-    FusedMovingAvgObsFakeQuantizeFix,
-)
 from ng_model_gym.core.utils.config_model import ConfigModel
-from ng_model_gym.core.utils.tensor_types import TensorData
-from ng_model_gym.core.utils.types import (
-    ExportSpec,
-    HistoryBufferResetFunction,
-    TrainEvalMode,
-)
+from ng_model_gym.core.utils.types import HistoryBufferResetFunction, TrainEvalMode
 from ng_model_gym.usecases.nss.history_buffer import HistoryBuffer
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
 from ng_model_gym.usecases.nss.model.post_processing import (
@@ -98,6 +70,9 @@ class NSSModel(BaseNGModel):
 
     def get_neural_network(self) -> nn.Module:
         return self.autoencoder
+
+    def set_neural_network(self, neural_network: nn.Module) -> None:
+        self.autoencoder = neural_network
 
     def forward(self, inputs):
         """Forward pass."""
@@ -314,153 +289,6 @@ class NSSModel(BaseNGModel):
         }
 
 
-@register_model(name="QATNSS", version="1")
-class QATNSSModel(NSSModel):
-    """QAT instrumented NSS model"""
-
-    def __init__(self, params, feedback_ch: Optional[int] = 4):
-        super().__init__(params, feedback_ch)
-        self.modules_quantized: bool = False
-
-    def train(self: T, mode: bool = True):  # pylint: disable=unused-argument
-        """Overrides PyTorch mode hint, model.train()"""
-
-        if not self.modules_quantized:
-            raise RuntimeError(
-                "Something went wrong. "
-                "quantize_modules method not called on QAT model before training"
-            )
-        if mode:
-            move_exported_model_to_train(self.autoencoder)
-            enable_all_observers(self.autoencoder)
-        else:
-            self._eval()
-
-    def _eval(self: T):
-        """Quant specific model.eval(), we freeze observers and move to eval mode."""
-
-        if not self.modules_quantized:
-            raise RuntimeError(
-                "Something went wrong. "
-                "quantize_modules method not called on QAT model before eval"
-            )
-        freeze_all_observers(self.autoencoder)
-        move_exported_model_to_eval(self.autoencoder)
-
-    def quantize_modules(
-        self,
-        input_shape: Tuple[int],
-        device: torch.device,
-        tosa_spec: Optional[str] = ExportSpec.TOSA_INT,
-    ) -> None:
-        """Trace module and insert FakeQuantizer nodes. Must be done before training starts"""
-
-        logger.info("Preparing model for QAT")
-
-        # Configure TOSA Quantizer
-        quantizer = TOSAQuantizer(TosaSpecification.create_from_string(tosa_spec))
-
-        # Activations get asymmetric per-tensor with moving average of min/max
-        extra_args: Dict[str, Any] = {"eps": 2e-12}
-        extra_args["observer"] = MovingAverageMinMaxObserver.with_args(
-            # PyTorch uses `1e-2` as default which seems a little aggressive
-            averaging_constant=1e-5,
-            dtype=torch.int8,
-            reduce_range=False,
-            quant_min=-128,
-            quant_max=127,
-        )
-        qspec = QuantizationSpec(
-            dtype=torch.int8,
-            quant_min=-128,
-            quant_max=127,
-            qscheme=torch.per_tensor_affine,
-            is_dynamic=False,
-            observer_or_fake_quant_ctr=FusedMovingAvgObsFakeQuantizeFix.with_args(
-                **extra_args,
-            ),
-        )
-
-        # Weights get symmetric per-channel with true min/max
-        extra_args: Dict[str, Any] = {"eps": 2e-12}
-        extra_args["observer"] = MovingAveragePerChannelMinMaxObserver.with_args(
-            # TODO: work out the correct quantizer to use for this
-            # `FakeQuantize` on upstream doesn't work
-            # Setting to `1.0` is equivalent to not using a moving average
-            averaging_constant=1.0,
-            dtype=torch.int8,
-            reduce_range=False,
-            quant_min=-127,
-            quant_max=127,
-        )
-        weight_quantization_spec = QuantizationSpec(
-            dtype=torch.int8,
-            quant_min=-127,
-            quant_max=127,
-            qscheme=torch.per_channel_symmetric,
-            ch_axis=0,
-            is_dynamic=False,
-            observer_or_fake_quant_ctr=FusedMovingAvgObsFakeQuantizeFix.with_args(
-                **extra_args
-            ),
-        )
-
-        # Bias is assumed to be fine without simulated quantization, because it pre-populates the
-        # accumulate register, it's only quantized to int32, with negligible precision drop
-        default_qconfig = QuantizationConfig(
-            input_activation=qspec,
-            output_activation=qspec,
-            weight=weight_quantization_spec,
-            bias=None,
-        )
-        quantizer.set_global(quantization_config=default_qconfig)
-
-        # Special case `sigmoid` output nodes, where we use fixed params
-        # to ensure table generates full [0, 1] range, also,
-        # because we alias this as an SNORM texture to use linear interpolation via HW sampler,
-        # we use symmetric [-127, 127] value range, because SNORM disregards -128
-        q_min = -127
-        q_max = 127
-        scale = 1 / (q_max - q_min)
-        sigmoid_qspec = FixedQParamsQuantizationSpec(
-            dtype=torch.int8,
-            scale=scale,
-            zero_point=q_min,
-            quant_min=q_min,
-            quant_max=q_max,
-            qscheme=torch.per_tensor_affine,
-        )
-        sigmoid_qconfig = QuantizationConfig(
-            input_activation=default_qconfig.input_activation,
-            output_activation=sigmoid_qspec,
-            weight=None,
-            bias=None,
-        )
-        quantizer.set_module_type(nn.Sigmoid, sigmoid_qconfig)
-
-        def trace_and_quantize_module(
-            module: nn.Module, inputs: Tuple[TensorData]
-        ) -> GraphModule:
-            # Trace graph
-            aten_dialect = torch.export.export_for_training(module, inputs).module()
-            # Insert FakeQuantizer nodes
-            return prepare_qat_pt2e(aten_dialect, quantizer)
-
-        # Check layer has not already been quantized
-        if isinstance(self.autoencoder, GraphModule):
-            raise RuntimeError(
-                "Trying to quantize module that is already a GraphModule"
-            )
-
-        # Grab the relevant layer to quantize
-        self.autoencoder = trace_and_quantize_module(
-            self.autoencoder, (torch.randn(*input_shape, device=device),)
-        )
-
-        self.modules_quantized = True
-        logger.info("Model preparations finished for QAT")
-
-
 def initialize_nss_model_core(params: ConfigModel, device: torch.device) -> NSSModel:
     """Return NSS model v1."""
 
@@ -469,7 +297,8 @@ def initialize_nss_model_core(params: ConfigModel, device: torch.device) -> NSSM
             model = NSSModel(params).to(device)
 
         case TrainEvalMode.QAT_INT8:
-            model = QATNSSModel(params).to(device)
+            model = NSSModel(params).to(device)
+            model.is_qat_model = True
 
         case other:
             raise ValueError(f"Unsupported training mode: {other}")

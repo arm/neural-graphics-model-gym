@@ -15,6 +15,9 @@ class MockBaseModel:
     def get_neural_network(self):
         """Mock get_neural_network method."""
 
+    def set_neural_network(self, nn):
+        """Mock set_neural_network method"""
+
 
 class MockBaseDataset:
     """Mock base dataset class."""
@@ -45,9 +48,13 @@ class TestRegistry(unittest.TestCase):
 
             def __init__(self, params):  # pylint: disable=super-init-not-called
                 self.params = params
+                self.nn = None
 
             def get_neural_network(self):
-                return super().get_neural_network()
+                return self.nn
+
+            def set_neural_network(self, nn):
+                self.nn = nn
 
         return NSSModel
 

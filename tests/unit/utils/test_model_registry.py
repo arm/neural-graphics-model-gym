@@ -26,6 +26,11 @@ class MockBaseNGModel(MockNNModule, ABC):
         """Mock get_neural_network method."""
         raise NotImplementedError
 
+    @abstractmethod
+    def set_neural_network(self, nn):
+        """Mock set_neural_network method."""
+        raise NotImplementedError
+
 
 class TestModelRegistry(unittest.TestCase):
     """Test Model Registry helper and validator."""
@@ -66,9 +71,13 @@ class TestModelRegistry(unittest.TestCase):
 
             def __init__(self, params):
                 self.params = params
+                self.nn = MockNNModule()
 
             def get_neural_network(self):
-                return super().get_neural_network()
+                return self.nn
+
+            def set_neural_network(self, nn):
+                self.nn = nn
 
             def forward(self, x):
                 return x
@@ -115,9 +124,13 @@ class TestModelRegistry(unittest.TestCase):
 
                 def __init__(self, params):
                     self.params = params
+                    self.nn = MockNNModule()
 
                 def forward(self, x):
                     return x
+
+                def set_neural_network(self, nn):
+                    self.nn = nn
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
@@ -138,9 +151,13 @@ class TestModelRegistry(unittest.TestCase):
 
                 def __init__(self, params):
                     self.params = params
+                    self.nn = MockNNModule()
 
                 def get_neural_network(self):
-                    return super().get_neural_network()
+                    return self.nn
+
+                def set_neural_network(self, nn):
+                    self.nn = nn
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
@@ -158,6 +175,36 @@ class TestModelRegistry(unittest.TestCase):
             @register_model(model_name, model_version)
             def NSSModel():
                 pass
+
+        self.assertNotEqual(
+            model_registry.MODEL_REGISTRY.list_registered(),
+            [f"{model_name}-v{model_version}".lower()],
+        )
+
+    def test_model_set_neural_network_not_implemented(self):
+        """Test not implementing set_neural_network() causes TypeError."""
+
+        model_name = "NSS"
+        model_version = "6"
+
+        with self.assertRaisesRegex(
+            TypeError,
+            r"Make sure all abstract methods, e.g. get_neural_network\(self\), are implemented",
+        ):
+
+            @register_model(model_name, model_version)
+            class NSSModel(MockBaseNGModel):  # pylint: disable=unused-variable
+                """NSS model"""
+
+                def __init__(self, params):
+                    self.params = params
+                    self.nn = MockNNModule()
+
+                def forward(self, x):
+                    return x
+
+                def get_neural_network(self):
+                    return self.nn
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
