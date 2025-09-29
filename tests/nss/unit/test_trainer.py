@@ -56,7 +56,7 @@ class TestTrainerMethods(unittest.TestCase):
 
         # --- Model ---
         self.mock_trainer.model.nss_model = Mock()
-        self.mock_trainer.model.nss_model.reset_history_buffers = Mock()
+        self.mock_trainer.model.reset_history_buffers = Mock()
         self.mock_trainer.model.detach_buffers = Mock()
 
         # --- Dataloader ---

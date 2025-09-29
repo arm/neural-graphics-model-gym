@@ -55,8 +55,6 @@ class NSSModel(BaseNGModel):
         self.feedback_ch = feedback_ch
         self.tonemapper = params.dataset.tonemapper
 
-        self.history_buffers = self._init_history_buffers()
-
         self.autoencoder = AutoEncoderV1(feedback_ch=self.feedback_ch, batch_norm=True)
 
         # Store input tensor to autoencoder for future use when tracing model is required
@@ -230,7 +228,7 @@ class NSSModel(BaseNGModel):
         }
         return outputs
 
-    def _init_history_buffers(self):
+    def init_history_buffers(self):
         return {
             "history": HistoryBuffer(
                 name="history",
@@ -275,10 +273,6 @@ class NSSModel(BaseNGModel):
                 update_key="seq",
             ),
         }
-
-    def reset_history_buffers(self):
-        """Reset history buffers"""
-        self.history_buffers = self._init_history_buffers()
 
     def get_additional_constants(self):
         """Return additional constants the model learns as a dict."""

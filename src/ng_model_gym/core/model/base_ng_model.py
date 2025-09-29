@@ -44,6 +44,7 @@ class BaseNGModel(nn.Module, ABC):
     Subclasses should:
         * Implement getter/setter methods for the core neural network
         * Write the model `forward()` pass
+        * [Optional] For recurrent models, override `init_history_buffers`
 
     Example::
 
@@ -242,3 +243,7 @@ class BaseNGModel(nn.Module, ABC):
 
         self.is_network_quantized = True
         logger.info("Model preparations finished for QAT")
+
+    def init_history_buffers(self):
+        """Override this method if the model is recurrent"""
+        return {}
