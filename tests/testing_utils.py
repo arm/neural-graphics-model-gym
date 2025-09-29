@@ -76,6 +76,7 @@ def create_simple_params(
             "finetune": False,
             "pretrained_weights": pretrained_weights_path,
             "perform_validate": False,
+            "loss_fn": "loss_v1",
             "fp32": {
                 "number_of_epochs": 1,
                 "checkpoints": {

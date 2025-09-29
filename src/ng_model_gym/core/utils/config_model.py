@@ -15,7 +15,7 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from ng_model_gym.core.data.utils import ToneMapperMode
-from ng_model_gym.core.utils.types import LearningRateScheduler, TrainEvalMode
+from ng_model_gym.core.utils.types import LearningRateScheduler, LossFn, TrainEvalMode
 
 # pylint: disable=line-too-long
 
@@ -177,6 +177,10 @@ class Train(PydanticConfigModel):
     )
     fp32: TrainingConfig
     qat: TrainingConfig
+    loss_fn: Optional[str] = Field(
+        default=LossFn.LOSS_V1.value,
+        description="Loss function to use. If not set, defaults to 'loss_v1'",
+    )
 
 
 class ExponentialSchedulerConfig(PydanticConfigModel):

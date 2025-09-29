@@ -33,7 +33,7 @@
         "finetune": false,
         "resume": false,
         "pretrained_weights": null,
-
+        "loss_fn": "loss_v1",
         "fp32": {
             "number_of_epochs": 15,
             "checkpoints": {

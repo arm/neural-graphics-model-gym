@@ -12,8 +12,9 @@ from unittest.mock import Mock
 import torch
 from torch import nn, optim
 
-from ng_model_gym.core.trainer.trainer import Trainer
-from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.core.loss.losses import LossV1
+from ng_model_gym.core.trainer.trainer import get_loss_fn, Trainer
+from ng_model_gym.core.utils.types import LossFn, TrainEvalMode
 from tests.testing_utils import create_simple_params
 
 # pylint: disable=abstract-method, unsubscriptable-object
@@ -228,6 +229,26 @@ class TestTrainerMethods(unittest.TestCase):
 
             # Check epoch after resuming from saved checkpoint is one after
             self.assertEqual(mock_resume_trainer.starting_epoch, 11)
+
+
+class TestLossFnFactory(unittest.TestCase):
+    """Tests for loss function factory method: get_loss_fn()"""
+
+    # pylint: disable=C0116
+    def test_get_loss_fn_with_valid_loss_v1(self):
+        """Test get_loss_fn() returns LossV1 when requested"""
+        params = create_simple_params()
+        params.train.loss_fn = LossFn.LOSS_V1.value
+        loss_obj = get_loss_fn(params, torch.device("cpu"))
+        self.assertIsInstance(loss_obj, LossV1)
+
+    def test_get_loss_fn_raises_exception(self):
+        params = create_simple_params()
+        params.train.loss_fn = "does_not_exist"
+        with self.assertRaises(ValueError):
+            _ = get_loss_fn(params, torch.device("cpu"))
+
+    # pylint: enable=C0116
 
 
 if __name__ == "__main__":

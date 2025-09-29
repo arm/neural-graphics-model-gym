@@ -45,6 +45,12 @@ class LearningRateScheduler(str, Enum):
     STATIC = "static"
 
 
+class LossFn(str, Enum):
+    """Enum of supported loss functions."""
+
+    LOSS_V1 = "loss_v1"
+
+
 class HistoryBufferResetFunction(str, Enum):
     """Enum of supported history buffer reset functions."""
 
