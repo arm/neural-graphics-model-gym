@@ -21,13 +21,13 @@ test: test-unit test-integration test-export
 	@echo "Running all tests"
 test-unit: # Run unit tests for a given USECASE arg: e.g. USECASE=nss
 	@echo "Running unit tests"
-	python -m tests.run_tests --test-dirs tests/$(USECASE)/unit tests/unit
+	python -m tests.run_tests --test-dirs tests/usecases/$(USECASE)/unit tests/core/unit tests/scripts
 test-integration: # Run integration tests for a given USECASE arg: e.g. USECASE=nss
 	@echo "Running integration tests"
-	python -m tests.run_tests --sequential --test-dirs tests/${USECASE}/integration
+	python -m tests.run_tests --sequential --test-dirs tests/core/integration tests/usecases/${USECASE}/integration
 test-export: # Run export integration tests for a given USECASE arg: e.g. USECASE=nss
 	@echo "Running export integration tests"
-	python -m tests.run_tests --test-dirs tests/${USECASE}/export
+	python -m tests.run_tests --test-dirs tests/core/export
 test-all: ${TEST_TASKS}
 	@echo "Running all tests"
 test-download:
@@ -48,14 +48,15 @@ clean: # Remove temporary directories
 	@echo "Removing temporary directories"
 	@find . -type d -name "__pycache__" -exec rm -rf {} +
 	@find . -type f -name "*.pyc" -delete
+	@find . -type f -name ".coverage*" -delete
 	@rm -rf .egg* build
 	@find output -mindepth 1 -maxdepth 1 ! -name '.gitignore' -exec rm -rf {} +
 	@find src/ng_model_gym/usecases/nss/model/shaders -type d -name ".slangtorch_cache" -prune -exec rm -rf {} +
 	@find src/ng_model_gym/usecases/nss/model/shaders -type f -name "*.lock" -delete
 coverage: # Create coverage report
 	@echo "Creating unit tests coverage report"
-	python -m tests.run_tests --sequential --coverage --test-dirs tests/unit \
-	tests/${USECASE}/unit  tests/${USECASE}/integration tests/${USECASE}/export
+	python -m tests.run_tests --sequential --coverage --test-dirs tests/core/unit tests/core/integration \
+	tests/usecases/${USECASE}/unit  tests/usecases/${USECASE}/integration tests/core/export tests/scripts
 	coverage combine
 	coverage report -i
 	coverage json -i

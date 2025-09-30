@@ -9,7 +9,7 @@ import huggingface_hub as hf
 
 def download_pretrained_weights():
     """Download pretrained weights .pt files."""
-    weights_dir = Path("tests/nss/weights")
+    weights_dir = Path("tests/usecases/nss/weights")
 
     hf.snapshot_download(
         repo_id="Arm/neural-super-sampling",
@@ -22,7 +22,7 @@ def download_pretrained_weights():
 
 def download_unit_test_datasets():
     """Download unit test datasets .safetensors files."""
-    datasets_dir = Path("tests/nss/datasets")
+    datasets_dir = Path("tests/usecases/nss/datasets")
 
     hf.snapshot_download(
         repo_id="Arm/neural-graphics-dataset",
@@ -38,7 +38,7 @@ def validate_downloads():
     """Validate downloads from HF"""
 
     # Validate pretrained weights
-    weights_dir = Path("tests/nss/weights")
+    weights_dir = Path("tests/usecases/nss/weights")
     expected_weights = ["nss_v0.1.0_fp32.pt", "nss_v0.1.1_int8.pt"]
     for file_name in expected_weights:
         weights_path = weights_dir / file_name
@@ -49,7 +49,7 @@ def validate_downloads():
         ), f"Weight file {file_name} is less than 100KB ({size:.1f} bytes)"
 
     # Validate datasets
-    datasets_dir = Path("tests/nss/datasets")
+    datasets_dir = Path("tests/usecases/nss/datasets")
     folders = ["train", "test", "val"]
     for folder in folders:
         dataset_path = datasets_dir / folder
