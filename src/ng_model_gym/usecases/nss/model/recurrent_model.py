@@ -7,19 +7,21 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.utils.tensor_types import TensorData
 
 
 class FeedbackModel(nn.Module):
     """Wrapper around NSS model for recurrent feedback"""
 
-    def __init__(self, nss_model, recurrent_samples, device: torch.device):
+    def __init__(self, ng_model: BaseNGModel, recurrent_samples, device: torch.device):
         super().__init__()
 
-        self.nss_model = nss_model
+        self.nss_model = ng_model
         self.recurrent_samples = recurrent_samples
         self.unpad = True
         self.device = device
+        self.history_buffers = self.nss_model.init_history_buffers()
 
     def forward(self, x):
         """Run forward pass for the recurrent model.
@@ -66,7 +68,7 @@ class FeedbackModel(nn.Module):
             input_tensors[key] = self._pad(value)
 
         # Add history buffers to input tensors.
-        for key, buffer in self.nss_model.history_buffers.items():
+        for key, buffer in self.history_buffers.items():
             if not buffer.initialised:
                 input_tensors[buffer.name] = buffer.set(
                     input_tensors[buffer.reset_key], x["seq"]
@@ -82,7 +84,7 @@ class FeedbackModel(nn.Module):
         self, inputs: TensorData, outputs: TensorData
     ) -> dict[list[torch.tensor]]:
         """Update history buffers"""
-        for _, buffer in self.nss_model.history_buffers.items():
+        for _, buffer in self.history_buffers.items():
             if buffer.update_key in outputs:
                 buffer.update(outputs[buffer.update_key])
             elif buffer.update_key in inputs:
@@ -99,9 +101,13 @@ class FeedbackModel(nn.Module):
 
         return final_outputs
 
+    def reset_history_buffers(self):
+        """Reset history buffers"""
+        self.history_buffers = self.nss_model.init_history_buffers()
+
     def detach_buffers(self) -> None:
         """Detach history buffers"""
-        for _, buffer in self.nss_model.history_buffers.items():
+        for _, buffer in self.history_buffers.items():
             buffer.detach()
 
     def _get_pad_sz(

@@ -238,7 +238,7 @@ class Trainer:
         self.model.train()
 
         for epoch in range(self.starting_epoch, total_epochs + 1):
-            self.model.nss_model.reset_history_buffers()
+            self.model.reset_history_buffers()
 
             running_epoch_loss = 0.0
             total_batches = len(self.train_dataloader)
@@ -312,12 +312,12 @@ class Trainer:
             # Save after every epoch
             self._save_checkpoint(epoch)
 
-        self.model.nss_model.reset_history_buffers()
+        self.model.reset_history_buffers()
 
     def validate(self, epoch):
         """Start validation loop."""
         total_epochs = self.training_mode_params.number_of_epochs
-        self.model.nss_model.reset_history_buffers()
+        self.model.reset_history_buffers()
 
         val_dataloader = get_dataloader(
             self.params,
@@ -370,7 +370,7 @@ class Trainer:
             {"Loss": self.avg_val_loss}, self.metrics, name="Validation/"
         )
         self._tensorboard_update(tb_values, epoch)
-        self.model.nss_model.reset_history_buffers()
+        self.model.reset_history_buffers()
 
     def _save_checkpoint(self, current_epoch):
         """Save checkpoint if end or configured save frequency epoch"""
