@@ -4,6 +4,8 @@
         "version": "1"
     },
     "dataset": {
+        "name": "NSS",
+        "version": "1",
         "path": {
             "train": null,
             "validation": null,

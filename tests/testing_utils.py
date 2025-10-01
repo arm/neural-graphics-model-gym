@@ -50,6 +50,8 @@ def create_simple_params(
         "model": {"name": "NSS", "version": "1"},
         "processing": {"shader_accurate": False},
         "dataset": {
+            "name": "NSS",
+            "version": "1",
             "path": {"train": dataset, "validation": dataset, "test": dataset},
             "health_check": True,
             "recurrent_samples": 16,

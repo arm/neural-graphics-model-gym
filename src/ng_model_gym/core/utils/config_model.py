@@ -82,6 +82,8 @@ class Model(PydanticConfigModel):
 class Dataset(PydanticConfigModel):
     """Dataset configuration"""
 
+    name: str = Field(description="Dataset name")
+    version: Optional[str] = Field(description="Dataset version")
     path: Path
     exposure: float = Field(ge=0.0, description="Training dataset exposure value")
     tonemapper: ToneMapperMode = Field(description="Tonemapping method for dataset")

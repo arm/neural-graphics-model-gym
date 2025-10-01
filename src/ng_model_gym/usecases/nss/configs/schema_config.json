@@ -17,6 +17,21 @@
         }
     },
     "dataset": {
+        "name": {
+            "description": "Dataset name",
+            "type": "string"
+        },
+        "version": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Dataset version"
+        },
         "path": {
             "train": {
                 "anyOf": [

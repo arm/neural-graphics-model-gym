@@ -37,6 +37,13 @@ DATASET_REGISTRY: Registry[Dataset] = Registry(
 )
 
 
+def get_dataset_key(name: str, version: Optional[str] = None) -> str:
+    """Return the dataset key based on the name and optional version."""
+    key = f"{name}-v{version}" if version is not None else name
+
+    return key.lower()
+
+
 def register_dataset(name: str, version: Optional[str] = None):
     """
     Helper function to add a new dataset to the dataset registry,
@@ -46,6 +53,6 @@ def register_dataset(name: str, version: Optional[str] = None):
         >>> class NSS_Dataset(Dataset):
         >>>     pass
     """
-    key = f"{name}-v{version}" if version is not None else name
+    key = get_dataset_key(name, version)
 
-    return DATASET_REGISTRY.register(key.lower())
+    return DATASET_REGISTRY.register(key)
