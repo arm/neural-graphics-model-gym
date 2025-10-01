@@ -8,9 +8,9 @@ import unittest
 import torch
 
 from ng_model_gym.core.data.utils import ToneMapperMode
+from ng_model_gym.core.model.model import create_model
 from ng_model_gym.core.utils.types import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
-from ng_model_gym.usecases.nss.model.model_v1 import initialize_nss_model_core
 from tests.testing_utils import create_simple_params
 
 
@@ -41,10 +41,11 @@ class TestNSSModelV1(unittest.TestCase):
         autoencoder.to(device)
 
         params = create_simple_params()
+        params.dataset.recurrent_samples = None
         params.dataset.tonemapper = ToneMapperMode.REINHARD
         params.model_train_eval_mode = TrainEvalMode.FP32
 
-        nss_model = initialize_nss_model_core(params, device)
+        nss_model = create_model(params, device)
         nss_model.autoencoder = autoencoder
 
         model_outputs = nss_model(forward_inputs["inputs"])

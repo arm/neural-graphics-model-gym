@@ -12,6 +12,7 @@ from unittest.mock import DEFAULT, patch
 
 import torch
 
+from ng_model_gym.core.model.model import get_model_key
 from ng_model_gym.core.utils.export_utils import (
     DataLoaderMode,
     executorch_vgf_export,
@@ -66,8 +67,9 @@ def make_params(tmp_path):
         prefetch_factor=4,
         path=SimpleNamespace(train="train_data", test="test_data"),
     )
-    # p.export = SimpleNamespace(vgf_output_dir=str(tmp_path / "vgf_output"))
-    p.version = "42"
+
+    p.model = SimpleNamespace(name="NSS", version="42")
+
     p.output = SimpleNamespace(
         export=SimpleNamespace(vgf_output_dir=str(tmp_path / "vgf_output"))
     )
@@ -108,10 +110,13 @@ class TestExportUtils(unittest.TestCase):
         # Train/eval mode set correctly.
         self.assertEqual(params.model_train_eval_mode, TrainEvalMode.QAT_INT8)
 
+        model_key = get_model_key(params.model.name, params.model.version)
+
         # Metadata file should be updated with constants.
         expected_meta = Path(params.output.export.vgf_output_dir) / (
-            f"model-{params.version}-{ExportType.QAT_INT8}-metadata.json"
+            f"{model_key}-{ExportType.QAT_INT8}-metadata.json"
         )
+
         mock_update_metadata_file.assert_called_once_with(expected_meta, {"foo": "bar"})
 
         # Dataloader correct arguments passed.
@@ -127,10 +132,13 @@ class TestExportUtils(unittest.TestCase):
         self.assertIsInstance(trace_input, torch.Tensor)
         self.assertEqual(etype, ExportType.QAT_INT8)
 
+        model_key = get_model_key(params.model.name, params.model.version)
+
         # Metadata path should match the expected path.
         expected_meta = Path(params.output.export.vgf_output_dir) / (
-            f"model-{params.version}-{ExportType.QAT_INT8}-metadata.json"
+            f"{model_key}-{ExportType.QAT_INT8}-metadata.json"
         )
+
         self.assertEqual(meta_path, expected_meta)
 
     @patch("ng_model_gym.core.utils.export_utils._update_metadata_file", new=DEFAULT)
@@ -155,9 +163,11 @@ class TestExportUtils(unittest.TestCase):
         # Train/eval mode set correctly.
         self.assertEqual(params.model_train_eval_mode, TrainEvalMode.FP32)
 
+        model_key = get_model_key(params.model.name, params.model.version)
+
         # Metadata file should be updated with constants.
         expected_meta = Path(params.output.export.vgf_output_dir) / (
-            f"model-{params.version}-{ExportType.FP32}-metadata.json"
+            f"{model_key}-{ExportType.FP32}-metadata.json"
         )
         mock_update_metadata_file.assert_called_once_with(expected_meta, {"foo": "bar"})
 
@@ -174,9 +184,11 @@ class TestExportUtils(unittest.TestCase):
         self.assertIsInstance(trace_input, torch.Tensor)
         self.assertEqual(etype, ExportType.FP32)
 
+        model_key = get_model_key(params.model.name, params.model.version)
+
         # Metadata path should match the expected path.
         expected_meta = Path(params.output.export.vgf_output_dir) / (
-            f"model-{params.version}-{ExportType.FP32}-metadata.json"
+            f"{model_key}-{ExportType.FP32}-metadata.json"
         )
         self.assertEqual(meta_path, expected_meta)
 
@@ -197,10 +209,12 @@ class TestExportUtils(unittest.TestCase):
         # Run with FP32 branch.
         executorch_vgf_export(params, ExportType.FP32, Path("doesnt_matter.pth"))
 
+        model_key = get_model_key(params.model.name, params.model.version)
+
         # Build expected path.
         meta_path = (
             Path(params.output.export.vgf_output_dir)
-            / f"model-{params.version}-{ExportType.FP32}-metadata.json"
+            / f"{model_key}-{ExportType.FP32}-metadata.json"
         )
 
         # File must now exist.

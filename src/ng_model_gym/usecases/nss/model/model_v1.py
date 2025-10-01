@@ -16,7 +16,7 @@ from ng_model_gym.core.model.graphics_utils import (
 )
 from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.utils.config_model import ConfigModel
-from ng_model_gym.core.utils.types import HistoryBufferResetFunction, TrainEvalMode
+from ng_model_gym.core.utils.types import HistoryBufferResetFunction
 from ng_model_gym.usecases.nss.history_buffer import HistoryBuffer
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
 from ng_model_gym.usecases.nss.model.post_processing import (
@@ -27,7 +27,6 @@ from ng_model_gym.usecases.nss.model.pre_processing import (
     PreProcessV1,
     PreProcessV1_ShaderAccurate,
 )
-from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
 
 logger = logging.getLogger(__name__)
 
@@ -281,34 +280,3 @@ class NSSModel(BaseNGModel):
             .numpy()
             .tolist(),
         }
-
-
-def initialize_nss_model_core(params: ConfigModel, device: torch.device) -> NSSModel:
-    """Return NSS model v1."""
-
-    match params.model_train_eval_mode:
-        case TrainEvalMode.FP32:
-            model = NSSModel(params).to(device)
-
-        case TrainEvalMode.QAT_INT8:
-            model = NSSModel(params).to(device)
-            model.is_qat_model = True
-
-        case other:
-            raise ValueError(f"Unsupported training mode: {other}")
-
-    return model
-
-
-def create_feedback_model_with_nss(
-    params: ConfigModel, device: torch.device
-) -> nn.Module:
-    """Creates and returns the complete Feedback model with NSS model"""
-
-    created_feedback_model = FeedbackModel(
-        initialize_nss_model_core(params, device),
-        recurrent_samples=params.dataset.recurrent_samples,
-        device=device,
-    )
-
-    return created_feedback_model

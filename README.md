@@ -347,7 +347,7 @@ config = ngmg.load_config_file(Path("/path/to/config/file"))
 ngmg.logging_config(config)
 
 # Do training and evaluation.
-trained_model, trained_model_path = ngmg.do_training(config, ngmg.TrainEvalMode.FP32)
+trained_model_path = ngmg.do_training(config, ngmg.TrainEvalMode.FP32)
 ngmg.do_evaluate(config, trained_model_path, ngmg.TrainEvalMode.FP32)
 
 # Export the trained fp32 model to a VGF file.

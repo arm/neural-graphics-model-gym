@@ -6,7 +6,11 @@ from abc import ABC, abstractmethod
 from unittest.mock import patch
 
 from ng_model_gym.core.model import model_registry
-from ng_model_gym.core.model.model_registry import _validate_model, register_model
+from ng_model_gym.core.model.model_registry import (
+    _validate_model,
+    get_model_key,
+    register_model,
+)
 from ng_model_gym.core.utils.registry import Registry
 
 
@@ -59,6 +63,13 @@ class TestModelRegistry(unittest.TestCase):
         for p in self.patches:
             p.stop()
 
+    def test_get_model_key(self):
+        """Test model key returned matches expected format."""
+
+        self.assertEqual(get_model_key(name="nss"), "nss")
+        self.assertEqual(get_model_key(name="nss", version="1"), "nss-v1")
+        self.assertEqual(get_model_key(name="NSS", version="1"), "nss-v1")
+
     def test_model_registry_helper_func(self):
         """Test adding a valid model using the register_model() helper function."""
 
@@ -84,7 +95,7 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [f"{model_name}-v{model_version}".lower()],
+            [get_model_key(model_name, model_version)],
         )
 
     def test_model_inheritance(self):
@@ -104,7 +115,7 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [f"{model_name}-v{model_version}".lower()],
+            [get_model_key(model_name, model_version)],
         )
 
     def test_model_get_neural_network_not_implemented(self):
@@ -134,7 +145,7 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [f"{model_name}-v{model_version}".lower()],
+            [get_model_key(model_name, model_version)],
         )
 
     def test_model_forward_not_implemented(self):
@@ -161,7 +172,7 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [f"{model_name}-v{model_version}".lower()],
+            [get_model_key(model_name, model_version)],
         )
 
     def test_model_not_a_class(self):
@@ -178,7 +189,7 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [f"{model_name}-v{model_version}".lower()],
+            [get_model_key(model_name, model_version)],
         )
 
     def test_model_set_neural_network_not_implemented(self):
@@ -208,7 +219,7 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [f"{model_name}-v{model_version}".lower()],
+            [get_model_key(model_name, model_version)],
         )
 
 

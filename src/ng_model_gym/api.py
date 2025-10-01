@@ -23,6 +23,20 @@ from ng_model_gym.usecases.nss.nss_evaluator import ModelEvaluator
 logger = logging.getLogger(__name__)
 
 
+def _ensure_registries_populated():
+    """Import all use case models and datasets to trigger registration."""
+    # pylint: disable=import-outside-toplevel
+    from ng_model_gym.core.data.dataset_registry import DATASET_REGISTRY
+    from ng_model_gym.core.model.model_registry import MODEL_REGISTRY
+    from ng_model_gym.usecases import import_usecase_files
+
+    # pylint: enable=import-outside-toplevel
+
+    import_usecase_files()
+    logger.info(f"Registered models: {MODEL_REGISTRY.list_registered()}")
+    logger.info(f"Registered datasets: {DATASET_REGISTRY.list_registered()}")
+
+
 def _trace_profiler_wrapper(func: Callable, *args, trace_output_dir: Path):
     """Wraps a function call with PyTorch profiler and saves trace output."""
     # This schedule was introduced to circumvent a bug in PyTorch
@@ -89,7 +103,7 @@ def do_training(
         Tuple[torch.nn.Module, Path]: Trained model and path to its checkpoint.
 
     Example:
-       >>> model, checkpoint_path = do_training(params, TrainEvalMode.FP32)
+       >>> checkpoint_path = do_training(params, TrainEvalMode.FP32)
     """
 
     if not isinstance(training_mode, TrainEvalMode):
@@ -235,3 +249,6 @@ def do_export(
         executorch_vgf_export(params, export_type, model_path)
     else:
         raise ValueError(f"Unsupported export type: {export_type}.")
+
+
+_ensure_registries_populated()
