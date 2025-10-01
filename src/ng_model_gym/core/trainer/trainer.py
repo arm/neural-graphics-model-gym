@@ -22,7 +22,7 @@ from ng_model_gym.core.schedulers.lr_scheduler import CosineAnnealingWithWarmupL
 from ng_model_gym.core.utils.checkpoint_utils import latest_checkpoint_path
 from ng_model_gym.core.utils.config_model import ConfigModel, TrainingConfig
 from ng_model_gym.core.utils.general_utils import create_directory
-from ng_model_gym.core.utils.types import LearningRateScheduler, TrainEvalMode
+from ng_model_gym.core.utils.types import LearningRateScheduler, LossFn, TrainEvalMode
 from ng_model_gym.usecases.nss.model.model import create_model
 from ng_model_gym.usecases.nss.model.shaders.slang_utils import load_slang_module
 
@@ -54,7 +54,7 @@ class Trainer:
             prefetch_factor=params.dataset.prefetch_factor,
             loader_mode=DataLoaderMode.TRAIN,
         )
-        self.criterion = LossV1(self.params.dataset.recurrent_samples, self.device)
+        self.criterion = get_loss_fn(self.params, self.device)
         self.starting_epoch = 1
         self.model: nn.Module = create_model(self.params, self.device).to(self.device)
 
@@ -480,3 +480,17 @@ def get_lr_schedule(
         )
 
     return lr_schedule
+
+
+def get_loss_fn(params: ConfigModel, device: torch.device):
+    """
+    Return loss function configured by params.train.loss_fn.
+    Expected values (string) are set in the LossFn enum.
+    """
+    loss_name = params.train.loss_fn
+
+    if loss_name == LossFn.LOSS_V1:
+        return LossV1(params.dataset.recurrent_samples, device)
+
+    # Defensive (all enums should be handled above)
+    raise ValueError(f"No implementation for loss function {loss_name}")

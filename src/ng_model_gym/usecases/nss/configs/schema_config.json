@@ -242,6 +242,18 @@
                     "type": "number"
                 }
             }
+        },
+        "loss_fn": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": "loss_v1",
+            "description": "Loss function to use. If not set, defaults to 'loss_v1'"
         }
     },
     "optimizer": {
