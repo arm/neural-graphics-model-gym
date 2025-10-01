@@ -258,7 +258,7 @@ class TestOptimizerFactory(unittest.TestCase):
     # pylint: disable=C0116
     def test_get_optimizer_type_with_valid_lars_adam_fp32(self):
         params = create_simple_params()
-        params.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
+        params.train.fp32.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
 
         mock_trainer = Mock(spec=Trainer)
         mock_trainer.model = TinyModel()
@@ -266,7 +266,6 @@ class TestOptimizerFactory(unittest.TestCase):
         mock_trainer.training_mode_params = params.train.fp32
 
         optimizer_obj = get_optimizer_type(
-            mock_trainer.params,
             mock_trainer.training_mode_params,
             mock_trainer.model.parameters(),
         )
@@ -275,7 +274,7 @@ class TestOptimizerFactory(unittest.TestCase):
 
     def test_get_optimizer_type_with_valid_lars_adam_qat(self):
         params = create_simple_params()
-        params.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
+        params.train.qat.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
 
         mock_trainer = Mock(spec=Trainer)
         mock_trainer.model = TinyModel()
@@ -283,7 +282,6 @@ class TestOptimizerFactory(unittest.TestCase):
         mock_trainer.training_mode_params = params.train.qat
 
         optimizer_obj = get_optimizer_type(
-            mock_trainer.params,
             mock_trainer.training_mode_params,
             mock_trainer.model.parameters(),
         )
@@ -292,7 +290,7 @@ class TestOptimizerFactory(unittest.TestCase):
 
     def test_get_optimizer_type_with_valid_adam_w_fp32(self):
         params = create_simple_params()
-        params.optimizer.optimizer_type = OptimizerType.ADAM_W.value
+        params.train.fp32.optimizer.optimizer_type = OptimizerType.ADAM_W.value
 
         mock_trainer = Mock(spec=Trainer)
         mock_trainer.model = TinyModel()
@@ -300,7 +298,6 @@ class TestOptimizerFactory(unittest.TestCase):
         mock_trainer.training_mode_params = params.train.fp32
 
         optimizer_obj = get_optimizer_type(
-            mock_trainer.params,
             mock_trainer.training_mode_params,
             mock_trainer.model.parameters(),
         )
@@ -308,7 +305,7 @@ class TestOptimizerFactory(unittest.TestCase):
 
     def test_get_optimizer_type_with_valid_adam_w_qat(self):
         params = create_simple_params()
-        params.optimizer.optimizer_type = OptimizerType.ADAM_W.value
+        params.train.qat.optimizer.optimizer_type = OptimizerType.ADAM_W.value
 
         mock_trainer = Mock(spec=Trainer)
         mock_trainer.model = TinyModel()
@@ -316,15 +313,6 @@ class TestOptimizerFactory(unittest.TestCase):
         mock_trainer.training_mode_params = params.train.qat
 
         optimizer_obj = get_optimizer_type(
-            mock_trainer.params,
-            mock_trainer.training_mode_params,
-            mock_trainer.model.parameters(),
-        )
-        mock_trainer.params = params
-        mock_trainer.training_mode_params = params.train.fp32
-
-        optimizer_obj = get_optimizer_type(
-            mock_trainer.params,
             mock_trainer.training_mode_params,
             mock_trainer.model.parameters(),
         )
@@ -332,7 +320,7 @@ class TestOptimizerFactory(unittest.TestCase):
 
     def test_get_optimizer_type_raises_exception(self):
         params = create_simple_params()
-        params.optimizer.optimizer_type = "does_not_exist"
+        params.train.fp32.optimizer.optimizer_type = "does_not_exist"
 
         mock_trainer = Mock(spec=Trainer)
         mock_trainer.model = TinyModel()
@@ -341,7 +329,6 @@ class TestOptimizerFactory(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             _ = get_optimizer_type(
-                mock_trainer.params,
                 mock_trainer.training_mode_params,
                 mock_trainer.model.parameters(),
             )

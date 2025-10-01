@@ -44,10 +44,14 @@
             "checkpoints": {
                 "dir": "./checkpoints"
             },
-            "learning_rate": "2e-3",
-            "cosine_annealing_scheduler_config": {
+            "lr_scheduler": {
+                "type": "cosine_annealing",
                 "warmup_percentage": 0.05,
                 "min_lr": 2e-4
+            },
+            "optimizer": {
+                "optimizer_type": "lars_adam",
+                "learning_rate": "2e-3"
             }
         },
 
@@ -56,16 +60,16 @@
             "checkpoints": {
                 "dir": "./checkpoints/qat_checkpoints"
             },
-            "learning_rate": "6e-4",
-            "cosine_annealing_scheduler_config": {
+            "lr_scheduler": {
+                "type": "cosine_annealing",
                 "warmup_percentage": 0.05,
                 "min_lr": 1e-5
+            },
+            "optimizer": {
+                "optimizer_type": "lars_adam",
+                "learning_rate": "2e-3"
             }
         }
-    },
-    "optimizer": {
-        "learning_rate_scheduler": "cosine_annealing",
-        "optimizer_type": "lars_adam"
     },
     "processing": {
         "shader_accurate": false

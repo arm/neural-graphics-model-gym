@@ -84,27 +84,25 @@ def create_simple_params(
                 "checkpoints": {
                     "dir": checkpoints,
                 },
-                "learning_rate": "2e-3",
-                "cosine_annealing_scheduler_config": {
+                "lr_scheduler": {
+                    "type": "cosine_annealing",
                     "warmup_percentage": 0.05,
                     "min_lr": 2e-4,
                 },
+                "optimizer": {"optimizer_type": "lars_adam", "learning_rate": "2e-3"},
             },
             "qat": {
                 "number_of_epochs": 1,
                 "checkpoints": {
                     "dir": f"{checkpoints}/qat_checkpoints",
                 },
-                "learning_rate": "6e-4",
-                "cosine_annealing_scheduler_config": {
+                "lr_scheduler": {
+                    "type": "cosine_annealing",
                     "warmup_percentage": 0.05,
                     "min_lr": 1e-5,
                 },
+                "optimizer": {"optimizer_type": "lars_adam", "learning_rate": "2e-3"},
             },
-        },
-        "optimizer": {
-            "learning_rate_scheduler": "cosine_annealing",
-            "optimizer_type": "lars_adam",
         },
     }
 
@@ -116,4 +114,9 @@ def create_simple_params(
     # QAT checkpoints dir
     create_directory(default_params["train"]["qat"]["checkpoints"]["dir"])
 
-    return ConfigModel.model_validate(default_params)
+    return validate_params(default_params)
+
+
+def validate_params(params: dict) -> ConfigModel:
+    """Validate params dict and return ConfigModel object."""
+    return ConfigModel.model_validate(params)

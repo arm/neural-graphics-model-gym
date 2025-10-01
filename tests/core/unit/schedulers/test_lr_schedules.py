@@ -1,17 +1,18 @@
 # SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-
 import unittest
 from unittest import expectedFailure
 
 import numpy as np
 import torch
+from pydantic import ValidationError
 
 from ng_model_gym.core.schedulers.lr_scheduler import CosineAnnealingWithWarmupLR
 from ng_model_gym.core.trainer.trainer import get_lr_schedule
+from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.types import TrainEvalMode
-from tests.testing_utils import create_simple_params
+from tests.testing_utils import create_simple_params, validate_params
 
 
 class TestLRScheduleFunctions(unittest.TestCase):
@@ -33,7 +34,8 @@ class TestLRScheduleFunctions(unittest.TestCase):
 
         self.params.train.batch_size = 8
         self.params.train.fp32.number_of_epochs = 16
-        self.params.train.fp32.cosine_annealing_scheduler_config.min_lr = min_lr
+        self.params.train.fp32.lr_scheduler.min_lr = min_lr
+        self.params.train.fp32.lr_scheduler.type = "cosine_annealing"
 
         optimizer = torch.optim.Adam(test_weights, lr=lr)
 
@@ -104,15 +106,23 @@ class TestLRScheduleFunctions(unittest.TestCase):
         train_size = 20000
         epochs = 15
 
-        self.params.train.fp32.number_of_epochs = epochs
-        self.params.optimizer.exponential_scheduler_config.decay = 0.977
-        self.params.optimizer.learning_rate_scheduler = "exponential"
+        params_dict = self.params.model_dump()
+        params_dict["train"]["fp32"]["lr_scheduler"] = {}  # Remove default lr_scheduler
+
+        params_dict["train"]["fp32"]["number_of_epochs"] = epochs
+        params_dict["train"]["fp32"]["lr_scheduler"]["type"] = "exponential"
+        params_dict["train"]["fp32"]["lr_scheduler"]["decay_rate"] = 0.977
+        params_dict["train"]["fp32"]["lr_scheduler"]["decay_step"] = 1
+
+        self.params = validate_params(params_dict)
 
         optimizer = torch.optim.Adam(test_weights, lr=lr)
 
         lr_sched = get_lr_schedule(
             self.params.train.fp32, optimizer, train_size, self.params
         )
+        self.assertIsInstance(lr_sched, torch.optim.lr_scheduler.StepLR)
+        self.assertEqual(lr_sched.gamma, self.params.train.fp32.lr_scheduler.decay_rate)
 
         torch_lr_produced = []
         for _ in range(epochs):
@@ -224,6 +234,7 @@ class TestLRScheduleFunctions(unittest.TestCase):
             0.000998991308733821,
         ]
 
+        self.assertEqual(len(torch_lr_produced), len(tf_keras_lr_schedule_values))
         self.assertTrue(np.allclose(torch_lr_produced, tf_keras_lr_schedule_values))
 
     def test_static_schedule(self):
@@ -235,7 +246,7 @@ class TestLRScheduleFunctions(unittest.TestCase):
         epochs = 15
 
         self.params.train.fp32.number_of_epochs = epochs
-        self.params.optimizer.learning_rate_scheduler = "static"
+        self.params.train.fp32.lr_scheduler.type = "static"
         optimizer = torch.optim.Adam(test_weights, lr=lr)
 
         lr_sched = get_lr_schedule(
@@ -253,11 +264,89 @@ class TestLRScheduleFunctions(unittest.TestCase):
         epochs = 15
 
         self.params.train.fp32.number_of_epochs = epochs
-        self.params.optimizer.learning_rate_scheduler = "abcd"
+        self.params.train.fp32.lr_scheduler.type = "abcd"
         optimizer = torch.optim.Adam(test_weights, lr=lr)
 
         with self.assertRaises(ValueError):
             get_lr_schedule(self.params.train.fp32, optimizer, train_size, self.params)
+
+
+class TestSchedulerConfig(unittest.TestCase):
+    """Tests for discriminated union LR scheduler configuration."""
+
+    # pylint: disable=C0116
+    def setUp(self):
+        """Run before each test case"""
+        self.params = create_simple_params().model_dump()
+
+    def test_cosine_annealing_valid(self):
+        params = self.params
+        params["train"]["fp32"]["lr_scheduler"] = {
+            "type": "cosine_annealing",
+            "warmup_percentage": 0.1,
+            "min_lr": 5e-5,
+        }
+        cfg = ConfigModel(**params)
+        self.assertEqual(cfg.train.fp32.lr_scheduler.type, "cosine_annealing")
+        self.assertEqual(cfg.train.fp32.lr_scheduler.min_lr, 5e-5)
+
+    def test_exponential_valid(self):
+        params = self.params
+        params["train"]["qat"]["lr_scheduler"] = {
+            "type": "exponential",
+            "decay_rate": 0.9,
+            "decay_step": 5,
+        }
+        cfg = ConfigModel(**params)
+        self.assertEqual(cfg.train.qat.lr_scheduler.type, "exponential")
+        self.assertEqual(cfg.train.qat.lr_scheduler.decay_step, 5)
+
+    def test_static_valid(self):
+        params = self.params
+        params["train"]["fp32"]["lr_scheduler"] = {"type": "static"}
+        cfg = ConfigModel(**params)
+        self.assertEqual(cfg.train.fp32.lr_scheduler.type, "static")
+
+    def test_missing_type_fails(self):
+        params = self.params
+        params["train"]["fp32"]["lr_scheduler"] = {
+            "warmup_percentage": 0.1,
+            "min_lr": 1e-4,
+        }
+        with self.assertRaises(ValidationError):
+            ConfigModel(**params)
+
+    def test_static_with_extra_field_fails(self):
+        params = self.params
+        params["train"]["fp32"]["lr_scheduler"] = {
+            "type": "static",
+            "min_lr": 1e-4,  # illegal for static
+        }
+        with self.assertRaises(ValidationError):
+            ConfigModel(**params)
+
+    def test_exponential_missing_required_field(self):
+        params = self.params
+        params["train"]["fp32"]["lr_scheduler"] = {
+            "type": "exponential",
+            "decay_rate": 0.95,
+            # decay_step missing
+        }
+        with self.assertRaises(ValidationError):
+            ConfigModel(**params)
+
+    def test_wrong_field_for_exponential(self):
+        params = self.params
+        params["train"]["fp32"]["lr_scheduler"] = {
+            "type": "exponential",
+            "warmup_percentage": 0.1,  # illegal for exponential
+            "decay_rate": 0.9,
+            "decay_step": 10,
+        }
+        with self.assertRaises(ValidationError):
+            ConfigModel(**params)
+
+    # pylint: enable=C0116
 
 
 if __name__ == "__main__":
