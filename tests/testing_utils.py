@@ -104,6 +104,7 @@ def create_simple_params(
         },
         "optimizer": {
             "learning_rate_scheduler": "cosine_annealing",
+            "optimizer_type": "lars_adam",
         },
     }
 

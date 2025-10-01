@@ -6,10 +6,11 @@ import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Iterator, Optional
 
 import torch
 from torch import nn
+from torch.nn.parameter import Parameter
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 
@@ -18,12 +19,18 @@ from ng_model_gym.core.data.utils import DataLoaderMode
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.loss.losses import LossV1
 from ng_model_gym.core.model.model import create_model
+from ng_model_gym.core.optimizers.adam_w import adam_w_torch
 from ng_model_gym.core.optimizers.lars_adam import lars_adam_torch
 from ng_model_gym.core.schedulers.lr_scheduler import CosineAnnealingWithWarmupLR
 from ng_model_gym.core.utils.checkpoint_utils import latest_checkpoint_path
 from ng_model_gym.core.utils.config_model import ConfigModel, TrainingConfig
 from ng_model_gym.core.utils.general_utils import create_directory
-from ng_model_gym.core.utils.types import LearningRateScheduler, LossFn, TrainEvalMode
+from ng_model_gym.core.utils.types import (
+    LearningRateScheduler,
+    LossFn,
+    OptimizerType,
+    TrainEvalMode,
+)
 from ng_model_gym.usecases.nss.model.shaders.slang_utils import load_slang_module
 
 logger = logging.getLogger(__name__)
@@ -62,9 +69,9 @@ class Trainer:
         total_params = sum(p.numel() for p in self.model.nss_model.parameters())
         logger.info(f"Total number of parameters: {total_params:,}")
 
-        self.optimizer = lars_adam_torch(self.training_mode_params.learning_rate)(
-            self.model.parameters()
-        ).optimizer
+        self.optimizer = get_optimizer_type(
+            self.params, self.training_mode_params, self.model.parameters()
+        )
         self.lr_schedule = get_lr_schedule(
             self.training_mode_params,
             self.optimizer,
@@ -494,3 +501,25 @@ def get_loss_fn(params: ConfigModel, device: torch.device):
 
     # Defensive (all enums should be handled above)
     raise ValueError(f"No implementation for loss function {loss_name}")
+
+
+def get_optimizer_type(
+    params: ConfigModel,
+    training_mode_params: TrainingConfig,
+    model_params: Iterator[Parameter],
+):
+    """
+    Return optimizer type configured in params.optimizer.optimizer_type.
+    Expected values (string) are set in the OptimizerType enum.
+    """
+    optimizer_type = params.optimizer.optimizer_type
+
+    if optimizer_type == OptimizerType.LARS_ADAM:
+        return lars_adam_torch(training_mode_params.learning_rate)(
+            model_params
+        ).optimizer
+    if optimizer_type == OptimizerType.ADAM_W:
+        return adam_w_torch(training_mode_params.learning_rate)(model_params).optimizer
+
+    # Defensive (all enums should be handled above)
+    raise ValueError(f"Unsupported optimizer type {optimizer_type}")
