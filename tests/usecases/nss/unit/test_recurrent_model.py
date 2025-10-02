@@ -5,9 +5,9 @@ import unittest
 
 import torch
 
+from ng_model_gym.core.model.model import create_model
 from ng_model_gym.core.utils.types import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
-from ng_model_gym.usecases.nss.model.model_v1 import create_feedback_model_with_nss
 from tests.testing_utils import create_simple_params
 
 
@@ -24,7 +24,7 @@ class TestFeedbackModel(unittest.TestCase):
         self.device = torch.device("cuda")
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
-        self.model = create_feedback_model_with_nss(params, self.device)
+        self.model = create_model(params, self.device)
         self.batch = params.train.batch_size
         self.recurrence = params.dataset.recurrent_samples
         self.data = {

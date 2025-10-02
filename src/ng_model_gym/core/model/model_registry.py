@@ -45,6 +45,13 @@ MODEL_REGISTRY: Registry[BaseNGModel] = Registry(
 )
 
 
+def get_model_key(name: str, version: Optional[str] = None) -> str:
+    """Return the model key based on the name and optional version."""
+    key = f"{name}-v{version}" if version is not None else name
+
+    return key.lower()
+
+
 def register_model(name: str, version: Optional[str] = None):
     """
     Helper function to add a new model to the model registry,
@@ -54,6 +61,6 @@ def register_model(name: str, version: Optional[str] = None):
         >>> class NSS_Model(BaseNeuralGraphicsPipeline)
         >>>     pass
     """
-    key = f"{name}-v{version}" if version is not None else name
+    key = get_model_key(name, version)
 
-    return MODEL_REGISTRY.register(key.lower())
+    return MODEL_REGISTRY.register(key)

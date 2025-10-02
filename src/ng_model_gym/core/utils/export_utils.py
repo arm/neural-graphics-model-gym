@@ -22,6 +22,7 @@ from rich.console import Console
 from torchao.quantization.pt2e.quantize_pt2e import convert_pt2e, prepare_pt2e
 
 from ng_model_gym.core.data.dataloader import DataLoaderMode, get_dataloader
+from ng_model_gym.core.model.model import get_model_key
 from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
 from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.general_utils import is_invoked_cli
@@ -388,9 +389,11 @@ def executorch_vgf_export(
 
     autoencoder_module = feedback_model.nss_model.get_neural_network()
 
+    model_key = get_model_key(params.model.name, params.model.version)
+
     metadata_path = (
         Path(params.output.export.vgf_output_dir)
-        / f"model-{params.version}-{export_type}-metadata.json"
+        / f"{model_key}-{export_type}-metadata.json"
     )
 
     _update_metadata_file(

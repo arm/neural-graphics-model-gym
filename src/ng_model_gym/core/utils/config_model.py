@@ -72,6 +72,13 @@ class Processing(PydanticConfigModel):
     )
 
 
+class Model(PydanticConfigModel):
+    """Model configuration"""
+
+    name: str = Field(description="Model name")
+    version: Optional[str] = Field(description="Model version")
+
+
 class Dataset(PydanticConfigModel):
     """Dataset configuration"""
 
@@ -79,7 +86,9 @@ class Dataset(PydanticConfigModel):
     exposure: float = Field(ge=0.0, description="Training dataset exposure value")
     tonemapper: ToneMapperMode = Field(description="Tonemapping method for dataset")
     health_check: bool = Field(description="Run health check on given dataset")
-    recurrent_samples: int = Field(gt=1, description="Number of recurrent samples")
+    recurrent_samples: Optional[int] = Field(
+        gt=1, description="Number of recurrent samples"
+    )
     gt_augmentation: bool = Field(
         description="Enable dataset augmentations e.g flips, rotations"
     )
@@ -201,7 +210,7 @@ class Optimizer(PydanticConfigModel):
 class ConfigModel(PydanticConfigModel):
     """Pydantic model representing configuration file"""
 
-    version: int = Field(gt=0, description="Model version")
+    model: Model
     dataset: Dataset
     output: Output
     train: Train

@@ -53,7 +53,9 @@ class Registry(Generic[T]):
         try:
             return self._registry[name]
         except KeyError as e:
-            raise KeyError(f"{self._name} {name} is not registered.") from e
+            raise KeyError(
+                f"{self._name.capitalize()} {name} is not registered."
+            ) from e
 
     def list_registered(self) -> List[str]:
         """Return all keys in the registry."""

@@ -47,7 +47,7 @@ def create_simple_params(
     temp_dir = tempfile.mkdtemp()
 
     default_params = {
-        "version": 1,
+        "model": {"name": "NSS", "version": "1"},
         "processing": {"shader_accurate": False},
         "dataset": {
             "path": {"train": dataset, "validation": dataset, "test": dataset},

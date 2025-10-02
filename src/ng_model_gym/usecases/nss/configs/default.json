@@ -1,5 +1,8 @@
 {
-    "version": 1,
+    "model": {
+        "name": "NSS",
+        "version": "1"
+    },
     "dataset": {
         "path": {
             "train": null,

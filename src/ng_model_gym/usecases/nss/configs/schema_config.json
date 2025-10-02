@@ -1,8 +1,20 @@
 {
-    "version": {
-        "description": "Model version",
-        "exclusiveMinimum": 0,
-        "type": "integer"
+    "model": {
+        "name": {
+            "description": "Model name",
+            "type": "string"
+        },
+        "version": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Model version"
+        }
     },
     "dataset": {
         "path": {
@@ -65,9 +77,16 @@
             "type": "boolean"
         },
         "recurrent_samples": {
-            "description": "Number of recurrent samples",
-            "exclusiveMinimum": 1,
-            "type": "integer"
+            "anyOf": [
+                {
+                    "exclusiveMinimum": 1,
+                    "type": "integer"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "description": "Number of recurrent samples"
         },
         "gt_augmentation": {
             "description": "Enable dataset augmentations e.g flips, rotations",
