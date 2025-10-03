@@ -5,7 +5,11 @@ import unittest
 from unittest.mock import patch
 
 from ng_model_gym.core.data import dataset_registry
-from ng_model_gym.core.data.dataset_registry import _validate_dataset, register_dataset
+from ng_model_gym.core.data.dataset_registry import (
+    _validate_dataset,
+    get_dataset_key,
+    register_dataset,
+)
 from ng_model_gym.core.utils.registry import Registry
 
 
@@ -42,6 +46,13 @@ class TestDatasetRegistry(unittest.TestCase):
         for p in self.patches:
             p.stop()
 
+    def test_get_dataset_key(self):
+        """Test dataset key returned matches expected format."""
+
+        self.assertEqual(get_dataset_key(name="nss"), "nss")
+        self.assertEqual(get_dataset_key(name="nss", version="1"), "nss-v1")
+        self.assertEqual(get_dataset_key(name="NSS", version="1"), "nss-v1")
+
     def test_dataset_registry_helper_func(self):
         """Test adding a valid dataset using the register_dataset() helper function."""
 
@@ -63,7 +74,7 @@ class TestDatasetRegistry(unittest.TestCase):
 
         self.assertEqual(
             dataset_registry.DATASET_REGISTRY.list_registered(),
-            [f"{dataset_name}-v{dataset_version}".lower()],
+            [get_dataset_key(dataset_name, dataset_version)],
         )
 
     def test_dataset_inheritance(self):
@@ -85,7 +96,7 @@ class TestDatasetRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             dataset_registry.DATASET_REGISTRY.list_registered(),
-            [f"{dataset_name}-v{dataset_version}".lower()],
+            [get_dataset_key(dataset_name, dataset_version)],
         )
 
     def test_dataset_len_not_implemented(self):
@@ -110,7 +121,7 @@ class TestDatasetRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             dataset_registry.DATASET_REGISTRY.list_registered(),
-            [f"{dataset_name}-v{dataset_version}".lower()],
+            [get_dataset_key(dataset_name, dataset_version)],
         )
 
     def test_dataset_getitem_not_implemented(self):
@@ -137,7 +148,7 @@ class TestDatasetRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             dataset_registry.DATASET_REGISTRY.list_registered(),
-            [f"{dataset_name}-v{dataset_version}".lower()],
+            [get_dataset_key(dataset_name, dataset_version)],
         )
 
     def test_dataset_not_a_class(self):
@@ -154,7 +165,7 @@ class TestDatasetRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             dataset_registry.DATASET_REGISTRY.list_registered(),
-            [f"{dataset_name}-v{dataset_version}".lower()],
+            [get_dataset_key(dataset_name, dataset_version)],
         )
 
 
