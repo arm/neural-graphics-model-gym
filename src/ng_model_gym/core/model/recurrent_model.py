@@ -5,14 +5,14 @@ from typing import Tuple
 
 import torch
 import torch.nn.functional as F
-from torch import nn
 
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
+from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.utils.tensor_types import TensorData
 
 
-class FeedbackModel(BaseNGModel):
-    """Wrapper around model for recurrent feedback"""
+class FeedbackModel(BaseNGModelWrapper):
+    """Wrapper around BaseNGModel for recurrent feedback"""
 
     def __init__(self, ng_model: BaseNGModel, recurrent_samples, device: torch.device):
         super().__init__()
@@ -23,12 +23,13 @@ class FeedbackModel(BaseNGModel):
         self.device = device
         self.history_buffers = self.nss_model.init_history_buffers()
 
-    def get_neural_network(self) -> nn.Module:
-        """Return the core trainable neural network"""
-        return self.nss_model.get_neural_network()
+    def get_ng_model(self) -> BaseNGModel:
+        """Return the wrapped ng_model"""
+        return self.nss_model
 
-    def set_neural_network(self, neural_network: nn.Module) -> None:
-        self.nss_model = neural_network
+    def set_ng_model(self, ng_model: BaseNGModel) -> None:
+        """Set ng_model to wrap"""
+        self.nss_model = ng_model
 
     def forward(self, x):
         """Run forward pass for the recurrent model.

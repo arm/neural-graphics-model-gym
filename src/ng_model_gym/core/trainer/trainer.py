@@ -18,6 +18,8 @@ from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.data.utils import DataLoaderMode
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.loss.losses import LossV1
+from ng_model_gym.core.model.base_ng_model import BaseNGModel
+from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.optimizers.adam_w import adam_w_torch
@@ -62,8 +64,13 @@ class Trainer:
         self.starting_epoch = 1
         self.model: nn.Module = create_model(self.params, self.device).to(self.device)
 
-        logger.info(f"Model architecture: {self.model.nss_model}")
-        total_params = sum(p.numel() for p in self.model.nss_model.parameters())
+        if not isinstance(self.model, (BaseNGModel, BaseNGModelWrapper)):
+            raise ValueError(
+                "Model must be an instance of BaseNGModel or BaseNGModelWrapper"
+            )
+
+        logger.info(f"Model architecture: {self.model}")
+        total_params = sum(p.numel() for p in self.model.parameters())
         logger.info(f"Total number of parameters: {total_params:,}")
 
         self.optimizer = get_optimizer_type(
@@ -97,16 +104,17 @@ class Trainer:
     def _quantize_modules(self):
         """Quantize modules if not already quantized"""
 
-        if (
-            self.model.nss_model.is_qat_model
-            and not self.model.nss_model.is_network_quantized
-        ):
+        ng_model = self.model
+
+        if isinstance(self.model, BaseNGModelWrapper):
+            ng_model = self.model.get_ng_model()
+
+        if ng_model.is_qat_model and not ng_model.is_network_quantized:
             input_data = next(iter(self.train_dataloader))[0]
+            # Tracing must be the exact same model as the trainer forward pass model
             forward_input_data = model_tracer(self.model, input_data)
 
-            self.model.nss_model.quantize_modules(
-                forward_input_data,
-            )
+            ng_model.quantize_modules(forward_input_data)
 
     def _restore_model_weights(self):
         """Load weights from a checkpoint file if specified"""

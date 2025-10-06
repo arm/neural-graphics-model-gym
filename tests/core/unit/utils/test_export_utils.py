@@ -11,7 +11,10 @@ from types import SimpleNamespace
 from unittest.mock import DEFAULT, patch
 
 import torch
+from torch import nn
 
+from ng_model_gym.core.model.base_ng_model import BaseNGModel
+from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model import get_model_key
 from ng_model_gym.core.utils.export_utils import (
     DataLoaderMode,
@@ -21,30 +24,40 @@ from ng_model_gym.core.utils.export_utils import (
 )
 
 
-class MockNSS:
+class MockNSS(BaseNGModel):
     """Mock class for NSS model."""
 
     def __init__(self):
-        self.autoencoder = "mock_autoencoder"
+        super().__init__()
+        self.autoencoder = nn.Identity()
 
     def get_neural_network(self):
         """Mock get_neural_network"""
         return self.autoencoder
 
-    def set_neural_network(self, nn):
+    def set_neural_network(self, neural_network):
         """Mock set_neural_network"""
-        self.autoencoder = nn
+        self.autoencoder = neural_network
 
     def get_additional_constants(self):
         """Mock method to return additional constants."""
         return {"foo": "bar"}
 
 
-class MockFeedbackModel:
+class MockFeedbackModel(BaseNGModelWrapper):
     """Mock class for Feedback model."""
 
-    def __init__(self):
+    def __init__(
+        self,
+    ):
+        super().__init__()
         self.nss_model = MockNSS()
+
+    def get_ng_model(self) -> BaseNGModel:
+        return self.nss_model
+
+    def set_ng_model(self, ng_model: BaseNGModel) -> None:
+        self.nss_model = ng_model
 
     def get_model_input_for_tracing(self, x):
         """Mock method to return model input for tracing."""
@@ -54,9 +67,9 @@ class MockFeedbackModel:
         """Mock get_neural_network"""
         return self.nss_model.get_neural_network()
 
-    def set_neural_network(self, nn):
+    def set_neural_network(self, neural_network):
         """Mock set_neural_network"""
-        self.nss_model = nn
+        self.nss_model = neural_network
 
 
 # pylint: disable-next=unused-argument
@@ -140,7 +153,7 @@ class TestExportUtils(unittest.TestCase):
         mock_export_module_to_vgf.assert_called_once()
         export_args, _ = mock_export_module_to_vgf.call_args
         _, module, trace_input, etype, meta_path = export_args
-        self.assertEqual(module, "mock_autoencoder")
+        self.assertIsInstance(module, nn.Identity)
         self.assertIsInstance(trace_input, torch.Tensor)
         self.assertEqual(etype, ExportType.QAT_INT8)
 
@@ -196,7 +209,7 @@ class TestExportUtils(unittest.TestCase):
         mock_export_module_to_vgf.assert_called_once()
         export_args, _ = mock_export_module_to_vgf.call_args
         _, module, trace_input, etype, meta_path = export_args
-        self.assertEqual(module, "mock_autoencoder")
+        self.assertIsInstance(module, nn.Identity)
         self.assertIsInstance(trace_input, torch.Tensor)
         self.assertEqual(etype, ExportType.FP32)
 
