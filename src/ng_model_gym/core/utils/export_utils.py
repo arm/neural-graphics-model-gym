@@ -144,23 +144,6 @@ def _check_cuda():
         raise ValueError(err_msg)
 
 
-def _input_shape_constraints(is_dynamic: bool):
-    """Provide dynamic shape information"""
-
-    batch_size = torch.export.Dim("batch")  # Batch size can be anything
-    # Input width/height must be a multiple of 8 (because of the resizing layers)
-    input_height_over_8 = torch.export.Dim("input_height_over_8", min=1)
-    input_width_over_8 = torch.export.Dim("input_width_over_8", min=1)
-    input_height = 8 * input_height_over_8
-    input_width = 8 * input_width_over_8
-
-    # NCHW - tuple contents match forward tensor input
-    dynamic_shape = (
-        ({0: batch_size, 2: input_height, 3: input_width},) if is_dynamic else None
-    )
-    return dynamic_shape
-
-
 @contextmanager
 def _loader_context(label: str, dump_dir: str):
     """Context manager shows spinner if program was invoked from the CLI or logs if from library"""
@@ -179,10 +162,10 @@ def _loader_context(label: str, dump_dir: str):
 
 def _export_module_to_vgf(
     params: ConfigModel,
-    neural_network: torch.nn.Module,
+    ng_model: BaseNGModel,
     model_forward_input: Tuple[Any, ...],
     export_type: ExportType,
-    metadata_path: Path,
+    metadata_path,
 ):
     """Use ExecuTorch to perform exporting to a VGF file."""
 
@@ -190,6 +173,14 @@ def _export_module_to_vgf(
         ExportSpec.TOSA_FP if export_type == ExportType.FP32 else ExportSpec.TOSA_INT
     )
     compile_spec = VgfCompileSpec(TosaSpecification.create_from_string(tosa_spec))
+
+    dynamic_input_spec = (
+        ng_model.define_dynamic_export_model_input()
+        if params.output.export.dynamic_shape
+        else None
+    )
+
+    neural_network = ng_model.get_neural_network()
 
     if export_type == ExportType.QAT_INT8:
         torchao.quantization.pt2e.move_exported_model_to_eval(neural_network)
@@ -234,7 +225,7 @@ def _export_module_to_vgf(
         neural_network,
         args=model_forward_input,
         strict=True,
-        dynamic_shapes=_input_shape_constraints(params.output.export.dynamic_shape),
+        dynamic_shapes=dynamic_input_spec,
     )
 
     # VGF partition and export.
@@ -328,8 +319,6 @@ def executorch_vgf_export(
     elif not isinstance(model, BaseNGModel):
         raise ValueError(f"model type: {type(model)} , is not valid")
 
-    neural_network = model.get_neural_network()
-
     model_key = get_model_key(params.model.name, params.model.version)
 
     metadata_path = (
@@ -340,7 +329,7 @@ def executorch_vgf_export(
     _update_metadata_file(metadata_path, model.get_additional_constants())
 
     _export_module_to_vgf(
-        params, neural_network, model_forward_input, export_type, metadata_path
+        params, model, model_forward_input, export_type, metadata_path
     )
 
     logger.info(

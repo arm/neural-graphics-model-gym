@@ -153,7 +153,7 @@ class TestExportUtils(unittest.TestCase):
         mock_export_module_to_vgf.assert_called_once()
         export_args, _ = mock_export_module_to_vgf.call_args
         _, module, trace_input, etype, meta_path = export_args
-        self.assertIsInstance(module, nn.Identity)
+        self.assertIsInstance(module, BaseNGModel)
         self.assertIsInstance(trace_input, torch.Tensor)
         self.assertEqual(etype, ExportType.QAT_INT8)
 
@@ -209,7 +209,7 @@ class TestExportUtils(unittest.TestCase):
         mock_export_module_to_vgf.assert_called_once()
         export_args, _ = mock_export_module_to_vgf.call_args
         _, module, trace_input, etype, meta_path = export_args
-        self.assertIsInstance(module, nn.Identity)
+        self.assertIsInstance(module, BaseNGModel)
         self.assertIsInstance(trace_input, torch.Tensor)
         self.assertEqual(etype, ExportType.FP32)
 

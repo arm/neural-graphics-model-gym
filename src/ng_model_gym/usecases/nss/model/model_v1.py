@@ -235,6 +235,32 @@ class NSSModel(BaseNGModel):
         }
         return outputs
 
+    def define_dynamic_export_model_input(self):
+        """
+        Description of dynamic dimensions of input tensor
+
+        Note: Dynamic shape constraints e.g. dimension is a multiple of 8 or certain
+        range of values is an optional check during export. Exported TOSA/VGF model do not
+        capture these constraints in the network graph for the dynamic dimensions. This should be
+        handled in the preprocessing stage when running the model.
+        """
+
+        # Dynamic batch size - ensure when exporting, this dim in the config is ≥ 2
+        batch_size = torch.export.Dim("batch")  # Batch size can be anything
+
+        # Input width/height is a multiple of 8 (because of the resizing layers)
+        input_height_over_8 = torch.export.Dim("input_height_over_8", min=1)
+        input_width_over_8 = torch.export.Dim("input_width_over_8", min=1)
+
+        # Optional constraints enforced at model export. Can be omitted
+        input_height = 8 * input_height_over_8
+        input_width = 8 * input_width_over_8
+
+        # NCHW - tuple contents match forward tensor input
+        dynamic_shape = ({0: batch_size, 2: input_height, 3: input_width},)
+
+        return dynamic_shape
+
     def init_history_buffers(self):
         return {
             "history": HistoryBuffer(
