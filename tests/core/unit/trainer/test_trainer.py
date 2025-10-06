@@ -13,8 +13,9 @@ import torch
 from torch import nn, optim
 
 from ng_model_gym.core.loss.losses import LossV1
-from ng_model_gym.core.trainer.trainer import get_loss_fn, Trainer
-from ng_model_gym.core.utils.types import LossFn, TrainEvalMode
+from ng_model_gym.core.optimizers.lars_adam import LARS
+from ng_model_gym.core.trainer.trainer import get_loss_fn, get_optimizer_type, Trainer
+from ng_model_gym.core.utils.types import LossFn, OptimizerType, TrainEvalMode
 from tests.testing_utils import create_simple_params
 
 # pylint: disable=abstract-method, unsubscriptable-object
@@ -247,6 +248,103 @@ class TestLossFnFactory(unittest.TestCase):
         params.train.loss_fn = "does_not_exist"
         with self.assertRaises(ValueError):
             _ = get_loss_fn(params, torch.device("cpu"))
+
+    # pylint: enable=C0116
+
+
+class TestOptimizerFactory(unittest.TestCase):
+    """Tests for optimizer factory method: get_optimizer_type()"""
+
+    # pylint: disable=C0116
+    def test_get_optimizer_type_with_valid_lars_adam_fp32(self):
+        params = create_simple_params()
+        params.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
+
+        mock_trainer = Mock(spec=Trainer)
+        mock_trainer.model = TinyModel()
+        mock_trainer.params = params
+        mock_trainer.training_mode_params = params.train.fp32
+
+        optimizer_obj = get_optimizer_type(
+            mock_trainer.params,
+            mock_trainer.training_mode_params,
+            mock_trainer.model.parameters(),
+        )
+        self.assertIsInstance(optimizer_obj, LARS)
+        self.assertEqual(optimizer_obj.optim.__class__, optim.Adam)
+
+    def test_get_optimizer_type_with_valid_lars_adam_qat(self):
+        params = create_simple_params()
+        params.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
+
+        mock_trainer = Mock(spec=Trainer)
+        mock_trainer.model = TinyModel()
+        mock_trainer.params = params
+        mock_trainer.training_mode_params = params.train.qat
+
+        optimizer_obj = get_optimizer_type(
+            mock_trainer.params,
+            mock_trainer.training_mode_params,
+            mock_trainer.model.parameters(),
+        )
+        self.assertIsInstance(optimizer_obj, LARS)
+        self.assertEqual(optimizer_obj.optim.__class__, optim.Adam)
+
+    def test_get_optimizer_type_with_valid_adam_w_fp32(self):
+        params = create_simple_params()
+        params.optimizer.optimizer_type = OptimizerType.ADAM_W.value
+
+        mock_trainer = Mock(spec=Trainer)
+        mock_trainer.model = TinyModel()
+        mock_trainer.params = params
+        mock_trainer.training_mode_params = params.train.fp32
+
+        optimizer_obj = get_optimizer_type(
+            mock_trainer.params,
+            mock_trainer.training_mode_params,
+            mock_trainer.model.parameters(),
+        )
+        self.assertIsInstance(optimizer_obj, optim.AdamW)
+
+    def test_get_optimizer_type_with_valid_adam_w_qat(self):
+        params = create_simple_params()
+        params.optimizer.optimizer_type = OptimizerType.ADAM_W.value
+
+        mock_trainer = Mock(spec=Trainer)
+        mock_trainer.model = TinyModel()
+        mock_trainer.params = params
+        mock_trainer.training_mode_params = params.train.qat
+
+        optimizer_obj = get_optimizer_type(
+            mock_trainer.params,
+            mock_trainer.training_mode_params,
+            mock_trainer.model.parameters(),
+        )
+        mock_trainer.params = params
+        mock_trainer.training_mode_params = params.train.fp32
+
+        optimizer_obj = get_optimizer_type(
+            mock_trainer.params,
+            mock_trainer.training_mode_params,
+            mock_trainer.model.parameters(),
+        )
+        self.assertIsInstance(optimizer_obj, optim.AdamW)
+
+    def test_get_optimizer_type_raises_exception(self):
+        params = create_simple_params()
+        params.optimizer.optimizer_type = "does_not_exist"
+
+        mock_trainer = Mock(spec=Trainer)
+        mock_trainer.model = TinyModel()
+        mock_trainer.params = params
+        mock_trainer.training_mode_params = params.train.fp32
+
+        with self.assertRaises(ValueError):
+            _ = get_optimizer_type(
+                mock_trainer.params,
+                mock_trainer.training_mode_params,
+                mock_trainer.model.parameters(),
+            )
 
     # pylint: enable=C0116
 

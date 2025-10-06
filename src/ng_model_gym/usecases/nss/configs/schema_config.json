@@ -299,6 +299,18 @@
                 "static"
             ],
             "type": "string"
+        },
+        "optimizer_type": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": "lars_adam",
+            "description": "Optimizer type to use during training. If not set, defaults to lars_adam."
         }
     },
     "processing": {

@@ -9,11 +9,12 @@ https://github.com/kakaobrain/torchlars
 Modified to implement compute_adaptive_lr in PyTorch instead of CUDA
 
 """
-from functools import partial
 
 import torch
 from torch.optim import Adam
 from torch.optim.optimizer import Optimizer
+
+from ng_model_gym.core.optimizers.utils import OptimizerWrapper
 
 
 def compute_adaptive_lr(
@@ -185,38 +186,6 @@ class LARS(Optimizer):
         with self.hide_weight_decays() as weight_decays:
             self.apply_adaptive_lrs(weight_decays)
             return self.optim.step(*args, **kwargs)
-
-
-class OptimizerWrapper:
-    """Optimizer class"""
-
-    def __init__(self, optimizer, lr_scheduler, **optimizer_args):
-        if isinstance(lr_scheduler, float):
-            self.lr_scheduler = None
-            self.optimizer = partial(optimizer, lr=lr_scheduler, **optimizer_args)
-            self.lr = lr_scheduler
-        else:
-            self.optimizer = partial(optimizer, lr=lr_scheduler.LR, **optimizer_args)
-            self.lr_scheduler = lr_scheduler
-
-    @torch.compiler.disable
-    def step(self, *args, **kwargs):
-        """Step function"""
-        self.optimizer.step(*args, **kwargs)
-        if self.lr_scheduler is not None:
-            self.lr_scheduler.step()
-            self.lr = self.lr_scheduler.get_lr()
-
-    def __call__(self, *args, **kwargs):
-        self.optimizer = self.optimizer(*args, **kwargs)
-        if self.lr_scheduler is not None:
-            self.lr_scheduler.initialize(self.optimizer)
-            self.lr = self.lr_scheduler.get_lr()
-        return self
-
-    def zero_grad(self):
-        """Zero grad"""
-        self.optimizer.zero_grad()
 
 
 class LARSWrapper(OptimizerWrapper):

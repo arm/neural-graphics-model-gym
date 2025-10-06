@@ -51,6 +51,13 @@ class LossFn(str, Enum):
     LOSS_V1 = "loss_v1"
 
 
+class OptimizerType(str, Enum):
+    """Enum of supported optimizers."""
+
+    ADAM_W = "adam_w"
+    LARS_ADAM = "lars_adam"
+
+
 class HistoryBufferResetFunction(str, Enum):
     """Enum of supported history buffer reset functions."""
 

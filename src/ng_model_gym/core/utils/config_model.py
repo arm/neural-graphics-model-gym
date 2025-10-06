@@ -15,7 +15,12 @@ from pydantic import (
 from pydantic_core import PydanticCustomError
 
 from ng_model_gym.core.data.utils import ToneMapperMode
-from ng_model_gym.core.utils.types import LearningRateScheduler, LossFn, TrainEvalMode
+from ng_model_gym.core.utils.types import (
+    LearningRateScheduler,
+    LossFn,
+    OptimizerType,
+    TrainEvalMode,
+)
 
 # pylint: disable=line-too-long
 
@@ -206,6 +211,10 @@ class Optimizer(PydanticConfigModel):
 
     learning_rate_scheduler: LearningRateScheduler = Field(
         description="Learning rate scheduler to use when training"
+    )
+    optimizer_type: Optional[str] = Field(
+        default=OptimizerType.LARS_ADAM.value,
+        description="Optimizer type to use during training. If not set, defaults to lars_adam.",
     )
 
 
