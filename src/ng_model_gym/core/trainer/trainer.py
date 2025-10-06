@@ -32,7 +32,6 @@ from ng_model_gym.core.utils.types import (
     OptimizerType,
     TrainEvalMode,
 )
-from ng_model_gym.usecases.nss.model.shaders.slang_utils import load_slang_module
 
 logger = logging.getLogger(__name__)
 
@@ -235,8 +234,6 @@ class Trainer:
 
     def train(self, profiler: Optional[torch.profiler.profile] = None):
         """Start training loop"""
-        # Load slang shaders before creating the tqdm bar to prevent it being interrupted/duplicated
-        load_slang_module()
 
         total_epochs = self.training_mode_params.number_of_epochs
         self.model.train()

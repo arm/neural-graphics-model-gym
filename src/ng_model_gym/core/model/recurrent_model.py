@@ -12,7 +12,7 @@ from ng_model_gym.core.utils.tensor_types import TensorData
 
 
 class FeedbackModel(BaseNGModel):
-    """Wrapper around NSS model for recurrent feedback"""
+    """Wrapper around model for recurrent feedback"""
 
     def __init__(self, ng_model: BaseNGModel, recurrent_samples, device: torch.device):
         super().__init__()

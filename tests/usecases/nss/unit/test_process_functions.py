@@ -6,7 +6,7 @@ import unittest
 import torch
 
 from ng_model_gym.core.data.utils import DataLoaderMode
-from ng_model_gym.usecases.nss.dataloader.process_functions import process_nss_data
+from ng_model_gym.usecases.nss.data.process_functions import process_nss_data
 
 
 class TestProcessFunctions(unittest.TestCase):

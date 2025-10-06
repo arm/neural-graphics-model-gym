@@ -10,9 +10,9 @@ import torch
 from torch.utils.data import Dataset
 
 from ng_model_gym.core.data.dataset_registry import DATASET_REGISTRY, get_dataset_key
+from ng_model_gym.core.data.health_check import health_check_dataset
 from ng_model_gym.core.data.utils import DataLoaderMode, DatasetType
 from ng_model_gym.core.utils.config_model import ConfigModel
-from ng_model_gym.usecases.nss.dataloader.health_check import health_check_dataset
 
 logger = logging.getLogger(__name__)
 

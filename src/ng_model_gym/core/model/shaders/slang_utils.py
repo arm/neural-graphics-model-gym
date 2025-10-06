@@ -13,16 +13,15 @@ logger = logging.getLogger(__name__)
 
 
 @lru_cache(maxsize=1)
-def load_slang_module(slang_shader="nss_v1.slang"):
-    """Load a Slang module from the specified shader file.
+def load_slang_module(shader_dir, shader_file):
+    """Load a Slang module from the specified shader path and file.
 
     We cache to save having to recompiling the shader every time.
     """
     # pylint: disable-next=import-outside-toplevel
     import slangtorch
 
-    shader_folder_path = "ng_model_gym.usecases.nss.model.shaders"
-    shader_path = files(shader_folder_path) / slang_shader
+    shader_path = files(shader_dir) / shader_file
 
     # Check if program was invoked by CLI
     if is_invoked_cli():

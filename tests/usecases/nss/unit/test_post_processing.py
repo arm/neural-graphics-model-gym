@@ -18,6 +18,7 @@ class TestPostProcess(unittest.TestCase):
         """Set up post-processing config."""
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
+
         self.device = torch.device("cuda")
         self.batch_size = 4
         self.scale = 2.0
@@ -42,6 +43,9 @@ class TestPostProcess(unittest.TestCase):
             self.batch_size, 1, 128, 128, device=self.device
         )
 
+        self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
+        self.slang_shader_file = "nss_v1.slang"
+
     def test_output_shape(self):
         """Test that the output shape matches the history shape."""
 
@@ -56,6 +60,8 @@ class TestPostProcess(unittest.TestCase):
             self.offset_lut,
             self.scale_tensor,
             self.idx_modulo,
+            self.slang_shader_dir,
+            self.slang_shader_file,
         )
 
         self.assertEqual(output.shape, self.history.shape)
@@ -76,6 +82,8 @@ class TestPostProcess(unittest.TestCase):
             self.offset_lut,
             self.scale_tensor,
             self.idx_modulo,
+            self.slang_shader_dir,
+            self.slang_shader_file,
         )
 
         self.assertEqual(output.shape, self.history.shape)
@@ -100,6 +108,8 @@ class TestPostProcess(unittest.TestCase):
             self.offset_lut,
             self.scale_tensor,
             self.idx_modulo,
+            self.slang_shader_dir,
+            self.slang_shader_file,
         )
 
         output_gradient = torch.ones_like(output)
@@ -129,6 +139,8 @@ class TestPostProcess(unittest.TestCase):
             self.offset_lut,
             self.scale_tensor,
             self.idx_modulo,
+            self.slang_shader_dir,
+            self.slang_shader_file,
         )
 
         output_gradient = torch.ones_like(output)
@@ -141,6 +153,10 @@ class TestPostProcess(unittest.TestCase):
 
 class TestPostprocessGolden(unittest.TestCase):
     """Test postprocess implementation against known inputs and outputs"""
+
+    def setUp(self):
+        self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
+        self.slang_shader_file = "nss_v1.slang"
 
     def test_postprocess(self):
         """Test postprocess implementation"""
@@ -169,9 +185,13 @@ class TestPostprocessGolden(unittest.TestCase):
             postprocess_input["offset_lut"],
             postprocess_input["scale"],
             postprocess_input["idx_mod"],
+            self.slang_shader_dir,
+            self.slang_shader_file,
         )
+
         RTOL = 1e-3
         ATOL = 1e-3
+
         expected_output_linear = postprocess_output["output_linear"]
         torch.testing.assert_close(
             output_linear, expected_output_linear, rtol=RTOL, atol=ATOL
@@ -185,6 +205,10 @@ class TestPostprocessGolden(unittest.TestCase):
 
 class TestShaderAccPostprocessGolden(unittest.TestCase):
     """Test shader accurate postprocess implementation against known inputs and outputs"""
+
+    def setUp(self):
+        self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
+        self.slang_shader_file = "nss_v1.slang"
 
     def test_shader_acc_postprocess(self):
         """Test shader accurate postprocess implementation"""
@@ -216,6 +240,8 @@ class TestShaderAccPostprocessGolden(unittest.TestCase):
             postprocess_input["offset_lut"],
             postprocess_input["scale"],
             postprocess_input["idx_mod"],
+            self.slang_shader_dir,
+            self.slang_shader_file,
         )
 
         RTOL = 1e-3

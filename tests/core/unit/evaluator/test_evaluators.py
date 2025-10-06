@@ -11,7 +11,7 @@ import torch
 
 from ng_model_gym.core.data.utils import DataLoaderMode
 from ng_model_gym.core.evaluator.evaluator import BaseModelEvaluator
-from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
+from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from tests.testing_utils import create_simple_params
 
 
