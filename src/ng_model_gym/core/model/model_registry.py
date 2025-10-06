@@ -56,10 +56,12 @@ def register_model(name: str, version: Optional[str] = None):
     """
     Helper function to add a new model to the model registry,
     using a new unique identifier as the key, with optional version.
-    Example:
-        >>> @register_model(name="NSS", version="1")
-        >>> class NSS_Model(BaseNeuralGraphicsPipeline)
-        >>>     pass
+
+    Example::
+
+        @register_model(name="NSS", version="1")
+        class NSS_Model(BaseNGModel)
+            pass
     """
     key = get_model_key(name, version)
 

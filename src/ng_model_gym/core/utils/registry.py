@@ -13,14 +13,19 @@ class Registry(Generic[T]):
 
     Args:
         registry_name (str): Name for the registry e.g. Model
-        validator (Optional[Callable[[Type[T]], None]]): Optional validator func for the registry.
-    Example:
-        >>> MODEL_REGISTRY: Registry[BaseNGModel] = Registry("Model", validator_func)
-        >>> @MODEL_REGISTRY.register("NSS_v1")
-        >>> class NSS_V1(BaseNGModel):
-        >>>         pass
-        >>> nss_model = MODEL_REGISTRY.get("NSS_v1")
-        >>> print(f"All available models: {MODEL_REGISTRY.list_registered()}")
+        validator (Optional[Callable[[Type[T]], None]]):
+            Optional validator function for the registry.
+
+    Example::
+
+        MODEL_REGISTRY: Registry[BaseNGModel] = Registry("Model", validator_func)
+
+        @MODEL_REGISTRY.register("NSS-v1")
+        class NSS_V1(BaseNGModel):
+            pass
+
+        nss_model = MODEL_REGISTRY.get("NSS-v1")
+        print(f"All available models: {MODEL_REGISTRY.list_registered()}")
     """
 
     def __init__(

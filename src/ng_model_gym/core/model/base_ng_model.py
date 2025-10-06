@@ -48,7 +48,7 @@ class BaseNGModel(nn.Module, ABC):
 
     Example::
 
-        import torch
+        from torch import nn
 
         class ExampleNGModel(BaseNGModel):
             def __init__(self):
