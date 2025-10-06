@@ -50,6 +50,14 @@ class MockFeedbackModel:
         """Mock method to return model input for tracing."""
         return x
 
+    def get_neural_network(self):
+        """Mock get_neural_network"""
+        return self.nss_model.get_neural_network()
+
+    def set_neural_network(self, nn):
+        """Mock set_neural_network"""
+        self.nss_model = nn
+
 
 # pylint: disable-next=unused-argument
 def fake_dl(params, num_workers, prefetch_factor, loader_mode, trace_mode):
@@ -96,6 +104,10 @@ class TestExportUtils(unittest.TestCase):
     )
     @patch("ng_model_gym.core.utils.export_utils._export_module_to_vgf", new=DEFAULT)
     @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
+    @patch(
+        "ng_model_gym.core.utils.export_utils.model_tracer",
+        new=lambda model, preprocess: torch.zeros(1, 1),
+    )
     def test_qat_int8_path(
         self, mock_export_module_to_vgf, mock_get_dataloader, mock_update_metadata_file
     ):
@@ -149,6 +161,10 @@ class TestExportUtils(unittest.TestCase):
     )
     @patch("ng_model_gym.core.utils.export_utils._export_module_to_vgf", new=DEFAULT)
     @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
+    @patch(
+        "ng_model_gym.core.utils.export_utils.model_tracer",
+        new=lambda model, preprocess: torch.zeros(1, 1),
+    )
     def test_fp32_path(
         self, mock_export_module_to_vgf, mock_get_dataloader, mock_update_metadata_file
     ):
@@ -201,6 +217,10 @@ class TestExportUtils(unittest.TestCase):
     @patch(
         "ng_model_gym.core.utils.export_utils._export_module_to_vgf",
         new=lambda *a, **k: None,
+    )
+    @patch(
+        "ng_model_gym.core.utils.export_utils.model_tracer",
+        new=lambda model, preprocess: torch.zeros(1, 1),
     )
     def test_metadata_file_is_created(self):
         """Test that metadata file is created with constants when exporting."""

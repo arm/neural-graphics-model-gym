@@ -6,6 +6,7 @@ import json
 import logging
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any, Tuple
 
 import torch
 import torchao
@@ -19,10 +20,12 @@ from executorch.backends.arm.tosa_specification import TosaSpecification
 from executorch.backends.arm.vgf_partitioner import VgfPartitioner
 from executorch.exir import to_edge_transform_and_lower
 from rich.console import Console
+from torch.utils._pytree import tree_map
 from torchao.quantization.pt2e.quantize_pt2e import convert_pt2e, prepare_pt2e
 
 from ng_model_gym.core.data.dataloader import DataLoaderMode, get_dataloader
 from ng_model_gym.core.model.model import get_model_key
+from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
 from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.general_utils import is_invoked_cli
@@ -204,19 +207,12 @@ def _input_shape_constraints(is_dynamic: bool):
     input_width_over_8 = torch.export.Dim("input_width_over_8", min=1)
     input_height = 8 * input_height_over_8
     input_width = 8 * input_width_over_8
-    # NCHW
-    dynamic_shapes = (
-        {
-            "x": {
-                0: batch_size,
-                2: input_height,
-                3: input_width,
-            }
-        }
-        if is_dynamic
-        else None
+
+    # NCHW - tuple contents match forward tensor input
+    dynamic_shape = (
+        ({0: batch_size, 2: input_height, 3: input_width},) if is_dynamic else None
     )
-    return dynamic_shapes
+    return dynamic_shape
 
 
 @contextmanager
@@ -262,7 +258,13 @@ def _vgf_partition_and_lower(dialect, spec: str, dump_dir: str):
         to_edge_transform_and_lower(dialect, partitioner=[vgf_partitioner])
 
 
-def _export_module_to_vgf(params, module, module_input, export_type, metadata_path):
+def _export_module_to_vgf(
+    params,
+    neural_network,
+    model_forward_input: Tuple[Any, ...],
+    export_type,
+    metadata_path,
+):
     """Use ExecuTorch to perform exporting to a VGF file."""
 
     tosa_spec = (
@@ -270,19 +272,21 @@ def _export_module_to_vgf(params, module, module_input, export_type, metadata_pa
     )
 
     if export_type != ExportType.QAT_INT8:
-        module.eval()
+        neural_network.eval()
 
     if export_type == ExportType.PTQ_INT8:
         # Perform post-training quantization before writing model to output file
-        module = torch.export.export_for_training(module, (module_input,)).module()
+        neural_network = torch.export.export_for_training(
+            neural_network, model_forward_input
+        ).module()
         quantizer = TOSAQuantizer(TosaSpecification.create_from_string(tosa_spec))
         quantizer.set_global(get_symmetric_quantization_config(is_qat=False))
-        module = prepare_pt2e(module, quantizer)
+        neural_network = prepare_pt2e(neural_network, quantizer)
     elif export_type == ExportType.QAT_INT8:
-        torchao.quantization.pt2e.move_exported_model_to_eval(module)
+        torchao.quantization.pt2e.move_exported_model_to_eval(neural_network)
 
-    # Do a forward pass of the model.
-    module(module_input)
+    # Do a forward pass of the model (unpack tuple from trace).
+    neural_network(*model_forward_input)
 
     # Extract input/output scales and zero points for quantized models and dump to JSON.
     # Currently only for QAT INT8 export.
@@ -293,16 +297,16 @@ def _export_module_to_vgf(params, module, module_input, export_type, metadata_pa
         )
         _write_input_output_scales(
             metadata_path,
-            module,
+            neural_network,
         )
 
     # Get the quantized module ready for export.
     if export_type != ExportType.FP32:
-        module = convert_pt2e(module)
+        neural_network = convert_pt2e(neural_network)
 
     aten_dialect = torch.export.export(
-        module,
-        args=(module_input,),
+        neural_network,
+        args=model_forward_input,
         strict=True,
         dynamic_shapes=_input_shape_constraints(params.output.export.dynamic_shape),
     )
@@ -380,14 +384,14 @@ def executorch_vgf_export(
 
     # Get sample data to trace graph.
     preprocess_trace_input = next(iter(dataloader))[0]
-    autoencoder_trace_input = feedback_model.get_model_input_for_tracing(
-        preprocess_trace_input
-    )
+    model_forward_input = model_tracer(feedback_model, preprocess_trace_input)
 
-    # Move inputs back to cpu (for tracing with ExecuTorch)
-    autoencoder_trace_input = autoencoder_trace_input.detach().cpu()
+    # Move model forward inputs to CPU
+    to_cpu = lambda x: x.to("cpu") if isinstance(x, torch.Tensor) else x
+    # tree_map is an internal torch util to traverse containers with tensors
+    model_forward_input = tree_map(to_cpu, model_forward_input)
 
-    autoencoder_module = feedback_model.nss_model.get_neural_network()
+    neural_network = feedback_model.get_neural_network()
 
     model_key = get_model_key(params.model.name, params.model.version)
 
@@ -401,7 +405,7 @@ def executorch_vgf_export(
     )
 
     _export_module_to_vgf(
-        params, autoencoder_module, autoencoder_trace_input, export_type, metadata_path
+        params, neural_network, model_forward_input, export_type, metadata_path
     )
 
     logger.info(f"Export complete!: {str(params.output.export.vgf_output_dir)}\n")

@@ -46,8 +46,8 @@ class TestBaseNGModelQAT(unittest.TestCase):
     def setUp(self):
         torch.manual_seed(0)
         self.device = torch.device("cpu")
-        self.input_shape = (4, 4)
-        self.sample_data = torch.randn(self.input_shape, device=self.device)
+        self.mock_forward_input = torch.randn((4, 4), device=self.device)
+        self.mock_forward_input_trace = (self.mock_forward_input,)
 
     def test_qat_train_raises_if_not_quantized(self):
         """Test model raises error if not prepared with fake quant observers before QAT training"""
@@ -60,19 +60,19 @@ class TestBaseNGModelQAT(unittest.TestCase):
         """Test quantize_modules method successfully creates a GraphModule for QAT"""
         model = TestingNGModel()
         model.is_qat_model = True
-        model.quantize_modules(self.input_shape, self.device)
+        model.quantize_modules(self.mock_forward_input_trace)
         self.assertTrue(model.is_network_quantized)
         self.assertTrue(isinstance(model.get_neural_network(), torch.fx.GraphModule))
-        out = model(self.sample_data)
+        out = model(self.mock_forward_input)
         self.assertEqual(out.shape, (4, 4))
 
     def test_double_quantize_raises(self):
         """Test if attempting to quantize modules twice raises"""
         model = TestingNGModel()
         model.is_qat_model = True
-        model.quantize_modules(self.input_shape, self.device)
+        model.quantize_modules(self.mock_forward_input_trace)
         with self.assertRaises(RuntimeError):
-            model.quantize_modules(self.input_shape, self.device)
+            model.quantize_modules(self.mock_forward_input_trace)
 
     def test_fp32_train_eval_works(self):
         """Test FP32 train and eval modes haven't been changed by overriding .train() method"""
