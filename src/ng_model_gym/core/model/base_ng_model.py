@@ -127,8 +127,7 @@ class BaseNGModel(nn.Module, ABC):
 
     def quantize_modules(
         self,
-        input_shape: Tuple[int, ...],
-        device: torch.device,
+        input_data: Tuple[Any, ...],
         tosa_spec: Optional[ExportSpec] = ExportSpec.TOSA_INT,
     ) -> None:
         """
@@ -235,9 +234,7 @@ class BaseNGModel(nn.Module, ABC):
             )
 
         # Grab the relevant layer to quantize
-        quantized_network = trace_and_quantize_module(
-            current_network, (torch.randn(*input_shape, device=device),)
-        )
+        quantized_network = trace_and_quantize_module(current_network, input_data)
 
         self.set_neural_network(quantized_network)
 

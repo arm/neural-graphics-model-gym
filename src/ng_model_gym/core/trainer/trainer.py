@@ -19,6 +19,7 @@ from ng_model_gym.core.data.utils import DataLoaderMode
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.loss.losses import LossV1
 from ng_model_gym.core.model.model import create_model
+from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.optimizers.adam_w import adam_w_torch
 from ng_model_gym.core.optimizers.lars_adam import lars_adam_torch
 from ng_model_gym.core.schedulers.lr_scheduler import CosineAnnealingWithWarmupLR
@@ -104,12 +105,11 @@ class Trainer:
             self.model.nss_model.is_qat_model
             and not self.model.nss_model.is_network_quantized
         ):
-            autoencoder_input = self.model.get_model_input_for_tracing(
-                next(iter(self.train_dataloader))[0]
-            )
+            input_data = next(iter(self.train_dataloader))[0]
+            forward_input_data = model_tracer(self.model, input_data)
+
             self.model.nss_model.quantize_modules(
-                autoencoder_input.shape,
-                device=self.device,
+                forward_input_data,
             )
 
     def _restore_model_weights(self):

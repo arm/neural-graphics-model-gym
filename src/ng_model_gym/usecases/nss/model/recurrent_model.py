@@ -11,7 +11,7 @@ from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.utils.tensor_types import TensorData
 
 
-class FeedbackModel(nn.Module):
+class FeedbackModel(BaseNGModel):
     """Wrapper around NSS model for recurrent feedback"""
 
     def __init__(self, ng_model: BaseNGModel, recurrent_samples, device: torch.device):
@@ -22,6 +22,13 @@ class FeedbackModel(nn.Module):
         self.unpad = True
         self.device = device
         self.history_buffers = self.nss_model.init_history_buffers()
+
+    def get_neural_network(self) -> nn.Module:
+        """Return the core trainable neural network"""
+        return self.nss_model.get_neural_network()
+
+    def set_neural_network(self, neural_network: nn.Module) -> None:
+        self.nss_model = neural_network
 
     def forward(self, x):
         """Run forward pass for the recurrent model.
@@ -158,15 +165,3 @@ class FeedbackModel(nn.Module):
         for key in data.keys():
             input_tensors[key] = data[key][:, t, :, :, :]
         return input_tensors
-
-    def get_model_input_for_tracing(self, data: TensorData) -> torch.Tensor:
-        """Get model input for tracing"""
-        # Preprocess can only run on the GPU for now.
-        data = {key: tensor.to("cuda") for key, tensor in data.items()}
-
-        inputs = self._get_input_data_at_t(data, t=0)
-        inputs = self.set_buffers(inputs)
-
-        autoencoder_input, _, _ = self.nss_model.preprocess(inputs)
-
-        return autoencoder_input

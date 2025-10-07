@@ -106,8 +106,15 @@ def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device 
         and not trained_model.nss_model.is_network_quantized
     ):
         trained_model.nss_model.quantize_modules(
-            (8, trained_model.nss_model.autoencoder.in_channels, 128, 128),
-            device=device,
+            (
+                torch.randn(
+                    8,
+                    trained_model.nss_model.autoencoder.in_channels,
+                    128,
+                    128,
+                    device=device,
+                ),
+            ),
         )
 
     logger.info(f"Loading model from checkpoint: {model_path}")

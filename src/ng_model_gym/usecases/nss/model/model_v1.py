@@ -56,9 +56,6 @@ class NSSModel(BaseNGModel):
 
         self.autoencoder = AutoEncoderV1(feedback_ch=self.feedback_ch, batch_norm=True)
 
-        # Store input tensor to autoencoder for future use when tracing model is required
-        self.autoencoder_input_tensor: Optional[torch.Tensor] = None
-
         self.scale = params.train.scale
 
         self.dm_scale_on_no_motion = nn.Parameter(
