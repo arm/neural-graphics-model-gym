@@ -2,7 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import pathlib
-from typing import List, Optional, Union
+from typing import Annotated, List, Literal, Optional, Union
 
 from pydantic import (
     BaseModel,
@@ -45,7 +45,7 @@ class PydanticConfigModel(BaseModel):
         """
         return {k: None if v == "" else v for k, v in values.items()}
 
-    @field_validator("*", mode="before")
+    @field_validator("*", mode="after")
     @classmethod
     def _reject_placeholder_values(cls, field, info):
         """Forbid "<>" placeholders in the config"""
@@ -137,9 +137,17 @@ class Checkpoints(PydanticConfigModel):
     dir: pathlib.Path = Field(description="Save directory for checkpoints")
 
 
-class CosineAnnealingSchedulerConfig(PydanticConfigModel):
-    """Cosine annealing config"""
+class BaseSchedulerConfig(PydanticConfigModel):
+    """Base scheduler config with discriminator to signify the type of scheduler"""
 
+    # Act as a discriminator for SchedulerConfig union members
+    type: str
+
+
+class CosineAnnealingConfig(BaseSchedulerConfig):
+    """Configuration for the cosine annealing learning rate scheduler"""
+
+    type: Literal[LearningRateScheduler.COSINE_ANNEALING]
     warmup_percentage: float = Field(
         ge=0.0,
         lt=1.0,
@@ -150,17 +158,50 @@ class CosineAnnealingSchedulerConfig(PydanticConfigModel):
     )
 
 
-class TrainingConfig(PydanticConfigModel):
-    """Configuration for FP32 or QAT"""
+class ExponentialSchedulerConfig(BaseSchedulerConfig):
+    """Configuration for the exponential learning rate scheduler"""
 
-    number_of_epochs: int = Field(ge=1, description="Number of epochs")
-    checkpoints: Checkpoints
+    type: Literal[LearningRateScheduler.EXPONENTIAL]
+    decay_rate: float = Field(ge=0.0, le=1.0, description="Learning rate decay rate")
+    decay_step: int = Field(ge=1, description="Steps between learning rate decay")
+
+
+class StaticSchedulerConfig(BaseSchedulerConfig):
+    """Configuration for a static learning rate (no scheduler)"""
+
+    type: Literal[LearningRateScheduler.STATIC]
+
+
+SchedulerConfig = Annotated[
+    Union[CosineAnnealingConfig, ExponentialSchedulerConfig, StaticSchedulerConfig],
+    Field(
+        discriminator="type",
+        description=f"The Learning Rate Scheduler used during training. Can be one of: {', '.join([e.value for e in LearningRateScheduler])}",
+    ),
+]
+
+
+class Optimizer(PydanticConfigModel):
+    """Optimizer configuration"""
+
+    optimizer_type: Optional[str] = Field(
+        default=OptimizerType.LARS_ADAM.value,
+        description="Optimizer type to use during training. If not set, defaults to lars_adam.",
+    )
     learning_rate: float = Field(
         gt=0.0,
         le=1.0,
         description="The learning rate. Scheduler may override this value",
     )
-    cosine_annealing_scheduler_config: CosineAnnealingSchedulerConfig
+
+
+class TrainingConfig(PydanticConfigModel):
+    """Configuration for FP32 or QAT"""
+
+    number_of_epochs: int = Field(ge=1, description="Number of epochs")
+    checkpoints: Checkpoints
+    lr_scheduler: SchedulerConfig
+    optimizer: Optimizer
 
 
 class Train(PydanticConfigModel):
@@ -199,25 +240,6 @@ class Train(PydanticConfigModel):
     )
 
 
-class ExponentialSchedulerConfig(PydanticConfigModel):
-    """Exponential scheduler config"""
-
-    decay: float = Field(ge=0.0, le=1.0, description="Learning rate decay factor")
-    decay_step: int = Field(ge=1, description="Steps between learning rate decay")
-
-
-class Optimizer(PydanticConfigModel):
-    """Optimizer configuration"""
-
-    learning_rate_scheduler: LearningRateScheduler = Field(
-        description="Learning rate scheduler to use when training"
-    )
-    optimizer_type: Optional[str] = Field(
-        default=OptimizerType.LARS_ADAM.value,
-        description="Optimizer type to use during training. If not set, defaults to lars_adam.",
-    )
-
-
 class ConfigModel(PydanticConfigModel):
     """Pydantic model representing configuration file"""
 
@@ -225,7 +247,6 @@ class ConfigModel(PydanticConfigModel):
     dataset: Dataset
     output: Output
     train: Train
-    optimizer: Optimizer
     processing: Processing
     model_train_eval_mode: Optional[TrainEvalMode] = Field(
         default=None, exclude=True

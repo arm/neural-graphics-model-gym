@@ -27,6 +27,7 @@ def format_schema(schema):
         "required",
         "additionalProperties",
         "model_train_eval_mode",
+        "mapping",
     ] + [key for key in ("description", "type") if schema.get("type") == "object"]
 
     for key, value in schema.items():

@@ -36,9 +36,6 @@ from ng_model_gym.usecases.nss.model.shaders.slang_utils import load_slang_modul
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_EXP_DECAY_RATE = 0.977
-DEFAULT_EXP_DECAY_STEP = 100
-
 
 class Trainer:
     """Instantiates the model, data loader and runs training"""
@@ -71,7 +68,7 @@ class Trainer:
         logger.info(f"Total number of parameters: {total_params:,}")
 
         self.optimizer = get_optimizer_type(
-            self.params, self.training_mode_params, self.model.parameters()
+            self.training_mode_params, self.model.parameters()
         )
         self.lr_schedule = get_lr_schedule(
             self.training_mode_params,
@@ -439,17 +436,14 @@ def get_lr_schedule(
         Requested LR schedule or None if static.
     """
 
-    if (
-        params.optimizer.learning_rate_scheduler
-        == LearningRateScheduler.COSINE_ANNEALING
-    ):
+    if training_mode.lr_scheduler.type == LearningRateScheduler.COSINE_ANNEALING:
         batch_size = params.train.batch_size
         dataset_length = train_data_size // batch_size
         steps_per_epoch = max(1, dataset_length)
         total_epochs = training_mode.number_of_epochs
 
-        warmup_pct = training_mode.cosine_annealing_scheduler_config.warmup_percentage
-        min_lr = training_mode.cosine_annealing_scheduler_config.min_lr
+        warmup_pct = training_mode.lr_scheduler.warmup_percentage
+        min_lr = training_mode.lr_scheduler.min_lr
 
         logger.info(
             f"Using CosineAnnealing scheduler: "
@@ -465,9 +459,9 @@ def get_lr_schedule(
             min_lr=min_lr,
         )
 
-    elif params.optimizer.learning_rate_scheduler == LearningRateScheduler.EXPONENTIAL:
-        decay_rate = DEFAULT_EXP_DECAY_RATE
-        decay_step = DEFAULT_EXP_DECAY_STEP
+    elif training_mode.lr_scheduler.type == LearningRateScheduler.EXPONENTIAL:
+        decay_rate = training_mode.lr_scheduler.decay_rate
+        decay_step = training_mode.lr_scheduler.decay_step
         step_size = max(
             1,
             int((training_mode.number_of_epochs * train_data_size) / decay_step),
@@ -478,13 +472,11 @@ def get_lr_schedule(
         lr_schedule = torch.optim.lr_scheduler.StepLR(
             optimizer=optimizer, step_size=step_size, gamma=decay_rate
         )
-    elif params.optimizer.learning_rate_scheduler == LearningRateScheduler.STATIC:
+    elif training_mode.lr_scheduler.type == LearningRateScheduler.STATIC:
         # Don't need a schedule for static learning rate.
         lr_schedule = None
     else:
-        raise ValueError(
-            f"{params.optimizer.learning_rate_scheduler} is not recognised."
-        )
+        raise ValueError(f"{training_mode.lr_scheduler.type} is not recognised.")
 
     return lr_schedule
 
@@ -504,22 +496,23 @@ def get_loss_fn(params: ConfigModel, device: torch.device):
 
 
 def get_optimizer_type(
-    params: ConfigModel,
     training_mode_params: TrainingConfig,
     model_params: Iterator[Parameter],
 ):
     """
-    Return optimizer type configured in params.optimizer.optimizer_type.
+    Return optimizer type from the config.
     Expected values (string) are set in the OptimizerType enum.
     """
-    optimizer_type = params.optimizer.optimizer_type
+    optimizer_type = training_mode_params.optimizer.optimizer_type
 
     if optimizer_type == OptimizerType.LARS_ADAM:
-        return lars_adam_torch(training_mode_params.learning_rate)(
+        return lars_adam_torch(training_mode_params.optimizer.learning_rate)(
             model_params
         ).optimizer
     if optimizer_type == OptimizerType.ADAM_W:
-        return adam_w_torch(training_mode_params.learning_rate)(model_params).optimizer
+        return adam_w_torch(training_mode_params.optimizer.learning_rate)(
+            model_params
+        ).optimizer
 
     # Defensive (all enums should be handled above)
     raise ValueError(f"Unsupported optimizer type {optimizer_type}")

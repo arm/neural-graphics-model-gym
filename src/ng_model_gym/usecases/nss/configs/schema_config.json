@@ -222,23 +222,72 @@
                     "type": "string"
                 }
             },
-            "learning_rate": {
-                "description": "The learning rate. Scheduler may override this value",
-                "exclusiveMinimum": 0.0,
-                "maximum": 1.0,
-                "type": "number"
-            },
-            "cosine_annealing_scheduler_config": {
-                "warmup_percentage": {
-                    "description": "Proportion of training steps to linearly warm up the learning rate",
-                    "exclusiveMaximum": 1.0,
-                    "minimum": 0.0,
-                    "type": "number"
+            "lr_scheduler": {
+                "description": "The Learning Rate Scheduler used during training. Can be one of: cosine_annealing, exponential, static",
+                "discriminator": {
+                    "propertyName": "type"
                 },
-                "min_lr": {
-                    "description": "Minimum learning rate reached after cosine decay.",
+                "oneOf": [
+                    {
+                        "type": {
+                            "const": "cosine_annealing",
+                            "type": "string"
+                        },
+                        "warmup_percentage": {
+                            "description": "Proportion of training steps to linearly warm up the learning rate",
+                            "exclusiveMaximum": 1.0,
+                            "minimum": 0.0,
+                            "type": "number"
+                        },
+                        "min_lr": {
+                            "description": "Minimum learning rate reached after cosine decay.",
+                            "maximum": 1.0,
+                            "minimum": 0.0,
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "type": {
+                            "const": "exponential",
+                            "type": "string"
+                        },
+                        "decay_rate": {
+                            "description": "Learning rate decay rate",
+                            "maximum": 1.0,
+                            "minimum": 0.0,
+                            "type": "number"
+                        },
+                        "decay_step": {
+                            "description": "Steps between learning rate decay",
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "type": {
+                            "const": "static",
+                            "type": "string"
+                        }
+                    }
+                ]
+            },
+            "optimizer": {
+                "optimizer_type": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": "lars_adam",
+                    "description": "Optimizer type to use during training. If not set, defaults to lars_adam."
+                },
+                "learning_rate": {
+                    "description": "The learning rate. Scheduler may override this value",
+                    "exclusiveMinimum": 0.0,
                     "maximum": 1.0,
-                    "minimum": 0.0,
                     "type": "number"
                 }
             }
@@ -256,23 +305,72 @@
                     "type": "string"
                 }
             },
-            "learning_rate": {
-                "description": "The learning rate. Scheduler may override this value",
-                "exclusiveMinimum": 0.0,
-                "maximum": 1.0,
-                "type": "number"
-            },
-            "cosine_annealing_scheduler_config": {
-                "warmup_percentage": {
-                    "description": "Proportion of training steps to linearly warm up the learning rate",
-                    "exclusiveMaximum": 1.0,
-                    "minimum": 0.0,
-                    "type": "number"
+            "lr_scheduler": {
+                "description": "The Learning Rate Scheduler used during training. Can be one of: cosine_annealing, exponential, static",
+                "discriminator": {
+                    "propertyName": "type"
                 },
-                "min_lr": {
-                    "description": "Minimum learning rate reached after cosine decay.",
+                "oneOf": [
+                    {
+                        "type": {
+                            "const": "cosine_annealing",
+                            "type": "string"
+                        },
+                        "warmup_percentage": {
+                            "description": "Proportion of training steps to linearly warm up the learning rate",
+                            "exclusiveMaximum": 1.0,
+                            "minimum": 0.0,
+                            "type": "number"
+                        },
+                        "min_lr": {
+                            "description": "Minimum learning rate reached after cosine decay.",
+                            "maximum": 1.0,
+                            "minimum": 0.0,
+                            "type": "number"
+                        }
+                    },
+                    {
+                        "type": {
+                            "const": "exponential",
+                            "type": "string"
+                        },
+                        "decay_rate": {
+                            "description": "Learning rate decay rate",
+                            "maximum": 1.0,
+                            "minimum": 0.0,
+                            "type": "number"
+                        },
+                        "decay_step": {
+                            "description": "Steps between learning rate decay",
+                            "minimum": 1,
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "type": {
+                            "const": "static",
+                            "type": "string"
+                        }
+                    }
+                ]
+            },
+            "optimizer": {
+                "optimizer_type": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": "lars_adam",
+                    "description": "Optimizer type to use during training. If not set, defaults to lars_adam."
+                },
+                "learning_rate": {
+                    "description": "The learning rate. Scheduler may override this value",
+                    "exclusiveMinimum": 0.0,
                     "maximum": 1.0,
-                    "minimum": 0.0,
                     "type": "number"
                 }
             }
@@ -288,29 +386,6 @@
             ],
             "default": "loss_v1",
             "description": "Loss function to use. If not set, defaults to 'loss_v1'"
-        }
-    },
-    "optimizer": {
-        "learning_rate_scheduler": {
-            "description": "Learning rate scheduler to use when training",
-            "enum": [
-                "cosine_annealing",
-                "exponential",
-                "static"
-            ],
-            "type": "string"
-        },
-        "optimizer_type": {
-            "anyOf": [
-                {
-                    "type": "string"
-                },
-                {
-                    "type": "null"
-                }
-            ],
-            "default": "lars_adam",
-            "description": "Optimizer type to use during training. If not set, defaults to lars_adam."
         }
     },
     "processing": {
