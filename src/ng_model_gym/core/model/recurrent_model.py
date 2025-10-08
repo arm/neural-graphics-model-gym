@@ -17,19 +17,19 @@ class FeedbackModel(BaseNGModelWrapper):
     def __init__(self, ng_model: BaseNGModel, recurrent_samples, device: torch.device):
         super().__init__()
 
-        self.nss_model = ng_model
+        self.ng_model = ng_model
         self.recurrent_samples = recurrent_samples
         self.unpad = True
         self.device = device
-        self.history_buffers = self.nss_model.init_history_buffers()
+        self.history_buffers = self.ng_model.init_history_buffers()
 
     def get_ng_model(self) -> BaseNGModel:
         """Return the wrapped ng_model"""
-        return self.nss_model
+        return self.ng_model
 
     def set_ng_model(self, ng_model: BaseNGModel) -> None:
         """Set ng_model to wrap"""
-        self.nss_model = ng_model
+        self.ng_model = ng_model
 
     def forward(self, x):
         """Run forward pass for the recurrent model.
@@ -42,7 +42,7 @@ class FeedbackModel(BaseNGModelWrapper):
         inputs = self.set_buffers(inputs)
 
         # Run first inference and initialize output `dict`
-        y_pred = self.nss_model(inputs)
+        y_pred = self.ng_model(inputs)
         outputs = {}
 
         # Update history buffers and unpad model predictions.
@@ -56,7 +56,7 @@ class FeedbackModel(BaseNGModelWrapper):
         for t in range(1, self.recurrent_samples):
             inputs = self._get_input_data_at_t(x, t=t)
             inputs = self.set_buffers(inputs)
-            y_pred = self.nss_model(inputs)
+            y_pred = self.ng_model(inputs)
             y_pred_unpadded = self.update_buffers(inputs, y_pred)
             for key, value in y_pred_unpadded.items():
                 outputs[key].append(value)
@@ -111,7 +111,7 @@ class FeedbackModel(BaseNGModelWrapper):
 
     def reset_history_buffers(self):
         """Reset history buffers"""
-        self.history_buffers = self.nss_model.init_history_buffers()
+        self.history_buffers = self.ng_model.init_history_buffers()
 
     def detach_buffers(self) -> None:
         """Detach history buffers"""

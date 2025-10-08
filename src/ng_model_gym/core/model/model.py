@@ -4,9 +4,9 @@
 from typing import Type
 
 import torch
-from torch import nn
 
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
+from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model_registry import get_model_key, MODEL_REGISTRY
 from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from ng_model_gym.core.utils.config_model import ConfigModel
@@ -25,7 +25,9 @@ def get_model_from_config(params: ConfigModel) -> Type[BaseNGModel]:
     return MODEL_REGISTRY.get(model_key)
 
 
-def create_model(params: ConfigModel, device: torch.device) -> nn.Module:
+def create_model(
+    params: ConfigModel, device: torch.device
+) -> BaseNGModelWrapper | BaseNGModel:
     """Create specified model."""
 
     model_cls = get_model_from_config(params)
