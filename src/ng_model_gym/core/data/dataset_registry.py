@@ -48,10 +48,12 @@ def register_dataset(name: str, version: Optional[str] = None):
     """
     Helper function to add a new dataset to the dataset registry,
     using a new unique identifier as the key, with optional version.
-    Example:
-        >>> @register_dataset(name="NSS", version="1")
-        >>> class NSS_Dataset(Dataset):
-        >>>     pass
+
+    Example::
+
+        @register_dataset(name="NSS", version="1")
+        class NSS_Dataset(Dataset):
+            pass
     """
     key = get_dataset_key(name, version)
 
