@@ -15,6 +15,7 @@ from tqdm.auto import tqdm
 from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.data.utils import DataLoaderMode
 from ng_model_gym.core.evaluator.metrics import get_metrics
+from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model import BaseNGModel
 from ng_model_gym.core.utils.general_utils import create_directory
 
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 class BaseModelEvaluator:
     """This class is used to evaluate a model end to end"""
 
-    def __init__(self, model: BaseNGModel, params):
+    def __init__(self, model: BaseNGModel | BaseNGModelWrapper, params):
         self.model = model
         self.params = params
         self.out_dir = self.params.output.dir

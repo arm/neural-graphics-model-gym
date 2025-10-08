@@ -24,6 +24,8 @@ from torch.utils._pytree import tree_map
 from torchao.quantization.pt2e.quantize_pt2e import convert_pt2e, prepare_pt2e
 
 from ng_model_gym.core.data.dataloader import DataLoaderMode, get_dataloader
+from ng_model_gym.core.model.base_ng_model import BaseNGModel
+from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model import get_model_key
 from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
@@ -372,7 +374,7 @@ def executorch_vgf_export(
         loader_mode = DataLoaderMode.TEST
 
     # Resolve weights and load the model.
-    feedback_model = load_checkpoint(model_path, params, torch.device("cpu"))
+    model = load_checkpoint(model_path, params, torch.device("cpu"))
 
     dataloader = get_dataloader(
         params,
@@ -384,14 +386,20 @@ def executorch_vgf_export(
 
     # Get sample data to trace graph.
     preprocess_trace_input = next(iter(dataloader))[0]
-    model_forward_input = model_tracer(feedback_model, preprocess_trace_input)
+    model_forward_input = model_tracer(model, preprocess_trace_input)
 
     # Move model forward inputs to CPU
     to_cpu = lambda x: x.to("cpu") if isinstance(x, torch.Tensor) else x
     # tree_map is an internal torch util to traverse containers with tensors
     model_forward_input = tree_map(to_cpu, model_forward_input)
 
-    neural_network = feedback_model.get_neural_network()
+    if isinstance(model, BaseNGModelWrapper):
+        model = model.get_ng_model()
+
+    elif not isinstance(model, BaseNGModel):
+        raise ValueError(f"model type: {type(model)} , is not valid")
+
+    neural_network = model.get_neural_network()
 
     model_key = get_model_key(params.model.name, params.model.version)
 
@@ -400,9 +408,7 @@ def executorch_vgf_export(
         / f"{model_key}-{export_type}-metadata.json"
     )
 
-    _update_metadata_file(
-        metadata_path, feedback_model.nss_model.get_additional_constants()
-    )
+    _update_metadata_file(metadata_path, model.get_additional_constants())
 
     _export_module_to_vgf(
         params, neural_network, model_forward_input, export_type, metadata_path

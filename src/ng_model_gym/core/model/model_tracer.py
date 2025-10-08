@@ -8,10 +8,13 @@ from torch import nn
 from torch.utils._pytree import tree_map
 
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
+from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.utils.tensor_types import TensorData
 
 
-def model_tracer(ng_model: BaseNGModel, input_data: TensorData) -> Tuple[Any, ...]:
+def model_tracer(
+    ng_model: BaseNGModel | BaseNGModelWrapper, input_data: TensorData
+) -> Tuple[Any, ...]:
     """Trace PyTorch module to capture forward pass tensors"""
 
     # Move input data to GPU
@@ -19,14 +22,23 @@ def model_tracer(ng_model: BaseNGModel, input_data: TensorData) -> Tuple[Any, ..
     # tree_map is an internal torch util to traverse containers with tensors
     input_data = tree_map(to_gpu, input_data)
 
-    target_module_to_trace = ng_model.get_neural_network()
+    if isinstance(ng_model, BaseNGModelWrapper):
+        target_module_to_trace = ng_model.get_ng_model().get_neural_network()
+
+    elif isinstance(ng_model, BaseNGModel):
+        target_module_to_trace = ng_model.get_neural_network()
+
+    else:
+        raise ValueError("ng_model is not a valid type")
 
     captured = None
 
     class _StopForward(Exception):
         """Custom exception"""
 
-    def capture_forward_input_callback(module: nn.Module, forward_input: Tuple[any]):
+    def capture_forward_input_callback(
+        module: nn.Module, forward_input: Tuple[any, ...]
+    ):
         """Get forward pass inputs of a module"""
 
         if module is target_module_to_trace:
