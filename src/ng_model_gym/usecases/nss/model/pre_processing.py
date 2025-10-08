@@ -7,7 +7,7 @@ from typing import List
 import numpy as np
 import torch
 
-from ng_model_gym.usecases.nss.model.shaders.slang_utils import load_slang_module
+from ng_model_gym.core.model.shaders.slang_utils import load_slang_module
 
 
 # pylint: disable=abstract-method
@@ -30,8 +30,11 @@ class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
         exposure: torch.Tensor,
         render_size: torch.Tensor,
         dm_scale: torch.Tensor,
+        shader_dir: str,
+        shader_file: str,
     ):
         """Forward pass."""
+
         output_tensor, out_luma_derivative, out_depth_t = pre_process_v1_fwd(
             colour=colour,
             history=history,
@@ -46,6 +49,8 @@ class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
             exposure=exposure,
             render_size=render_size,
             dm_scale=dm_scale,
+            shader_dir=shader_dir,
+            shader_file=shader_file,
         )
 
         ctx.save_for_backward(
@@ -67,6 +72,9 @@ class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
             out_depth_t,
         )
 
+        ctx.shader_dir = shader_dir
+        ctx.shader_file = shader_file
+
         return output_tensor, out_luma_derivative, out_depth_t
 
     # pylint: disable=unused-argument
@@ -78,6 +86,7 @@ class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
         grad_out_depth_t: torch.Tensor,
     ):
         """Backward pass."""
+
         (
             colour,
             history,
@@ -97,6 +106,9 @@ class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
             out_depth_t,
         ) = ctx.saved_tensors
 
+        shader_dir = ctx.shader_dir
+        shader_file = ctx.shader_file
+
         grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v1_bwd(
             colour=colour,
             history=history,
@@ -114,6 +126,8 @@ class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
             output_tensor=[output_tensor, grad_output_tensor],
             out_luma_derivative=out_luma_derivative,
             out_depth_t=out_depth_t,
+            shader_dir=shader_dir,
+            shader_file=shader_file,
         )
 
         return (
@@ -130,6 +144,8 @@ class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
             None,
             None,
             grad_dm_scale,
+            None,
+            None,
         )
 
     # pylint: enable=unused-argument
@@ -150,9 +166,12 @@ def pre_process_v1_fwd(
     exposure: torch.Tensor,
     render_size: torch.Tensor,
     dm_scale: torch.Tensor,
+    shader_dir: str,
+    shader_file: str,
 ) -> List[torch.Tensor]:
     """Forward pass."""
-    m = load_slang_module()
+
+    m = load_slang_module(shader_dir, shader_file)
 
     # Define output(s)
     b, _, h, w = colour.shape
@@ -162,7 +181,7 @@ def pre_process_v1_fwd(
 
     # Define dispatch dimensions
     block_sz = 512
-    dispath_size = [
+    dispatch_size = [
         output_tensor.shape[0],
         output_tensor.shape[2],
         output_tensor.shape[3],
@@ -185,9 +204,10 @@ def pre_process_v1_fwd(
         out_luma_derivative=out_luma_derivative,
         out_depth_t=out_depth_t,
     )
+
     kernel_with_args.launchRaw(
         blockSize=(block_sz, 1, 1),
-        gridSize=(int((np.prod(dispath_size) + block_sz - 1) // block_sz), 1, 1),
+        gridSize=(int((np.prod(dispatch_size) + block_sz - 1) // block_sz), 1, 1),
     )
 
     return output_tensor, out_luma_derivative, out_depth_t
@@ -209,8 +229,11 @@ def pre_process_v1_fwd_abstract(
     exposure: torch.Tensor,
     render_size: torch.Tensor,
     dm_scale: torch.Tensor,
+    shader_dir: str,
+    shader_file: str,
 ) -> List[torch.Tensor]:
     """Abstract forward pass."""
+
     # Define output(s)
     b, _, h, w = colour.shape
     output_tensor = torch.zeros((b, 12, h, w), device=colour.device)
@@ -245,9 +268,12 @@ def pre_process_v1_bwd(
     output_tensor: List[torch.Tensor],
     out_luma_derivative: torch.Tensor,
     out_depth_t: torch.Tensor,
+    shader_dir: str,
+    shader_file: str,
 ) -> List[torch.Tensor]:
     """Backward pass."""
-    m = load_slang_module()
+
+    m = load_slang_module(shader_dir, shader_file)
 
     # Gradients
     grad_history = torch.zeros_like(history)
@@ -256,7 +282,7 @@ def pre_process_v1_bwd(
 
     # Define dispatch dimensions
     block_sz = 512
-    dispath_size = [
+    dispatch_size = [
         output_tensor[0].shape[0],
         output_tensor[0].shape[2],
         output_tensor[0].shape[3],
@@ -280,9 +306,10 @@ def pre_process_v1_bwd(
         out_luma_derivative=out_luma_derivative,
         out_depth_t=out_depth_t,
     )
+
     kernel_with_args.launchRaw(
         blockSize=(block_sz, 1, 1),
-        gridSize=(int((np.prod(dispath_size) + block_sz - 1) // block_sz), 1, 1),
+        gridSize=(int((np.prod(dispatch_size) + block_sz - 1) // block_sz), 1, 1),
     )
 
     return grad_history, grad_feedback_tm1, grad_dm_scale
@@ -307,8 +334,11 @@ def pre_process_v1_bwd_abstract(
     output_tensor: List[torch.Tensor],
     out_luma_derivative: torch.Tensor,
     out_depth_t: torch.Tensor,
+    shader_dir: str,
+    shader_file: str,
 ) -> List[torch.Tensor]:
     """Abstract backward pass."""
+
     # Gradients
     grad_history = torch.zeros_like(history)
     grad_feedback_tm1 = torch.zeros_like(feedback_tm1)
@@ -345,8 +375,11 @@ class PreProcessV1_ShaderAccurate(
         exposure: torch.Tensor,
         render_size: torch.Tensor,
         dm_scale: torch.Tensor,
+        shader_dir: str,
+        shader_file: str,
     ):
         """Shader accurate forward pass"""
+
         output_tensor, out_luma_derivative, out_depth_t = pre_process_v1_sa_fwd(
             colour=colour,
             history=history,
@@ -362,6 +395,8 @@ class PreProcessV1_ShaderAccurate(
             exposure=exposure,
             render_size=render_size,
             dm_scale=dm_scale,
+            shader_dir=shader_dir,
+            shader_file=shader_file,
         )
 
         ctx.save_for_backward(
@@ -384,6 +419,9 @@ class PreProcessV1_ShaderAccurate(
             out_depth_t,
         )
 
+        ctx.shader_dir = shader_dir
+        ctx.shader_file = shader_file
+
         return output_tensor, out_luma_derivative, out_depth_t
 
     # pylint: disable=unused-argument
@@ -395,6 +433,7 @@ class PreProcessV1_ShaderAccurate(
         grad_out_depth_t: torch.Tensor,
     ):
         """Shader accurate backward pass"""
+
         (
             colour,
             history,
@@ -415,6 +454,9 @@ class PreProcessV1_ShaderAccurate(
             out_depth_t,
         ) = ctx.saved_tensors
 
+        shader_dir = ctx.shader_dir
+        shader_file = ctx.shader_file
+
         grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v1_sa_bwd(
             colour=colour,
             history=history,
@@ -433,6 +475,8 @@ class PreProcessV1_ShaderAccurate(
             output_tensor=[output_tensor, grad_output_tensor],
             out_luma_derivative=out_luma_derivative,
             out_depth_t=out_depth_t,
+            shader_dir=shader_dir,
+            shader_file=shader_file,
         )
 
         return (
@@ -450,6 +494,8 @@ class PreProcessV1_ShaderAccurate(
             None,
             None,
             grad_dm_scale,
+            None,
+            None,
         )
 
     # pylint: enable=unused-argument
@@ -471,9 +517,12 @@ def pre_process_v1_sa_fwd(
     exposure: torch.Tensor,
     render_size: torch.Tensor,
     dm_scale: torch.Tensor,
+    shader_dir: str,
+    shader_file: str,
 ) -> List[torch.Tensor]:
     """Shader accurate forward pass"""
-    m = load_slang_module()
+
+    m = load_slang_module(shader_dir, shader_file)
 
     # Define output(s)
     b, _, h, w = colour.shape
@@ -483,7 +532,7 @@ def pre_process_v1_sa_fwd(
 
     # Define dispatch dimensions
     block_sz = 512
-    dispath_size = [
+    dispatch_size = [
         output_tensor.shape[0],
         output_tensor.shape[2],
         output_tensor.shape[3],
@@ -507,9 +556,10 @@ def pre_process_v1_sa_fwd(
         out_luma_derivative=out_luma_derivative,
         out_depth_t=out_depth_t,
     )
+
     kernel_with_args.launchRaw(
         blockSize=(block_sz, 1, 1),
-        gridSize=(int((np.prod(dispath_size) + block_sz - 1) // block_sz), 1, 1),
+        gridSize=(int((np.prod(dispatch_size) + block_sz - 1) // block_sz), 1, 1),
     )
 
     return output_tensor, out_luma_derivative, out_depth_t
@@ -532,8 +582,11 @@ def pre_process_v1_fwd_sa_abstract(
     exposure: torch.Tensor,
     render_size: torch.Tensor,
     dm_scale: torch.Tensor,
+    shader_dir: str,
+    shader_file: str,
 ) -> List[torch.Tensor]:
     """Shader accurate abstract forward pass"""
+
     # Define output(s)
     b, _, h, w = colour.shape
     output_tensor = torch.zeros((b, 12, h, w), device=colour.device)
@@ -569,9 +622,12 @@ def pre_process_v1_sa_bwd(
     output_tensor: List[torch.Tensor],
     out_luma_derivative: torch.Tensor,
     out_depth_t: torch.Tensor,
+    shader_dir: str,
+    shader_file: str,
 ) -> List[torch.Tensor]:
     """Shader accurate backward pass"""
-    m = load_slang_module()
+
+    m = load_slang_module(shader_dir, shader_file)
 
     # Gradients
     grad_history = torch.zeros_like(history)
@@ -580,7 +636,7 @@ def pre_process_v1_sa_bwd(
 
     # Define dispatch dimensions
     block_sz = 512
-    dispath_size = [
+    dispatch_size = [
         output_tensor[0].shape[0],
         output_tensor[0].shape[2],
         output_tensor[0].shape[3],
@@ -605,9 +661,10 @@ def pre_process_v1_sa_bwd(
         out_luma_derivative=out_luma_derivative,
         out_depth_t=out_depth_t,
     )
+
     kernel_with_args.launchRaw(
         blockSize=(block_sz, 1, 1),
-        gridSize=(int((np.prod(dispath_size) + block_sz - 1) // block_sz), 1, 1),
+        gridSize=(int((np.prod(dispatch_size) + block_sz - 1) // block_sz), 1, 1),
     )
 
     return grad_history, grad_feedback_tm1, grad_dm_scale
@@ -633,8 +690,11 @@ def pre_process_v1_sa_bwd_abstract(
     output_tensor: List[torch.Tensor],
     out_luma_derivative: torch.Tensor,
     out_depth_t: torch.Tensor,
+    shader_dir: str,
+    shader_file: str,
 ) -> List[torch.Tensor]:
     """Abstract shader accurate backward pass"""
+
     # Gradients
     grad_history = torch.zeros_like(history)
     grad_feedback_tm1 = torch.zeros_like(feedback_tm1)

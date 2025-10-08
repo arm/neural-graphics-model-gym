@@ -8,9 +8,9 @@ from torch import nn
 
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.model_registry import get_model_key, MODEL_REGISTRY
+from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.types import TrainEvalMode
-from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
 
 
 def get_model_from_config(params: ConfigModel) -> Type[BaseNGModel]:

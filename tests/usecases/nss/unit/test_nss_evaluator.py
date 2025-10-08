@@ -9,7 +9,7 @@ from unittest.mock import Mock
 
 import torch
 
-from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
+from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from ng_model_gym.usecases.nss.nss_evaluator import ModelEvaluator
 from tests.testing_utils import create_simple_params
 

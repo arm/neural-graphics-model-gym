@@ -2,7 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 from ng_model_gym.core.evaluator.evaluator import BaseModelEvaluator
-from ng_model_gym.usecases.nss.model.recurrent_model import FeedbackModel
+from ng_model_gym.core.model.recurrent_model import FeedbackModel
 
 
 class ModelEvaluator(BaseModelEvaluator):

@@ -14,7 +14,7 @@ from ng_model_gym.core.data.dataset_registry import register_dataset
 from ng_model_gym.core.data.utils import DataLoaderMode, DatasetType
 from ng_model_gym.core.model.graphics_utils import fixed_normalize_mvs
 from ng_model_gym.core.utils.config_model import ConfigModel
-from ng_model_gym.usecases.nss.dataloader.process_functions import process_nss_data
+from ng_model_gym.usecases.nss.data.process_functions import process_nss_data
 
 logger = logging.getLogger(__name__)
 

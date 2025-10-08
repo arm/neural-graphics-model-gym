@@ -51,6 +51,9 @@ class TestPreProcess(unittest.TestCase):
         )  # Expects fp32 render_size
         dm_scale = torch.tensor([0.5])
 
+        self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
+        self.slang_shader_file = "nss_v1.slang"
+
         self.inputs = {
             "colour_linear": colour_linear,
             "history": history,
@@ -67,6 +70,8 @@ class TestPreProcess(unittest.TestCase):
             "exposure": exposure,
             "render_size": render_size,
             "dm_scale": dm_scale,
+            "shader_dir": self.slang_shader_dir,
+            "shader_file": self.slang_shader_file,
         }
 
         # Used in backprop
@@ -95,6 +100,8 @@ class TestPreProcess(unittest.TestCase):
             self.inputs["exposure"],
             self.inputs["render_size"],
             self.inputs["dm_scale"],
+            self.inputs["shader_dir"],
+            self.inputs["shader_file"],
         )
 
         self.assertIsNotNone(input_tensor)
@@ -118,6 +125,8 @@ class TestPreProcess(unittest.TestCase):
             self.inputs["exposure"],
             self.inputs["render_size"],
             self.inputs["dm_scale"],
+            self.inputs["shader_dir"],
+            self.inputs["shader_file"],
         )
 
         self.assertIsNotNone(input_tensor)
@@ -126,6 +135,13 @@ class TestPreProcess(unittest.TestCase):
 
     def test_bwd_pass_returns_values(self):
         """Test backward pass can run and return some values."""
+        output_tensor = [
+            self.out_tensor,
+            self.out_tensor,
+        ]  # Putting same value for output and its derivative
+        out_luma_derivative = self.out_luma
+        out_depth_t = torch.rand_like(self.inputs["depth"])
+
         grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v1_bwd(
             self.inputs["colour_linear"],
             self.inputs["history"],
@@ -140,12 +156,11 @@ class TestPreProcess(unittest.TestCase):
             self.inputs["exposure"],
             self.inputs["render_size"],
             self.inputs["dm_scale"],
-            output_tensor=[
-                self.out_tensor,
-                self.out_tensor,
-            ],  # Putting same value for output and its derivative
-            out_luma_derivative=self.out_luma,
-            out_depth_t=torch.rand_like(self.inputs["depth"]),
+            output_tensor,
+            out_luma_derivative,
+            out_depth_t,
+            self.inputs["shader_dir"],
+            self.inputs["shader_file"],
         )
 
         self.assertIsNotNone(grad_history)
@@ -154,6 +169,14 @@ class TestPreProcess(unittest.TestCase):
 
     def test_shader_acc_bwd_pass_returns_values(self):
         """Test shader accurate backward pass can run and return some values."""
+
+        output_tensor = [
+            self.out_tensor,
+            self.out_tensor,
+        ]  # Putting same value for output and its derivative
+        out_luma_derivative = self.out_luma
+        out_depth_t = torch.rand_like(self.inputs["depth"])
+
         grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v1_sa_bwd(
             self.inputs["colour_linear"],
             self.inputs["history"],
@@ -169,12 +192,11 @@ class TestPreProcess(unittest.TestCase):
             self.inputs["exposure"],
             self.inputs["render_size"],
             self.inputs["dm_scale"],
-            output_tensor=[
-                self.out_tensor,
-                self.out_tensor,
-            ],  # Putting same value for output and its derivative
-            out_luma_derivative=self.out_luma,
-            out_depth_t=torch.rand_like(self.inputs["depth"]),
+            output_tensor,
+            out_luma_derivative,
+            out_depth_t,
+            self.inputs["shader_dir"],
+            self.inputs["shader_file"],
         )
 
         self.assertIsNotNone(grad_history)
@@ -184,6 +206,10 @@ class TestPreProcess(unittest.TestCase):
 
 class TestPreprocessGolden(unittest.TestCase):
     """Test preprocess implementation against known inputs and outputs"""
+
+    def setUp(self):
+        self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
+        self.slang_shader_file = "nss_v1.slang"
 
     def test_preprocess(self):
         """Test preprocess implementation"""
@@ -215,6 +241,8 @@ class TestPreprocessGolden(unittest.TestCase):
             preprocess_input["exposure"],
             preprocess_input["render_size"],
             preprocess_input["dm_scale"],
+            self.slang_shader_dir,
+            self.slang_shader_file,
         )
 
         expected_input_tensor = preprocess_output["input_tensor"]
@@ -236,6 +264,10 @@ class TestPreprocessGolden(unittest.TestCase):
 
 class TestShaderAccPreprocessGolden(unittest.TestCase):
     """Test shader accurate preprocess implementation against known inputs and outputs"""
+
+    def setUp(self):
+        self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
+        self.slang_shader_file = "nss_v1.slang"
 
     def test_shader_acc_preprocess(self):
         """Test shader accurate preprocess implementation"""
@@ -270,6 +302,8 @@ class TestShaderAccPreprocessGolden(unittest.TestCase):
             preprocess_input["exposure"],
             preprocess_input["render_size"],
             preprocess_input["dm_scale"],
+            self.slang_shader_dir,
+            self.slang_shader_file,
         )
 
         expected_input_tensor = preprocess_output["input_tensor"]

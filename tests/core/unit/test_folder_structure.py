@@ -4,13 +4,11 @@
 import ast
 import unittest
 from pathlib import Path
-from unittest import expectedFailure
 
 
 class TestFolderStructure(unittest.TestCase):
     """Unit tests for folder structure"""
 
-    @expectedFailure
     def test_core_does_not_import_usecases(self):
         """Test modules in core do not import from usecase"""
         violations = []

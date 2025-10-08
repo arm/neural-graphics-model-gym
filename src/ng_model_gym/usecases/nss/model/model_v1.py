@@ -9,6 +9,7 @@ import torch
 from torch import nn
 
 from ng_model_gym.core.data.utils import tonemap_forward
+from ng_model_gym.core.history_buffer import HistoryBuffer
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.graphics_utils import (
     compute_jitter_tile_offset,
@@ -17,7 +18,6 @@ from ng_model_gym.core.model.graphics_utils import (
 from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.types import HistoryBufferResetFunction
-from ng_model_gym.usecases.nss.history_buffer import HistoryBuffer
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
 from ng_model_gym.usecases.nss.model.post_processing import (
     PostProcessV1,
@@ -61,6 +61,9 @@ class NSSModel(BaseNGModel):
         self.dm_scale_on_no_motion = nn.Parameter(
             torch.tensor([0.5]), requires_grad=True
         )
+
+        self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
+        self.slang_shader_file = "nss_v1.slang"
 
     def get_neural_network(self) -> nn.Module:
         return self.autoencoder
@@ -116,6 +119,8 @@ class NSSModel(BaseNGModel):
                 preprocess_input["exposure"],
                 preprocess_input["render_size"],
                 preprocess_input["dm_scale"],
+                self.slang_shader_dir,
+                self.slang_shader_file,
             )
 
         else:
@@ -133,6 +138,8 @@ class NSSModel(BaseNGModel):
                 preprocess_input["exposure"],
                 preprocess_input["render_size"],
                 preprocess_input["dm_scale"],
+                self.slang_shader_dir,
+                self.slang_shader_file,
             )
 
         return input_tensor, derivative, depth_dilated
@@ -183,6 +190,8 @@ class NSSModel(BaseNGModel):
                 offset_lut,
                 scale_tensor,
                 idx_modulo,
+                self.slang_shader_dir,
+                self.slang_shader_file,
             )
 
         else:
@@ -199,6 +208,8 @@ class NSSModel(BaseNGModel):
                 offset_lut,
                 scale_tensor,
                 idx_modulo,
+                self.slang_shader_dir,
+                self.slang_shader_file,
             )
 
         # TM for loss function / visualisation
