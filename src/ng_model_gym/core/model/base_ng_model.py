@@ -44,10 +44,11 @@ class BaseNGModel(nn.Module, ABC):
     Subclasses should:
         * Implement getter/setter methods for the core neural network
         * Write the model `forward()` pass. It must return a dictionary with a key named 'output'
-        * [Optional] For recurrent models, override `init_history_buffers`
 
     Optionally:
         * Implement `define_dynamic_export_model_input` if wanting to export a dynamic model
+        * For recurrent models, override `init_history_buffers`
+        * To include extra metadata during export, override `get_additional_constants`
 
     Example::
 
@@ -276,4 +277,8 @@ class BaseNGModel(nn.Module, ABC):
 
     def init_history_buffers(self):
         """Override this method if the model is recurrent"""
+        return {}
+
+    def get_additional_constants(self):
+        """Override this method to include extra metadata during model export"""
         return {}
