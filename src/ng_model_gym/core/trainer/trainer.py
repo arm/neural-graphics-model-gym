@@ -272,9 +272,7 @@ class Trainer:
 
                 inference_out = self.model(inputs_dataset)
 
-                loss, _ = self.criterion(
-                    ground_truth_data, inference_out | inputs_dataset
-                )
+                loss = self.criterion(ground_truth_data, inference_out | inputs_dataset)
 
                 loss.backward()
                 self.optimizer.step()
@@ -355,7 +353,7 @@ class Trainer:
 
             inference_out = self.model(inputs_dataset)
 
-            loss, _ = self.criterion(ground_truth_data, inference_out | inputs_dataset)
+            loss = self.criterion(ground_truth_data, inference_out | inputs_dataset)
 
             # Accumulate the loss
             running_val_loss += loss.item()

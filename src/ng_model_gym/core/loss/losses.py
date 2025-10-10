@@ -4,7 +4,7 @@
 
 import logging
 import math
-from typing import Any, Dict, List, Union
+from typing import Dict, List, Union
 
 import lpips
 import torch
@@ -31,7 +31,7 @@ class LossV1(torch.nn.Module):
 
     def forward(
         self, y_true: torch.Tensor, y_pred_and_inps: TensorData
-    ) -> tuple[torch.Tensor, dict[str, torch.Tensor | Any]]:
+    ) -> torch.Tensor:
         """Forward pass."""
         y_pred = y_pred_and_inps["output"]
         y_pred_filt = y_pred_and_inps["out_filtered"]
@@ -119,12 +119,4 @@ class LossV1(torch.nn.Module):
         f_weight = 0.1
         loss = lerp_tensor(loss_spatial_temporal, loss_spatial_filtered, f_weight)
 
-        metrics = {
-            "loss_temporal": loss_temporal.mean(),
-            "loss_spatial": loss_spatial.mean(),
-            "loss_spatial_l1": loss_spatial_l1.mean(),
-            "loss_spatial_lpips": loss_spatial_lpips.mean(),
-            "loss_spatial_filtered": loss_spatial_filtered,
-        }
-
-        return loss, metrics
+        return loss
