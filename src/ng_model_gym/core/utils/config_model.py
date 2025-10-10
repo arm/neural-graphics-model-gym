@@ -92,7 +92,9 @@ class Dataset(PydanticConfigModel):
     path: Path
     exposure: float = Field(ge=0.0, description="Training dataset exposure value")
     tonemapper: ToneMapperMode = Field(description="Tonemapping method for dataset")
-    health_check: bool = Field(description="Run health check on given dataset")
+    health_check: bool = Field(
+        description="Run health check on given dataset. health_check() must be implemented in the Dataset."
+    )
     recurrent_samples: Optional[int] = Field(
         gt=1, description="Number of recurrent samples"
     )

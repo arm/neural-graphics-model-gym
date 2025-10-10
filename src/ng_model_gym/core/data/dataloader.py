@@ -10,7 +10,6 @@ import torch
 from torch.utils.data import Dataset
 
 from ng_model_gym.core.data.dataset_registry import DATASET_REGISTRY, get_dataset_key
-from ng_model_gym.core.data.health_check import health_check_dataset
 from ng_model_gym.core.data.utils import DataLoaderMode, DatasetType
 from ng_model_gym.core.utils.config_model import ConfigModel
 
@@ -118,6 +117,12 @@ def get_dataloader(
     )
 
     if config_params.dataset.health_check:
-        health_check_dataset(dataloader, loader_mode)
+        if hasattr(dataset, "health_check"):
+            dataset.health_check(dataloader)
+        else:
+            logger.warning(
+                f"Dataset health check is enabled but the health_check() method is not "
+                f"implemented for {type(dataset).__name__}. Skipping health check."
+            )
 
     return dataloader

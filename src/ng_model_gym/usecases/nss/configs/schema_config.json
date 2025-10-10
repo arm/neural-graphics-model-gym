@@ -88,7 +88,7 @@
             "type": "string"
         },
         "health_check": {
-            "description": "Run health check on given dataset",
+            "description": "Run health check on given dataset. health_check() must be implemented in the Dataset.",
             "type": "boolean"
         },
         "recurrent_samples": {
