@@ -74,7 +74,7 @@ class TestTrainerMethods(unittest.TestCase):
         mock_loss = Mock()
         mock_loss.backward = Mock()
         mock_loss.item = Mock(return_value=0.1)
-        self.mock_trainer.criterion = Mock(return_value=(mock_loss, None))
+        self.mock_trainer.criterion = Mock(return_value=mock_loss)
 
         # --- Other ---
         self.mock_trainer.lr_schedule = None

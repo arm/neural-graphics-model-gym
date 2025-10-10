@@ -27,7 +27,7 @@ class TestLossV1(unittest.TestCase):
         self.assertEqual(recurrent_samples, 4)
         criterion = LossV1(recurrent_samples, device)
 
-        loss, _ = criterion(y_true, y_pred_and_inps)
+        loss = criterion(y_true, y_pred_and_inps)
         self.assertAlmostEqual(loss.item(), loss_input["loss"], places=3)
 
 
