@@ -17,8 +17,8 @@ from tqdm.auto import tqdm
 
 from ng_model_gym.core.utils.logging import setup_logging
 from scripts.safetensors_generator.dataset_reader import (
+    Dataset_Readers,
     FeatureIterator,
-    NSSEXRDatasetReader,
 )
 
 logger = logging.getLogger("safetensors_writer")
@@ -82,8 +82,10 @@ class SafetensorsWriter:
         threads: int = None,
     ):
         self.src_root = Path(src_dir)
+
         if not self.src_root.exists():
             raise RuntimeError(f"Missing `args.src`: {self.src_root}")
+
         self.dst_root = Path(dst_dir) / Path(self.src_root.parts[-1])
         self.dst_root.mkdir(exist_ok=True, parents=True)
         self.file_ext = file_ext
@@ -119,6 +121,12 @@ class SafetensorsWriter:
             we do this at sequence level as each safetensor is per sequence
         """
         sequences = self.get_sequence_list_from_root()
+
+        if len(sequences) == 0:
+            raise RuntimeError(
+                f"No source files found in '{self.src_root}' "
+                f"with the selected extension '{self.file_ext}'"
+            )
 
         # Ensure sequences are unique with `list -> set -> list` cast, sorted for readability
         sequences = sorted(list(set(sequences)))
@@ -159,7 +167,7 @@ def tqdm_initialiser(*args, **kwargs):
 
 def generic_safetensors_writer(args):
     """Initialise and run SafetensorsWriter"""
-    reader = NSSEXRDatasetReader
+    reader = Dataset_Readers[args.reader]
 
     writer = SafetensorsWriter(
         src_dir=args.src,
@@ -284,7 +292,11 @@ if __name__ == "__main__":
         choices=list(range(1, os.cpu_count() + 1)),
     )
     parser.add_argument(
-        "-extension", help="File Extension of src data", type=str, default="exr"
+        "-extension",
+        help="File Extension of src data",
+        type=str,
+        default="exr",
+        choices=["exr", "safetensors"],
     )
     parser.add_argument(
         "-overwrite",
@@ -301,7 +313,16 @@ if __name__ == "__main__":
     parser.add_argument(
         "-logging_output_dir", help="Path to output dir for logging", default="./output"
     )
-
+    parser.add_argument(
+        "-reader",
+        help="Name of the data reader to use",
+        type=str,
+        choices=Dataset_Readers.keys(),
+        default="EXRv101",
+    )
+    parser.add_argument(
+        "-crop_size", help="Crop size in `outDims`", type=int, default=256
+    )
     parsed_args = parser.parse_args()
 
     main(parsed_args)
