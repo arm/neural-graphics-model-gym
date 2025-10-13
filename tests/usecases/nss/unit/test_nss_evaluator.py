@@ -12,13 +12,15 @@ import torch
 from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from ng_model_gym.usecases.nss.nss_evaluator import ModelEvaluator
 from tests.testing_utils import create_simple_params
+from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
 
 
-class NSSModelEvaluatorTest(unittest.TestCase):
+class NSSModelEvaluatorTest(BaseGPUMemoryTest):
     """Tests for ModelEvaluator."""
 
     def setUp(self):
         """Setup common test data and state"""
+        super().setUp()
         self.test_dir = tempfile.mkdtemp()
         data_dir = Path("./tests/usecases/nss/datasets/test")
         # Create a temporary output directory
@@ -35,6 +37,7 @@ class NSSModelEvaluatorTest(unittest.TestCase):
 
     def tearDown(self):
         """Clean up the temporary directory."""
+        super().tearDown()
         shutil.rmtree(self.test_dir)
 
     def test_run_model(self):

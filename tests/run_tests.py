@@ -13,11 +13,10 @@ from tests.fetch_huggingface import validate_downloads
 from .pkgutil_patch import apply_patch
 
 
-def run_tests(start_test_dir, sequential=False, run_coverage=False):
+def run_tests(start_test_dir, run_coverage=False):
     """Run tests recursively from start_test_dir"""
-    if sequential:
-        failed_tests = run_in_own_process(start_test_dir, run_coverage)
-        return not failed_tests
+    if run_coverage:
+        return not execute_code_coverage(start_test_dir)
     loader = unittest.TestLoader()
 
     tests = loader.discover(start_dir=start_test_dir, pattern="test_*.py")
@@ -27,8 +26,8 @@ def run_tests(start_test_dir, sequential=False, run_coverage=False):
     return result.wasSuccessful()
 
 
-def run_in_own_process(start_test_dir, run_coverage):
-    """Run each test file in its own process sequentially to isolate GPU memory usage."""
+def execute_code_coverage(start_test_dir):
+    """Get code coverage for each test file. Returns list of failed tests."""
     failed_tests = []
     failed_outputs = {}
 
@@ -38,10 +37,7 @@ def run_in_own_process(start_test_dir, run_coverage):
     for test_file in test_files:
         print(f"Running Test: {test_file}")
 
-        if run_coverage:
-            cmd = ["coverage", "run", "--parallel-mode", test_file]
-        else:
-            cmd = [sys.executable, "-m", "unittest", test_file]
+        cmd = ["coverage", "run", "--parallel-mode", test_file]
 
         env = os.environ.copy()
         env["PYTHONPATH"] = f"{os.getcwd()}:{env.get('PYTHONPATH', '')}"
@@ -75,11 +71,6 @@ if __name__ == "__main__":
         help="Test directories to look for tests in.",
     )
     parser.add_argument(
-        "--sequential",
-        action="store_true",
-        help="Run each test file in its own process",
-    )
-    parser.add_argument(
         "--coverage",
         action="store_true",
         help="Enable coverage in subprocesses",
@@ -90,8 +81,7 @@ if __name__ == "__main__":
     validate_downloads()
 
     results = [
-        run_tests(test_dir, sequential=args.sequential, run_coverage=args.coverage)
-        for test_dir in args.test_dirs
+        run_tests(test_dir, run_coverage=args.coverage) for test_dir in args.test_dirs
     ]
     success = all(results)
 

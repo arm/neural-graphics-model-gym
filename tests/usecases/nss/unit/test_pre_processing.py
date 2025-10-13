@@ -11,14 +11,15 @@ from ng_model_gym.usecases.nss.model.pre_processing import (
     PreProcessV1,
     PreProcessV1_ShaderAccurate,
 )
+from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
 
 
-class TestPreProcess(unittest.TestCase):
+class TestPreProcess(BaseGPUMemoryTest):
     """Tests for PreProcess class in PyTorch."""
 
     def setUp(self):
         """Set up pre-processing inputs."""
-
+        super().setUp()
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
 
@@ -204,10 +205,11 @@ class TestPreProcess(unittest.TestCase):
         self.assertIsNotNone(grad_dm_scale)
 
 
-class TestPreprocessGolden(unittest.TestCase):
+class TestPreprocessGolden(BaseGPUMemoryTest):
     """Test preprocess implementation against known inputs and outputs"""
 
     def setUp(self):
+        super().setUp()
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
         self.slang_shader_file = "nss_v1.slang"
 
@@ -262,10 +264,11 @@ class TestPreprocessGolden(unittest.TestCase):
         )
 
 
-class TestShaderAccPreprocessGolden(unittest.TestCase):
+class TestShaderAccPreprocessGolden(BaseGPUMemoryTest):
     """Test shader accurate preprocess implementation against known inputs and outputs"""
 
     def setUp(self):
+        super().setUp()
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
         self.slang_shader_file = "nss_v1.slang"
 

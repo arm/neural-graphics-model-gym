@@ -5,7 +5,6 @@ import json
 import shutil
 import subprocess
 import tempfile
-import unittest
 from importlib.resources import files
 from pathlib import Path
 from typing import List
@@ -17,13 +16,15 @@ from ng_model_gym.core.utils.checkpoint_utils import (
     latest_training_run_dir,
 )
 from ng_model_gym.core.utils.general_utils import create_directory
+from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
 
 
-class BaseIntegrationTest(unittest.TestCase):
+class BaseIntegrationTest(BaseGPUMemoryTest):
     """Base class for Integration Tests for NSS training pipeline."""
 
     def setUp(self) -> None:
         """Create tmp test_default.json with overridden params."""
+        super().setUp()
         self.test_dir = tempfile.mkdtemp()
         self.checkpoint_dir = Path(self.test_dir, "test_checkpoints")
         create_directory(self.checkpoint_dir)
@@ -68,6 +69,7 @@ class BaseIntegrationTest(unittest.TestCase):
 
     def tearDown(self):
         """Clean up the temporary directory."""
+        super().tearDown()
         shutil.rmtree(self.test_dir)
 
     def check_log(self, msgs: List):
