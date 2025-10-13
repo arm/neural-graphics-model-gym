@@ -33,7 +33,7 @@ class TinyModel(nn.Module):
 
     def forward(self, _):
         """Forward pass returns a dict containing a mock"""
-        return {"x": Mock()}
+        return {"output": torch.zeros(1, 1)}
 
 
 class TestTrainerMethods(unittest.TestCase):
@@ -230,6 +230,22 @@ class TestTrainerMethods(unittest.TestCase):
 
             # Check epoch after resuming from saved checkpoint is one after
             self.assertEqual(mock_resume_trainer.starting_epoch, 11)
+
+    def test_train_raises_when_forward_not_dict(self):
+        """Trainer should raise TypeError if forward doesn't return a dict."""
+        self.mock_trainer.model.forward = Mock(return_value=123)
+        with self.assertRaisesRegex(
+            TypeError, r"Forward pass must return a dictionary containing 'output' key"
+        ):
+            Trainer.train(self.mock_trainer)
+
+    def test_train_raises_when_forward_dict_missing_output(self):
+        """Trainer should raise TypeError if forward returns a dict without 'output' key"""
+        self.mock_trainer.model.forward = Mock(return_value={"random_key": Mock()})
+        with self.assertRaisesRegex(
+            TypeError, r"Forward pass must return a dictionary containing 'output' key"
+        ):
+            Trainer.train(self.mock_trainer)
 
 
 class TestLossFnFactory(unittest.TestCase):

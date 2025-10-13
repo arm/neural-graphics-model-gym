@@ -272,6 +272,11 @@ class Trainer:
 
                 inference_out = self.model(inputs_dataset)
 
+                if not isinstance(inference_out, dict) or "output" not in inference_out:
+                    raise TypeError(
+                        "Forward pass must return a dictionary containing 'output' key"
+                    )
+
                 loss = self.criterion(ground_truth_data, inference_out | inputs_dataset)
 
                 loss.backward()
