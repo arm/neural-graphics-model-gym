@@ -43,7 +43,7 @@ class BaseNGModel(nn.Module, ABC):
 
     Subclasses should:
         * Implement getter/setter methods for the core neural network
-        * Write the model `forward()` pass
+        * Write the model `forward()` pass. It must return a dictionary with a key named 'output'
         * [Optional] For recurrent models, override `init_history_buffers`
 
     Example::
