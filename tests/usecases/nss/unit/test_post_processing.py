@@ -9,13 +9,15 @@ from ng_model_gym.usecases.nss.model.post_processing import (
     PostProcessV1,
     PostProcessV1_ShaderAccurate,
 )
+from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
 
 
-class TestPostProcess(unittest.TestCase):
+class TestPostProcess(BaseGPUMemoryTest):
     """Tests for PostProcess class in PyTorch."""
 
     def setUp(self):
         """Set up post-processing config."""
+        super().setUp()
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
 
@@ -151,10 +153,11 @@ class TestPostProcess(unittest.TestCase):
         self.assertEqual(self.temporal_params.grad.shape, self.temporal_params.shape)
 
 
-class TestPostprocessGolden(unittest.TestCase):
+class TestPostprocessGolden(BaseGPUMemoryTest):
     """Test postprocess implementation against known inputs and outputs"""
 
     def setUp(self):
+        super().setUp()
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
         self.slang_shader_file = "nss_v1.slang"
 
@@ -203,10 +206,11 @@ class TestPostprocessGolden(unittest.TestCase):
         )
 
 
-class TestShaderAccPostprocessGolden(unittest.TestCase):
+class TestShaderAccPostprocessGolden(BaseGPUMemoryTest):
     """Test shader accurate postprocess implementation against known inputs and outputs"""
 
     def setUp(self):
+        super().setUp()
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
         self.slang_shader_file = "nss_v1.slang"
 

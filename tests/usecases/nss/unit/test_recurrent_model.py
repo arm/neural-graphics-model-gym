@@ -9,13 +9,15 @@ from ng_model_gym.core.model.model import create_model
 from ng_model_gym.core.utils.types import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
 from tests.testing_utils import create_simple_params
+from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
 
 
-class TestFeedbackModel(unittest.TestCase):
+class TestFeedbackModel(BaseGPUMemoryTest):
     """Tests for FeedbackModel class."""
 
     def setUp(self):
         """Setup feedback model."""
+        super().setUp()
         params = create_simple_params(dataset="")
         params.model_train_eval_mode = TrainEvalMode.FP32
         params.dataset.gt_augmentation = True

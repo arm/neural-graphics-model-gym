@@ -7,6 +7,7 @@ import torch
 from torch import nn
 
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
+from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
 
 FEEDBACK_CH = 4
 
@@ -137,7 +138,7 @@ class TestAutoEncoder(unittest.TestCase):
         self.assertFalse(torch.isinf(feedback_out).any())
 
 
-class TestAutoEncoderGolden(unittest.TestCase):
+class TestAutoEncoderGolden(BaseGPUMemoryTest):
     """Test autoencoder implementation against known inputs and outputs"""
 
     def test_forward_pass(self):
