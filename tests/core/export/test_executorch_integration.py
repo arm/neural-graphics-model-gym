@@ -260,6 +260,81 @@ class TestExecuTorchIntegration(unittest.TestCase):
 
         self.assertIn("Config error", str(exc.exception))
 
+    def test_export_raises_no_dynamic_or_static_config(self):
+        """Test export raises error if dynamic is set to false and there is no static export cfg"""
+        params = create_simple_params()
+        params.output.export.dynamic_shape = False
+        params.output.export.vgf_static_input_shape = None
+        params.output.export.vgf_output_dir = self.tosa_out_dir
+        params.dataset.path.train = Path("tests/usecases/nss/datasets/train")
+
+        # Ensure tosa output directory does not exist
+        tosa_out_dir = Path(params.output.export.vgf_output_dir)
+        self.assertFalse(tosa_out_dir.exists())
+
+        # Point to pretrained weights to load
+        qat_model_path = "tests/usecases/nss/weights/nss_v0.1.1_int8.pt"
+
+        with self.assertRaises(ValueError) as exc:
+            do_export(params, qat_model_path, ExportType.QAT_INT8)
+
+        self.assertIn("Dynamic export shape is set to false", str(exc.exception))
+
+    def test_static_export(self):
+        """Test export passes if dynamic is set to false and there is a static export cfg"""
+
+        params = create_simple_params()
+        params.output.export.dynamic_shape = False
+        params.output.export.vgf_static_input_shape = [[1, 12, 256, 256]]
+        params.output.export.vgf_output_dir = self.tosa_out_dir
+        params.dataset.path.train = Path("tests/usecases/nss/datasets/train")
+
+        # Ensure tosa output directory does not exist
+        tosa_out_dir = Path(params.output.export.vgf_output_dir)
+        self.assertFalse(tosa_out_dir.exists())
+
+        # Point to pretrained weights to load
+        qat_model_path = "tests/usecases/nss/weights/nss_v0.1.1_int8.pt"
+
+        with self.assertLogs("ng_model_gym", level="INFO") as log_capture:
+            do_export(params, qat_model_path, ExportType.QAT_INT8)
+
+        expected_log = "Tracing and exporting model with config provided static shape"
+        self.assertTrue(
+            any(log.getMessage() == expected_log for log in log_capture.records),
+            f"Did not see expected log. Got:"
+            f" {[log.getMessage() for log in log_capture.records]}",
+        )
+
+    def test_static_export_provided_and_dynamic_enabled(self):
+        """Test warning if dynamic is set to true and there is a static export cfg"""
+
+        params = create_simple_params()
+        params.output.export.dynamic_shape = True
+        params.output.export.vgf_static_input_shape = [[1, 12, 256, 256]]
+        params.output.export.vgf_output_dir = self.tosa_out_dir
+        params.dataset.path.train = Path("tests/usecases/nss/datasets/train")
+
+        # Ensure tosa output directory does not exist
+        tosa_out_dir = Path(params.output.export.vgf_output_dir)
+        self.assertFalse(tosa_out_dir.exists())
+
+        # Point to pretrained weights to load
+        qat_model_path = "tests/usecases/nss/weights/nss_v0.1.1_int8.pt"
+
+        with self.assertLogs("ng_model_gym", level="WARN") as log_capture:
+            do_export(params, qat_model_path, ExportType.QAT_INT8)
+
+        expected_log = (
+            "Dynamic export is enabled and provided static"
+            " input shape will be ignored"
+        )
+        self.assertTrue(
+            any(log.getMessage() == expected_log for log in log_capture.records),
+            f"Did not see expected log. Got:"
+            f" {[log.getMessage() for log in log_capture.records]}",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

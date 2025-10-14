@@ -67,7 +67,7 @@ def create_simple_params(
             "tensorboard_output_dir": temp_dir,
             "export": {
                 "vgf_output_dir": temp_dir,
-                "dynamic_shape": False,
+                "dynamic_shape": True,
             },
         },
         "train": {
