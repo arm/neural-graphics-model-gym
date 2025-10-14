@@ -10,7 +10,7 @@ from executorch.backends.arm.quantizer.arm_quantizer import (
     QuantizationConfig,
     TOSAQuantizer,
 )
-from executorch.backends.arm.tosa_specification import TosaSpecification
+from executorch.backends.arm.tosa.specification import TosaSpecification
 from torch import nn
 from torch.fx import GraphModule
 from torch.nn.modules.module import T

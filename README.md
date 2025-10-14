@@ -654,9 +654,6 @@ Occasionally, your machine might run out of GPU memory during model training or 
 * **Use fewer recurrent samples** by decreasing the value of `dataset.recurrent_samples`.
 * **Reduce the number of workers** by reducing `dataset.num_workers`. This will increase the time it takes to perform training/evaluation/etc. but the machine is less likely to run out of memory since there are fewer tasks being run in parallel.
 
-### Order of Outputs changes after exporting to a VGF or TOSA file
-Currently when exporting to a VGF file you may see that the order of outputs is different to those specified in your PyTorch module. This is a bug and a fix will be made very soon to our project dependencies.
-
 ## Security
 
 Arm takes security issues seriously, please see [SECURITY.md](SECURITY.md) for more details.
