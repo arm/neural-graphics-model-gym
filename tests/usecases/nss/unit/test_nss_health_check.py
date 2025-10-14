@@ -2,11 +2,13 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import unittest
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import torch
 
-from ng_model_gym.core.data.health_check import health_check_dataset
+from ng_model_gym.core.data.utils import DataLoaderMode
+from ng_model_gym.usecases.nss.data.dataset import NSSDataset
 
 
 class TestHealthCheckDataset(unittest.TestCase):
@@ -31,22 +33,25 @@ class TestHealthCheckDataset(unittest.TestCase):
 
     def setUp(self):
         """Create a sample dataset."""
-        self.dataset = torch.utils.data.DataLoader(
+        self.dataloader = torch.utils.data.DataLoader(
             TestHealthCheckDataset.SampleDataset(), batch_size=1
         )
 
-    @patch("ng_model_gym.core.data.health_check.logger")
+        self.train_mode = SimpleNamespace(loader_mode=DataLoaderMode.TRAIN)
+        self.test_mode = SimpleNamespace(loader_mode=DataLoaderMode.TEST)
+
+    @patch("ng_model_gym.usecases.nss.data.dataset.logger")
     def test_health_check_in_test_mode(self, mock_logger):
         """Test that we don't check in test mode,"""
-        health_check_dataset(self.dataset, "test")
+        NSSDataset.health_check(self.test_mode, dataloader=self.dataloader)
         mock_logger.info.assert_called_with(
             "DATASET: Health check is only supported for the train dataset"
         )
 
-    @patch("ng_model_gym.core.data.health_check.psnr")
-    @patch("ng_model_gym.core.data.health_check.DenseWarp")
-    @patch("ng_model_gym.core.data.health_check.DownSampling2D")
-    @patch("ng_model_gym.core.data.health_check.tqdm")
+    @patch("ng_model_gym.usecases.nss.data.dataset.psnr")
+    @patch("ng_model_gym.usecases.nss.data.dataset.DenseWarp")
+    @patch("ng_model_gym.usecases.nss.data.dataset.DownSampling2D")
+    @patch("ng_model_gym.usecases.nss.data.dataset.tqdm")
     def test_health_check_in_train_mode_failure(
         self, mock_tqdm, mock_down_sampling2d, mock_dense_warp, mock_psnr
     ):
@@ -61,7 +66,7 @@ class TestHealthCheckDataset(unittest.TestCase):
         mock_tqdm_instance = MagicMock()
         mock_tqdm.return_value.__enter__.return_value = mock_tqdm_instance
 
-        health_check_dataset(self.dataset, "train")
+        NSSDataset.health_check(self.train_mode, dataloader=self.dataloader)
 
 
 if __name__ == "__main__":
