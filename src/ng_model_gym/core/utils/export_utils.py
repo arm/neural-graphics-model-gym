@@ -10,14 +10,15 @@ from typing import Any, Tuple
 
 import torch
 import torchao
-from executorch.backends.arm.arm_backend import ArmCompileSpecBuilder
 from executorch.backends.arm.quantizer.arm_quantizer import (
     get_symmetric_quantization_config,
     TOSAQuantizer,
 )
-from executorch.backends.arm.tosa_partitioner import TOSAPartitioner
-from executorch.backends.arm.tosa_specification import TosaSpecification
-from executorch.backends.arm.vgf_partitioner import VgfPartitioner
+from executorch.backends.arm.tosa.compile_spec import TosaCompileSpec
+from executorch.backends.arm.tosa.partitioner import TOSAPartitioner
+from executorch.backends.arm.tosa.specification import TosaSpecification
+from executorch.backends.arm.vgf.compile_spec import VgfCompileSpec
+from executorch.backends.arm.vgf.partitioner import VgfPartitioner
 from executorch.exir import to_edge_transform_and_lower
 from rich.console import Console
 from torch.utils._pytree import tree_map
@@ -242,20 +243,18 @@ def _vgf_partition_and_lower(dialect, spec: str, dump_dir: str):
     # TOSA partition and export.
     with _loader_context("TOSA", dump_dir):
         tosa_partitioner = TOSAPartitioner(
-            ArmCompileSpecBuilder()
-            .tosa_compile_spec(spec)
-            .dump_intermediate_artifacts_to(dump_dir)
-            .build()
+            TosaCompileSpec(
+                tosa_spec=TosaSpecification.create_from_string(spec)
+            ).dump_intermediate_artifacts_to(dump_dir)
         )
         to_edge_transform_and_lower(dialect, partitioner=[tosa_partitioner])
 
     # VGF partition and export.
     with _loader_context("VGF", dump_dir):
         vgf_partitioner = VgfPartitioner(
-            ArmCompileSpecBuilder()
-            .vgf_compile_spec(TosaSpecification.create_from_string(spec))
-            .dump_intermediate_artifacts_to(dump_dir)
-            .build()
+            VgfCompileSpec(
+                tosa_spec=TosaSpecification.create_from_string(spec)
+            ).dump_intermediate_artifacts_to(dump_dir)
         )
         to_edge_transform_and_lower(dialect, partitioner=[vgf_partitioner])
 
