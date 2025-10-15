@@ -41,7 +41,7 @@ class LearningRateScheduler(str, Enum):
     """Enum of supported learning rate scheduler types."""
 
     COSINE_ANNEALING = "cosine_annealing"
-    EXPONENTIAL = "exponential"
+    EXPONENTIAL_STEP = "exponential_step"
     STATIC = "static"
 
 

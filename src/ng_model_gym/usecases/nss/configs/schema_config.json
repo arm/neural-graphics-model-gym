@@ -223,7 +223,7 @@
                 }
             },
             "lr_scheduler": {
-                "description": "The Learning Rate Scheduler used during training. Can be one of: cosine_annealing, exponential, static",
+                "description": "The Learning Rate Scheduler used during training. Can be one of: cosine_annealing, exponential_step, static",
                 "discriminator": {
                     "propertyName": "type"
                 },
@@ -248,17 +248,17 @@
                     },
                     {
                         "type": {
-                            "const": "exponential",
+                            "const": "exponential_step",
                             "type": "string"
                         },
                         "decay_rate": {
-                            "description": "Learning rate decay rate",
+                            "description": "Learning rate decay rate. Decay applied every step_size steps.",
                             "maximum": 1.0,
                             "minimum": 0.0,
                             "type": "number"
                         },
-                        "decay_step": {
-                            "description": "Steps between learning rate decay",
+                        "decay_factor": {
+                            "description": "Divisor for total number of iterations. The larger the value, the quicker the decay i.e. step_size = (epochs * dataset_size) / decay_factor",
                             "minimum": 1,
                             "type": "integer"
                         }
@@ -306,7 +306,7 @@
                 }
             },
             "lr_scheduler": {
-                "description": "The Learning Rate Scheduler used during training. Can be one of: cosine_annealing, exponential, static",
+                "description": "The Learning Rate Scheduler used during training. Can be one of: cosine_annealing, exponential_step, static",
                 "discriminator": {
                     "propertyName": "type"
                 },
@@ -331,17 +331,17 @@
                     },
                     {
                         "type": {
-                            "const": "exponential",
+                            "const": "exponential_step",
                             "type": "string"
                         },
                         "decay_rate": {
-                            "description": "Learning rate decay rate",
+                            "description": "Learning rate decay rate. Decay applied every step_size steps.",
                             "maximum": 1.0,
                             "minimum": 0.0,
                             "type": "number"
                         },
-                        "decay_step": {
-                            "description": "Steps between learning rate decay",
+                        "decay_factor": {
+                            "description": "Divisor for total number of iterations. The larger the value, the quicker the decay i.e. step_size = (epochs * dataset_size) / decay_factor",
                             "minimum": 1,
                             "type": "integer"
                         }

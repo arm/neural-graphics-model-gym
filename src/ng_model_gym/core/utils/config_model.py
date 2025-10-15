@@ -160,12 +160,19 @@ class CosineAnnealingConfig(BaseSchedulerConfig):
     )
 
 
-class ExponentialSchedulerConfig(BaseSchedulerConfig):
+class ExponentialStepSchedulerConfig(BaseSchedulerConfig):
     """Configuration for the exponential learning rate scheduler"""
 
-    type: Literal[LearningRateScheduler.EXPONENTIAL]
-    decay_rate: float = Field(ge=0.0, le=1.0, description="Learning rate decay rate")
-    decay_step: int = Field(ge=1, description="Steps between learning rate decay")
+    type: Literal[LearningRateScheduler.EXPONENTIAL_STEP]
+    decay_rate: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Learning rate decay rate. Decay applied every step_size steps.",
+    )
+    decay_factor: int = Field(
+        ge=1,
+        description="Divisor for total number of iterations. The larger the value, the quicker the decay i.e. step_size = (epochs * dataset_size) / decay_factor",
+    )
 
 
 class StaticSchedulerConfig(BaseSchedulerConfig):
@@ -175,7 +182,7 @@ class StaticSchedulerConfig(BaseSchedulerConfig):
 
 
 SchedulerConfig = Annotated[
-    Union[CosineAnnealingConfig, ExponentialSchedulerConfig, StaticSchedulerConfig],
+    Union[CosineAnnealingConfig, ExponentialStepSchedulerConfig, StaticSchedulerConfig],
     Field(
         discriminator="type",
         description=f"The Learning Rate Scheduler used during training. Can be one of: {', '.join([e.value for e in LearningRateScheduler])}",
