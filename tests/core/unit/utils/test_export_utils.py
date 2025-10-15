@@ -139,7 +139,7 @@ class TestExportUtils(unittest.TestCase):
 
         # Metadata file should be updated with constants.
         expected_meta = Path(params.output.export.vgf_output_dir) / (
-            f"{model_key}-{ExportType.QAT_INT8}-metadata.json"
+            f"{model_key}-{ExportType.QAT_INT8.name}-metadata.json"
         )
 
         mock_update_metadata_file.assert_called_once_with(expected_meta, {"foo": "bar"})
@@ -161,7 +161,7 @@ class TestExportUtils(unittest.TestCase):
 
         # Metadata path should match the expected path.
         expected_meta = Path(params.output.export.vgf_output_dir) / (
-            f"{model_key}-{ExportType.QAT_INT8}-metadata.json"
+            f"{model_key}-{ExportType.QAT_INT8.name}-metadata.json"
         )
 
         self.assertEqual(meta_path, expected_meta)
@@ -196,7 +196,7 @@ class TestExportUtils(unittest.TestCase):
 
         # Metadata file should be updated with constants.
         expected_meta = Path(params.output.export.vgf_output_dir) / (
-            f"{model_key}-{ExportType.FP32}-metadata.json"
+            f"{model_key}-{ExportType.FP32.name}-metadata.json"
         )
         mock_update_metadata_file.assert_called_once_with(expected_meta, {"foo": "bar"})
 
@@ -217,7 +217,7 @@ class TestExportUtils(unittest.TestCase):
 
         # Metadata path should match the expected path.
         expected_meta = Path(params.output.export.vgf_output_dir) / (
-            f"{model_key}-{ExportType.FP32}-metadata.json"
+            f"{model_key}-{ExportType.FP32.name}-metadata.json"
         )
         self.assertEqual(meta_path, expected_meta)
 
@@ -247,7 +247,7 @@ class TestExportUtils(unittest.TestCase):
         # Build expected path.
         meta_path = (
             Path(params.output.export.vgf_output_dir)
-            / f"{model_key}-{ExportType.FP32}-metadata.json"
+            / f"{model_key}-{ExportType.FP32.name}-metadata.json"
         )
 
         # File must now exist.
