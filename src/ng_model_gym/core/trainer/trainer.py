@@ -467,15 +467,15 @@ def get_lr_schedule(
             min_lr=min_lr,
         )
 
-    elif training_mode.lr_scheduler.type == LearningRateScheduler.EXPONENTIAL:
+    elif training_mode.lr_scheduler.type == LearningRateScheduler.EXPONENTIAL_STEP:
         decay_rate = training_mode.lr_scheduler.decay_rate
-        decay_step = training_mode.lr_scheduler.decay_step
+        decay_factor = training_mode.lr_scheduler.decay_factor
         step_size = max(
             1,
-            int((training_mode.number_of_epochs * train_data_size) / decay_step),
+            int((training_mode.number_of_epochs * train_data_size) / decay_factor),
         )
 
-        logger.info(f"Exponential optimizer learning rate step size: {step_size}")
+        logger.info(f"Exponential Step optimizer learning rate step size: {step_size}")
 
         lr_schedule = torch.optim.lr_scheduler.StepLR(
             optimizer=optimizer, step_size=step_size, gamma=decay_rate
