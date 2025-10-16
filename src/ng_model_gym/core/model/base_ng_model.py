@@ -46,6 +46,9 @@ class BaseNGModel(nn.Module, ABC):
         * Write the model `forward()` pass. It must return a dictionary with a key named 'output'
         * [Optional] For recurrent models, override `init_history_buffers`
 
+    Optionally:
+        * Implement `define_dynamic_export_model_input` if wanting to export a dynamic model
+
     Example::
 
         from torch import nn
@@ -91,6 +94,36 @@ class BaseNGModel(nn.Module, ABC):
         Args:
             neural_network (nn.Module): Neural network to set.
         """
+        raise NotImplementedError
+
+    def define_dynamic_export_model_input(self) -> Tuple[Any, ...]:
+        """
+        Specify dynamic shape constraints for ExecuTorch model export to handle
+        variable input sizes at runtime,
+
+        Implementation must return a tuple whose structure matches the ng-models’s forward pass
+        positional inputs. Each tensor input is described by a dict, mapping
+        dimension indices to `torch.export.Dim`.
+
+        Note: `torch.export` may specialize any dimension that is 0 or 1 in the sample
+        data used for tracing. If you mark a dimension (e.g. batch) as dynamic but
+        trace with size 1, export can fail with a constraint error
+            - For a dynamic batch, trace with a sample batch ≥ 2
+            - Mark dimension as static e.g. batch size is always 1
+
+        See PyTorch documentation for more details:
+        https://docs.pytorch.org/docs/stable/export.html#expressing-dynamism
+
+        Example:
+            >>> # Neural network to export has input with shape (batch, channel, height, width)
+                batch = torch.export.Dim("batch")
+                h = torch.export.Dim("height")
+                w = torch.export.Dim("width")
+                # Description of dynamic dimensions of input tensor. Channel remains static
+                return ({0: batch, 2: H, 3: W},)
+
+        """
+
         raise NotImplementedError
 
     def train(self: T, mode: bool = True):  # pylint: disable=unused-argument
