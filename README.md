@@ -361,6 +361,7 @@ Jupyter® notebook tutorials on how to use the package, including:
 * Quantization-aware training and exporting
 * Evaluation
 * Fine-tuning
+* Adding a custom model
 
 can be found in the [neural-graphics-model-gym-examples](https://github.com/arm/neural-graphics-model-gym-examples) repository.
 
