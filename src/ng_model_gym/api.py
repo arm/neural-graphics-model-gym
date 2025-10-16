@@ -9,6 +9,7 @@ from typing import Callable, Union
 import torch
 from torch.profiler import schedule
 
+from ng_model_gym.core.evaluator.evaluator import NGModelEvaluator
 from ng_model_gym.core.trainer.trainer import Trainer
 from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
 from ng_model_gym.core.utils.config_model import ConfigModel
@@ -18,7 +19,6 @@ from ng_model_gym.core.utils.logging import log_gpu_torch
 from ng_model_gym.core.utils.memory_log_decorator import memory_log_decorator
 from ng_model_gym.core.utils.time_decorator import time_decorator
 from ng_model_gym.core.utils.types import ExportType, ProfilerType, TrainEvalMode
-from ng_model_gym.usecases.nss.nss_evaluator import ModelEvaluator
 
 logger = logging.getLogger(__name__)
 
@@ -189,10 +189,7 @@ def do_evaluate(
     model = load_checkpoint(model_path, params_for_eval)
 
     # Create Evaluator object
-    # Set temporary values for parameters to allow evaluation of test set
-    logger.debug("Temporarily setting recurrent_samples to 1")
-    params_for_eval.dataset.recurrent_samples = 1
-    model_evaluator = ModelEvaluator(model, params_for_eval)
+    model_evaluator = NGModelEvaluator(model, params_for_eval)
 
     # Evaluate model (with optional profiling)
     if profile_setting == ProfilerType.TRACE:

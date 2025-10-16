@@ -17,12 +17,13 @@ from ng_model_gym.core.data.utils import DataLoaderMode
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model import BaseNGModel
+from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from ng_model_gym.core.utils.general_utils import create_directory
 
 logger = logging.getLogger(__name__)
 
 
-class BaseModelEvaluator:
+class NGModelEvaluator:
     """This class is used to evaluate a model end to end"""
 
     def __init__(self, model: BaseNGModel | BaseNGModelWrapper, params):
@@ -39,9 +40,15 @@ class BaseModelEvaluator:
         self.y_true = None
         self.y_pred = None
         self.results = {}
+
         for metric in self.metrics:
             metric.to(self.model.device)
             self.results[str(metric)] = {}
+
+        if isinstance(model, FeedbackModel):
+            # Set temporary values for parameters to allow evaluation of test set
+            logger.debug("Temporarily setting recurrent_samples to 1")
+            model.recurrent_samples = 1
 
     def prepare_datasets(self):
         """Load test dataset for evaluation"""
@@ -93,7 +100,8 @@ class BaseModelEvaluator:
         self._save_results_json()
 
     def _run_model(self):
-        raise NotImplementedError("Use case evaluators should implement this.")
+        """Invoke single forward pass."""
+        self.y_pred = self.model(self.x_in)["output"]
 
     def _update_progress_bar(self, pbar, update_interval=1):
         if self.idx % update_interval == 0:
