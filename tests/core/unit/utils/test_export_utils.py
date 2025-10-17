@@ -24,6 +24,25 @@ from ng_model_gym.core.utils.export_utils import (
 )
 
 
+def _flatten(container):
+    """Flatten nested containers into a list of tensors."""
+    if isinstance(container, torch.Tensor):
+        return [container]
+    if isinstance(container, (list, tuple)):
+        out = []
+        for it in container:
+            out.extend(_flatten(it))
+        return out
+    if isinstance(container, dict):
+        out = []
+        for v in container.values():
+            out.extend(_flatten(v))
+        return out
+    if hasattr(container, "_asdict"):  # namedtuple
+        return _flatten(container._asdict())
+    return []
+
+
 class MockNSS(BaseNGModel):
     """Mock class for NSS model."""
 
@@ -258,6 +277,94 @@ class TestExportUtils(unittest.TestCase):
         # And contain exactly the constants dict.
         data = json.loads(meta_path.read_text(encoding="utf-8"))
         self.assertEqual(data, {"foo": "bar"})
+
+    @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
+    @patch(
+        "ng_model_gym.core.utils.export_utils.load_checkpoint",
+        new=lambda *a, **k: MockFeedbackModel(),
+    )
+    def test_inputs_channels_last_for_4d(self):
+        """Ensure 4D tensors become channels_last and non-tensors unchanged."""
+
+        # Build nested input with 4D + non-4D tensors and non-tensors.
+        tensor_nchw = torch.arange(2 * 3 * 4 * 5, dtype=torch.float32).reshape(
+            2, 3, 4, 5
+        )
+        tensor_4d = torch.randn(1, 1, 2, 2)
+        tensor_3d = torch.randn(3, 4, 5)
+        non_tensor = {"k": 123, "s": "testing"}
+
+        nested_input = (
+            {"img": tensor_nchw, "meta": non_tensor},
+            [tensor_4d, tensor_3d, 7],
+        )
+
+        def local_dl(
+            params, num_workers, prefetch_factor, loader_mode, trace_mode
+        ):  # pylint: disable=unused-argument
+            yield (nested_input, 0)
+
+        # Make tracer return preprocess input unchanged to observe changes from export_utils
+        def passthrough_tracer(
+            model, preprocess_trace_input
+        ):  # pylint: disable=unused-argument
+            return preprocess_trace_input
+
+        # Capture model_forward_input passed into _export_module_to_vgf
+        captured = {}
+
+        def capture_export(
+            params, model, model_forward_input, export_type, metadata_path
+        ):  # pylint: disable=unused-argument
+            captured["input"] = model_forward_input
+
+        with patch(
+            "ng_model_gym.core.utils.export_utils.get_dataloader", side_effect=local_dl
+        ), patch(
+            "ng_model_gym.core.utils.export_utils.model_tracer", new=passthrough_tracer
+        ), patch(
+            "ng_model_gym.core.utils.export_utils._export_module_to_vgf",
+            new=capture_export,
+        ), patch(
+            "ng_model_gym.core.utils.export_utils._update_metadata_file",
+            new=lambda *a, **k: None,
+        ):
+            params = make_params(self.tmp_path)
+            executorch_vgf_export(
+                params=params,
+                export_type=ExportType.FP32,
+                model_path=Path("checkpoint.pt"),
+            )
+
+        self.assertIn("input", captured, "Export did not reach the VGF step.")
+        transformed = captured["input"]
+
+        # Tensor values, dtypes and shapes preserved
+        orig_tensors = _flatten(nested_input)
+        new_tensors = _flatten(transformed)
+        self.assertEqual(len(orig_tensors), len(new_tensors))
+
+        for o, n in zip(orig_tensors, new_tensors):
+            self.assertIsInstance(n, torch.Tensor)
+            self.assertEqual(o.shape, n.shape)
+            self.assertEqual(o.dtype, n.dtype)
+            self.assertTrue(
+                torch.allclose(o.detach().cpu(), n),
+                "Tensor values changed during format move.",
+            )
+
+        # 4D tensors must be channels_last
+        for t in new_tensors:
+            if t.ndim == 4:
+                self.assertTrue(
+                    (t.is_contiguous(memory_format=torch.channels_last)),
+                    "4D tensor was not channels_last.",
+                )
+
+        # Non-tensor payload should be unchanged
+        self.assertIsInstance(transformed, tuple)
+        self.assertEqual(transformed[0]["meta"]["k"], 123)
+        self.assertEqual(transformed[0]["meta"]["s"], "testing")
 
 
 if __name__ == "__main__":
