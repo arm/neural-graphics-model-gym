@@ -7,7 +7,7 @@ import torch
 from torch import nn
 
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
-from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
+from tests.base_gpu_test import BaseGPUMemoryTest
 
 FEEDBACK_CH = 4
 

@@ -11,7 +11,7 @@ from ng_model_gym.usecases.nss.model.pre_processing import (
     PreProcessV1,
     PreProcessV1_ShaderAccurate,
 )
-from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
+from tests.base_gpu_test import BaseGPUMemoryTest
 
 
 class TestPreProcess(BaseGPUMemoryTest):

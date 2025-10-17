@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from types import MethodType
 from unittest.mock import Mock
 
 import torch
@@ -55,6 +56,7 @@ class TestTrainerMethods(unittest.TestCase):
         self.mock_trainer.starting_epoch = 1
         self.mock_trainer.device = torch.device("cpu")
         self.mock_trainer.metrics = []
+        self.mock_trainer.is_feedback = True
 
         # --- Model ---
         self.mock_trainer.model.ng_model = Mock()
@@ -246,6 +248,39 @@ class TestTrainerMethods(unittest.TestCase):
             TypeError, r"Forward pass must return a dictionary containing 'output' key"
         ):
             Trainer.train(self.mock_trainer)
+
+    def test_train_with_different_dataloader_value_types(self):
+        """Test type errors not raised when input_dataset or ground_truth
+        are either tensors or dictionaries."""
+        mock_input = Mock()
+        mock_ground_truth = Mock()
+
+        test_dataloader_outputs = [
+            (mock_input, mock_ground_truth),
+            ({"input": mock_input}, mock_ground_truth),
+            (mock_input, {"ground_truth": mock_ground_truth}),
+            ({"input": mock_input}, {"ground_truth": mock_ground_truth}),
+        ]
+
+        for dataloader_output in test_dataloader_outputs:
+            with self.subTest(dataloader_output=dataloader_output):
+                self.mock_trainer.train_dataloader = [
+                    dataloader_output for _ in range(10)
+                ]
+
+                self.mock_trainer._move_to_device = MethodType(
+                    Trainer._move_to_device, self.mock_trainer
+                )
+
+                type_error_raised = False
+
+                try:
+                    Trainer.train(self.mock_trainer)
+
+                except TypeError:
+                    type_error_raised = True
+
+                self.assertFalse(type_error_raised)
 
 
 class TestLossFnFactory(unittest.TestCase):
