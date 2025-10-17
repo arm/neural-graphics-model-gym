@@ -52,6 +52,9 @@ clean: # Remove temporary directories
 	@find . -type d -name "__pycache__" -exec rm -rf {} +
 	@find . -type f -name "*.pyc" -delete
 	@find . -type f -name ".coverage*" -delete
+	@find . -type f -name "coverage.json" -delete
+	@find . -type f -name "report.html" -delete
+	@find . -type d -name "coverage_html" -exec rm -rf {} +
 	@rm -rf .egg* build
 	@find output -mindepth 1 -maxdepth 1 ! -name '.gitignore' -exec rm -rf {} +
 	@find src/ng_model_gym/usecases/nss/model/shaders -type d -name ".slangtorch_cache" -prune -exec rm -rf {} +

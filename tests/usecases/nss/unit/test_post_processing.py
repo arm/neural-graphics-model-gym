@@ -9,7 +9,7 @@ from ng_model_gym.usecases.nss.model.post_processing import (
     PostProcessV1,
     PostProcessV1_ShaderAccurate,
 )
-from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
+from tests.base_gpu_test import BaseGPUMemoryTest
 
 
 class TestPostProcess(BaseGPUMemoryTest):
