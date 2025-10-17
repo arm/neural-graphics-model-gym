@@ -158,6 +158,8 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
 
         # Override to ensure we test frames export
         cfg_json["output"]["export_frame_png"] = True
+        cfg_json["dataset"]["path"]["train"] = "tests/usecases/nss/datasets/train"
+        cfg_json["dataset"]["path"]["test"] = "tests/usecases/nss/datasets/test"
         self.test_cfg_path = Path(self.test_dir, "test_eval_export_frame.json")
 
         # pylint: disable=duplicate-code
@@ -234,6 +236,18 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
     def test_evaluate_from_checkpoints_qat(self):
         """E2E test of evaluating a previously trained model from checkpoints QAT"""
         model_path = "./tests/usecases/nss/weights/nss_v0.1.1_int8.pt"
+
+        # Update config to use full datasets
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        cfg_json["dataset"]["path"]["train"] = "tests/usecases/nss/datasets/train"
+        cfg_json["dataset"]["path"]["test"] = "tests/usecases/nss/datasets/test"
+
+        # pylint: disable=duplicate-code
+        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
+
         sub_proc = subprocess.run(
             [
                 "ng-model-gym",

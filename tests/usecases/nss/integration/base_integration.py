@@ -2,6 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -32,8 +33,14 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         create_directory(self.qat_checkpoint_dir)
         self.model_out_dir = Path(self.test_dir, "model_output")
         create_directory(self.model_out_dir)
-        self.train_data_dir = "tests/usecases/nss/datasets/train"
-        self.test_data_dir = "tests/usecases/nss/datasets/test"
+
+        if os.getenv("FAST_TEST") == "1":
+            self.train_data_dir = "tests/usecases/nss/mini_datasets/train"
+            self.test_data_dir = "tests/usecases/nss/mini_datasets/test"
+        else:
+            self.train_data_dir = "tests/usecases/nss/datasets/train"
+            self.test_data_dir = "tests/usecases/nss/datasets/test"
+
         self.pretrained_weights = "tests/usecases/nss/weights/nss_v0.1.0_fp32.pt"
         self.tensorboard_dir = Path(self.test_dir, "tensorboard-logs")
         create_directory(self.tensorboard_dir)
@@ -167,7 +174,10 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         cfg_json["train"]["batch_size"] = 4
         cfg_json["train"]["fp32"]["number_of_epochs"] = 1
         cfg_json["dataset"]["recurrent_samples"] = 2
+        cfg_json["dataset"]["path"]["train"] = "tests/usecases/nss/datasets/train"
+        cfg_json["dataset"]["path"]["test"] = "tests/usecases/nss/datasets/test"
 
+        # pylint: disable=duplicate-code
         with open(self.test_cfg_path, "w", encoding="utf-8") as f:
             json.dump(cfg_json, f)
 

@@ -85,10 +85,11 @@ class NSSDataset(Dataset):
             else self.config_params.dataset.gt_augmentation
         )
 
+        # TODO: Bug if a st exists but has less than recurrent_samples frames, it will raise missing
         if not self.frame_indexes:
             logger.error(f"Empty list of file paths returned from {self.data_path}")
             raise ValueError(
-                f"No {extension} files found. "
+                f"No {extension} files found at {self.data_path} "
                 f"Potential causes: Empty dataset directory or overly-strict exclude parameter."
             )
 

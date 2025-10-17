@@ -7,22 +7,27 @@ import os
 import subprocess
 import sys
 import unittest
+from contextlib import nullcontext
+from pathlib import Path
+from unittest.mock import patch
 
-from tests.fetch_huggingface import validate_downloads
+from tests.fetch_huggingface import validate_nss_downloads
 
 from .pkgutil_patch import apply_patch
 
 
-def run_tests(start_test_dir, run_coverage=False):
+def run_tests(start_test_dir, run_coverage=False, fast_test=False):
     """Run tests recursively from start_test_dir"""
     if run_coverage:
         return not execute_code_coverage(start_test_dir)
     loader = unittest.TestLoader()
 
-    tests = loader.discover(start_dir=start_test_dir, pattern="test_*.py")
-
-    # Verbosity=2 prints each test name - otherwise no idea which test is running
-    result = unittest.TextTestRunner(verbosity=2).run(tests)
+    # If fast_test is enabled, expose to tests as an env variable
+    with patch.dict(
+        os.environ, {"FAST_TEST": "1"}, clear=False
+    ) if fast_test else nullcontext():
+        tests = loader.discover(start_dir=start_test_dir, pattern="test_*.py")
+        result = unittest.TextTestRunner(verbosity=2).run(tests)
     return result.wasSuccessful()
 
 
@@ -75,13 +80,20 @@ if __name__ == "__main__":
         action="store_true",
         help="Enable coverage in subprocesses",
     )
+    parser.add_argument(
+        "--fast-test",
+        action="store_true",
+        help="Use smaller dataset and slang patch",
+    )
     args = parser.parse_args()
 
     # Check required pretrained weights/datasets have been downloaded
-    validate_downloads()
+    dataset_path = Path("tests/usecases/nss/datasets")
+    validate_nss_downloads(dataset_path)
 
     results = [
-        run_tests(test_dir, run_coverage=args.coverage) for test_dir in args.test_dirs
+        run_tests(test_dir, run_coverage=args.coverage, fast_test=args.fast_test)
+        for test_dir in args.test_dirs
     ]
     success = all(results)
 
