@@ -308,10 +308,17 @@ def executorch_vgf_export(
     preprocess_trace_input = next(iter(dataloader))[0]
     model_forward_input = model_tracer(model, preprocess_trace_input)
 
-    # Move model forward inputs to CPU
+    # Move model forward inputs to CPU and change memory format as TOSA uses NHWC.
     to_cpu = lambda x: x.to("cpu") if isinstance(x, torch.Tensor) else x
+    to_channels_last = (
+        lambda x: x.to(memory_format=torch.channels_last)
+        if isinstance(x, torch.Tensor) and x.ndim == 4
+        else x
+    )
+
     # tree_map is an internal torch util to traverse containers with tensors
     model_forward_input = tree_map(to_cpu, model_forward_input)
+    model_forward_input = tree_map(to_channels_last, model_forward_input)
 
     if isinstance(model, BaseNGModelWrapper):
         model = model.get_ng_model()
