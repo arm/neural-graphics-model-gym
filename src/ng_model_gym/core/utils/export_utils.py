@@ -196,6 +196,16 @@ def _export_module_to_vgf(
         quantizer.set_global(get_symmetric_quantization_config(is_qat=False))
         neural_network = prepare_pt2e(neural_network, quantizer)
 
+    if (
+        not params.output.export.dynamic_shape
+        and params.output.export.vgf_static_input_shape
+    ):
+        model_forward_input = tuple(
+            torch.rand(n, c, h, w)
+            for n, c, h, w in params.output.export.vgf_static_input_shape
+        )
+        logger.info("Tracing and exporting model with config-provided static shape")
+
     # Do a forward pass of the model (unpack tuple from trace).
     neural_network(*model_forward_input)
 
@@ -292,6 +302,19 @@ def executorch_vgf_export(
             )
 
         loader_mode = DataLoaderMode.TEST
+
+    is_dynamic_input = params.output.export.dynamic_shape
+    static_input_shape = params.output.export.vgf_static_input_shape
+
+    if not is_dynamic_input and static_input_shape is None:
+        raise ValueError(
+            "Dynamic export shape is set to false but no static VGF"
+            " input shape is specified in config"
+        )
+    if is_dynamic_input and static_input_shape is not None:
+        logger.warning(
+            "Dynamic export is enabled and provided static input shape will be ignored"
+        )
 
     # Resolve weights and load the model.
     model = load_checkpoint(model_path, params, torch.device("cpu"))

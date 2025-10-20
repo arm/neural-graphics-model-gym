@@ -111,7 +111,11 @@ def make_params(tmp_path):
     p.model = SimpleNamespace(name="NSS", version="42")
 
     p.output = SimpleNamespace(
-        export=SimpleNamespace(vgf_output_dir=str(tmp_path / "vgf_output"))
+        export=SimpleNamespace(
+            vgf_output_dir=str(tmp_path / "vgf_output"),
+            dynamic_shape=True,
+            vgf_static_input_shape=None,
+        )
     )
     return p
 

@@ -10,6 +10,7 @@ from pydantic import (
     Field,
     field_validator,
     model_validator,
+    PositiveInt,
     StrictFloat,
 )
 from pydantic_core import PydanticCustomError
@@ -115,6 +116,18 @@ class Export(PydanticConfigModel):
     dynamic_shape: bool = Field(
         description="Enable dynamic input shapes for the exported model "
     )
+
+    vgf_static_input_shape: (
+        Annotated[
+            list[Annotated[list[PositiveInt], Field(min_length=4, max_length=4)]],
+            Field(
+                min_length=1,
+                description="One or more static VGF input shape definition (4 positive ints each)",
+            ),
+        ]
+        | None
+    ) = None
+
     vgf_output_dir: pathlib.Path = Field(
         description="Output directory for the VGF file"
     )

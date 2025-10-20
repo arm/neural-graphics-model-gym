@@ -145,6 +145,28 @@
                 "description": "Enable dynamic input shapes for the exported model ",
                 "type": "boolean"
             },
+            "vgf_static_input_shape": {
+                "anyOf": [
+                    {
+                        "description": "One or more static VGF input shape definition (4 positive ints each)",
+                        "items": {
+                            "items": {
+                                "exclusiveMinimum": 0,
+                                "type": "integer"
+                            },
+                            "maxItems": 4,
+                            "minItems": 4,
+                            "type": "array"
+                        },
+                        "minItems": 1,
+                        "type": "array"
+                    },
+                    {
+                        "type": "null"
+                    }
+                ],
+                "default": null
+            },
             "vgf_output_dir": {
                 "description": "Output directory for the VGF file",
                 "format": "path",
