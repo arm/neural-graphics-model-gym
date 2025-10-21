@@ -299,7 +299,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         with self.assertLogs("ng_model_gym", level="INFO") as log_capture:
             do_export(params, qat_model_path, ExportType.QAT_INT8)
 
-        expected_log = "Tracing and exporting model with config provided static shape"
+        expected_log = "Tracing and exporting model with config-provided static shape"
         self.assertTrue(
             any(log.getMessage() == expected_log for log in log_capture.records),
             f"Did not see expected log. Got:"
