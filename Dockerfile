@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-FROM ubuntu:22.04
+FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -32,16 +32,6 @@ RUN locale-gen en_GB.UTF-8 && \
     update-locale LC_ALL=en_GB.UTF-8 LANG=en_GB.UTF-8
 ENV LANG=en_GB.UTF-8
 ENV LC_ALL=en_GB.UTF-8
-
-# Install NVIDIA CUDA 12.8 toolkit
-RUN wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb && \
-    dpkg -i cuda-keyring_1.1-1_all.deb && \
-    apt-get update && \
-    apt-get install -y cuda-toolkit-12-8
-
-ENV CUDA_HOME=/usr/local/cuda-12.8
-ENV PATH=$CUDA_HOME/bin:$PATH
-ENV LD_LIBRARY_PATH=$CUDA_HOME/lib64
 
 # Link python to python3
 RUN ln -sf /usr/bin/python3 /usr/bin/python
