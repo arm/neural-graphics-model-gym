@@ -9,6 +9,7 @@ from typing import Callable, Union
 import torch
 from torch.profiler import schedule
 
+import ng_model_gym.core.utils.patch.patch_file  # pylint: disable=unused-import # isort: split
 from ng_model_gym.core.evaluator.evaluator import NGModelEvaluator
 from ng_model_gym.core.trainer.trainer import Trainer
 from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint

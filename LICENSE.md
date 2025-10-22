@@ -217,6 +217,14 @@ License Identifiers that are here available: http://spdx.org/licenses/
 This project contains code and binaries from other projects as listed below. The original
 license text is included in, or next to, those files.
 
+- Some source files originating from the [TorchAO](https://github.com/pytorch/ao) project.
+  These files are licensed under the [BSD-3-Clause License](./src/ng_model_gym/core/utils/patch/LICENSE), which is a
+  permissive license compatible with the Apache License, Version 2.0. Any contributions to this
+  code must also be made under the terms of [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt).  
+  These files are:
+
+   -  `src/ng_model_gym/core/utils/patch/patch_file.py`
+
 - Some source files originating from the [FidelityFX-FSR2](https://github.com/GPUOpen-Effects/FidelityFX-FSR2/) project.
   These files are licensed under the [MIT License](https://opensource.org/license/mit), which is a
   permissive license compatible with the Apache License, Version 2.0. Any contributions to this

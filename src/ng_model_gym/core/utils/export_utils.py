@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Dict, Sequence, Tuple
 
 import torch
-import torchao
 from executorch.backends.arm.quantizer.arm_quantizer import (
     get_symmetric_quantization_config,
     TOSAQuantizer,
@@ -180,21 +179,18 @@ def _export_module_to_vgf(
         else None
     )
 
+    ng_model.eval()
     neural_network = ng_model.get_neural_network()
-
-    if export_type == ExportType.QAT_INT8:
-        torchao.quantization.pt2e.move_exported_model_to_eval(neural_network)
-    else:
-        neural_network.eval()
 
     if export_type == ExportType.PTQ_INT8:
         # Perform post-training quantization before writing model to output file
-        neural_network = torch.export.export_for_training(
+        neural_network = torch.export.export(
             neural_network, model_forward_input, strict=True
-        ).module()
+        ).module(check_guards=False)
         quantizer = TOSAQuantizer(TosaSpecification.create_from_string(tosa_spec))
         quantizer.set_global(get_symmetric_quantization_config(is_qat=False))
         neural_network = prepare_pt2e(neural_network, quantizer)
+        neural_network(*model_forward_input)  # Calibration with sample data.
 
     if (
         not params.output.export.dynamic_shape
@@ -205,11 +201,10 @@ def _export_module_to_vgf(
             for n, c, h, w in params.output.export.vgf_static_input_shape
         )
         logger.info("Tracing and exporting model with config-provided static shape")
+        # Do a forward pass of the model trace with static input shapes
+        neural_network(*model_forward_input)
 
-    # Do a forward pass of the model (unpack tuple from trace).
-    neural_network(*model_forward_input)
-
-    # Get the quantized module ready for export.
+    # For quantized models extract input/output scales and zero points to a metadata file.
     if export_type != ExportType.FP32:
         neural_network = convert_pt2e(neural_network)
 
