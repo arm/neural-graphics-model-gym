@@ -2,7 +2,13 @@
 SPDX-FileCopyrightText: Copyright 2024-2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
 SPDX-License-Identifier: Apache-2.0
 --->
-# Neural Graphics Model Gym
+<h1 align="center">Neural Graphics Model Gym</h1>
+<p align="center">
+<a href="https://huggingface.co/Arm/neural-super-sampling"><img alt="Model Card" src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-neural%20super%20sampling%20-blue"></a>
+<a href="https://github.com/arm/neural-graphics-model-gym/blob/main/LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-Apache%20License%202.0-green"></a>
+<img alt="Python versions" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue">
+<img alt="Neural Graphics Model Gym CLI help output" src="docs/ng-model-gym-cli-hero-img.png" width="665" height="284">
+</p>
 
 > [!NOTE]
 > Please be aware that this is a beta release. Beta means that the product may not be functionally or feature complete. At this early phase the product is not yet expected to fully meet the quality, testing or performance requirements of a full release. These aspects will evolve and improve over time, up to and beyond the full release. We welcome your feedback.
