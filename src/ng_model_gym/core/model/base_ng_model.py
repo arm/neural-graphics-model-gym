@@ -256,7 +256,9 @@ class BaseNGModel(nn.Module, ABC):
             module: nn.Module, inputs: Tuple[TensorData]
         ) -> GraphModule:
             # Trace graph
-            aten_dialect = torch.export.export_for_training(module, inputs).module()
+            aten_dialect = torch.export.export(module, inputs, strict=True).module(
+                check_guards=False
+            )
             # Insert FakeQuantizer nodes
             return prepare_qat_pt2e(aten_dialect, quantizer)
 
