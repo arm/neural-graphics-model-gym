@@ -21,9 +21,9 @@ def download_pretrained_nss_weights():
 
     hf.snapshot_download(
         repo_id="Arm/neural-super-sampling",
-        allow_patterns=["nss_*.pt"],
+        allow_patterns=["nss_*.pt", "config.json"],
         local_dir=weights_dir,
-        revision="a90431d1ddf116ef713d39e2507f86550ed09793",
+        revision="2e9b606acd9fa25071825a12f0764f1c3bef9480",
     )
     print(f"Downloaded pretrained NSS weights to {weights_dir}")
 

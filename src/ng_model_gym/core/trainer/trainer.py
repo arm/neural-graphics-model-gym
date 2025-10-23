@@ -20,7 +20,7 @@ from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.loss.losses import LossV1
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
-from ng_model_gym.core.model.model import create_model
+from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.optimizers.adam_w import adam_w_torch
 from ng_model_gym.core.optimizers.lars_adam import lars_adam_torch
