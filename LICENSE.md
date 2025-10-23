@@ -226,8 +226,5 @@ license text is included in, or next to, those files.
    -  `scripts/safetensors_generator/fsr2_methods.py`
    -  `src/ng_model_gym/usecases/nss/model/shaders/depth_clip.slang`
 
-- The [ML SDK Model Converter](https://github.com/arm/ai-ml-sdk-model-converter) project.
-  This is licensed under the Apache License, Version 2.0.
-
 - The [Amazon Lumberyard Bistro](https://developer.nvidia.com/orca/amazon-lumberyard-bistro) project.
   This is licensed under the Creative Commons CC-BY 4.0 license.
