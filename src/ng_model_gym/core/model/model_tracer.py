@@ -9,6 +9,7 @@ from torch.utils._pytree import tree_map
 
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
+from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from ng_model_gym.core.utils.tensor_types import TensorData
 
 
@@ -31,6 +32,8 @@ def model_tracer(
     else:
         raise ValueError("ng_model is not a valid type")
 
+    if isinstance(ng_model, FeedbackModel):
+        ng_model.reset_history_buffers()
     captured = None
 
     class _StopForward(Exception):
@@ -63,6 +66,9 @@ def model_tracer(
                 pass
     finally:
         hook.remove()
+
+    if isinstance(ng_model, FeedbackModel):
+        ng_model.reset_history_buffers()
 
     match captured:
         case None | (None,):
