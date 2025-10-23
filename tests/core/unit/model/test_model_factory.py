@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import torch
 
-from ng_model_gym.core.model.model import (
+from ng_model_gym.core.model.model_factory import (
     create_model,
     get_model_from_config,
     get_model_key,

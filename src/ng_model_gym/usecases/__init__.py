@@ -14,4 +14,4 @@ def import_usecase_files() -> None:
 
     for _, name, _ in pkgutil.walk_packages(__path__, prefix=__name__ + "."):
         importlib.import_module(name)
-        logger.info(f"Imported module: {name}")
+        logger.debug(f"Imported module: {name}")

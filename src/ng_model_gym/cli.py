@@ -90,7 +90,7 @@ def train_cli(
         bool, typer.Option(help="Run evaluation metrics on trained model")
     ] = True,
 ):
-    """Train NSS model"""
+    """Perform training"""
     from ng_model_gym import do_evaluate, do_training
 
     params = cli_state["params"]
@@ -136,7 +136,7 @@ def qat_cli(
         bool, typer.Option(help="Run evaluation metrics on trained QAT model")
     ] = True,
 ):
-    """Quantized aware training of NSS model"""
+    """Perform quantization-aware training"""
     from ng_model_gym import do_evaluate, do_training
 
     params = cli_state["params"]
@@ -179,7 +179,7 @@ def eval_cli(
         ),
     ],
 ):
-    """Run evaluation metrics on chosen model"""
+    """Run evaluation on a chosen model"""
     from ng_model_gym import do_evaluate
 
     params = cli_state["params"]

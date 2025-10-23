@@ -10,7 +10,7 @@ import torch
 
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
-from ng_model_gym.core.model.model import create_model
+from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.types import TrainEvalMode
 
