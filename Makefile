@@ -25,6 +25,9 @@ test-unit: # Run unit tests for a given USECASE arg: e.g. USECASE=nss
 test-integration: # Run integration tests for a given USECASE arg: e.g. USECASE=nss
 	@echo "Running integration tests"
 	python -m tests.run_tests --test-dirs tests/core/integration tests/usecases/${USECASE}/integration
+test-integration-fast: # Run fast integration tests for a given USECASE arg: e.g. USECASE=nss
+	@echo "Running integration tests (fast mode)"
+	python -m tests.run_tests --fast-test --test-dirs tests/core/integration tests/usecases/${USECASE}/integration
 test-export: # Run export integration tests for a given USECASE arg: e.g. USECASE=nss
 	@echo "Running export integration tests"
 	python -m tests.run_tests --test-dirs tests/core/export
