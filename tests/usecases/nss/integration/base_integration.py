@@ -15,6 +15,7 @@ import torch
 from ng_model_gym.core.utils.checkpoint_utils import (
     latest_checkpoint_path,
     latest_training_run_dir,
+    replace_prefix_in_state_dict,
 )
 from ng_model_gym.core.utils.general_utils import create_directory
 from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
@@ -155,6 +156,10 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         trained_model_state_dict = torch.load(
             trained_checkpoint, weights_only=True, map_location="cpu"
         )["model_state_dict"]
+
+        replace_prefix_in_state_dict(
+            golden_model_state_dict, old_prefix="nss_model", new_prefix="ng_model"
+        )
 
         # Compare epoch 2 weights with golden weights
         for golden_params, trained_params in zip(

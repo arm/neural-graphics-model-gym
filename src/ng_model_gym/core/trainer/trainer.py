@@ -25,7 +25,10 @@ from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.optimizers.adam_w import adam_w_torch
 from ng_model_gym.core.optimizers.lars_adam import lars_adam_torch
 from ng_model_gym.core.schedulers.lr_scheduler import CosineAnnealingWithWarmupLR
-from ng_model_gym.core.utils.checkpoint_utils import latest_checkpoint_path
+from ng_model_gym.core.utils.checkpoint_utils import (
+    latest_checkpoint_path,
+    remap_feedback_model_state_dict,
+)
 from ng_model_gym.core.utils.config_model import ConfigModel, TrainingConfig
 from ng_model_gym.core.utils.general_utils import create_directory
 from ng_model_gym.core.utils.types import (
@@ -134,7 +137,10 @@ class Trainer:
 
             # Restore model weights and optimizer state
             checkpoint = torch.load(checkpoint_path, weights_only=True)
-            self.model.load_state_dict(checkpoint["model_state_dict"])
+            model_state = remap_feedback_model_state_dict(
+                checkpoint["model_state_dict"]
+            )
+            self.model.load_state_dict(model_state)
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
             self.starting_epoch = checkpoint["epoch"] + 1
 
@@ -165,7 +171,10 @@ class Trainer:
                 )
 
             finetune_weight = torch.load(finetune_path, weights_only=True)
-            self.model.load_state_dict(finetune_weight["model_state_dict"])
+            model_state = remap_feedback_model_state_dict(
+                finetune_weight["model_state_dict"]
+            )
+            self.model.load_state_dict(model_state)
             logger.info(f"Fine tuning using weights {finetune_path.name}")
 
         # If a path has not been defined, create a new directory to store checkpoints

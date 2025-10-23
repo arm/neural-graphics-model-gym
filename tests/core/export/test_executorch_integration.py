@@ -67,7 +67,9 @@ class TestExecuTorchIntegration(unittest.TestCase):
         self.assertFalse(tosa_out_dir.exists())
 
         do_export(
-            params, "./tests/usecases/nss/weights/nss_v0.1.0_fp32.pt", ExportType.FP32
+            params,
+            "./tests/usecases/nss/weights/nss_v0.1.0_fp32.pt",
+            ExportType.FP32,
         )
 
         # Verify TOSA folder and output files created

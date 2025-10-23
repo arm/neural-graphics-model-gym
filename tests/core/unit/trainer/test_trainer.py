@@ -26,7 +26,7 @@ class TinyModel(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.nss_model = None
+        self.ng_model = None
         self.layer = nn.Linear(1, 1)
         self.layer.weight.data = torch.full((1, 1), 0.5)
         self.layer.bias.data = torch.full((1, 1), 0.4)
@@ -57,7 +57,7 @@ class TestTrainerMethods(unittest.TestCase):
         self.mock_trainer.metrics = []
 
         # --- Model ---
-        self.mock_trainer.model.nss_model = Mock()
+        self.mock_trainer.model.ng_model = Mock()
         self.mock_trainer.model.reset_history_buffers = Mock()
         self.mock_trainer.model.detach_buffers = Mock()
 

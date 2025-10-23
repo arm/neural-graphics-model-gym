@@ -70,13 +70,13 @@ class MockFeedbackModel(BaseNGModelWrapper):
         self,
     ):
         super().__init__()
-        self.nss_model = MockNSS()
+        self.ng_model = MockNSS()
 
     def get_ng_model(self) -> BaseNGModel:
-        return self.nss_model
+        return self.ng_model
 
     def set_ng_model(self, ng_model: BaseNGModel) -> None:
-        self.nss_model = ng_model
+        self.ng_model = ng_model
 
     def get_model_input_for_tracing(self, x):
         """Mock method to return model input for tracing."""
@@ -84,11 +84,11 @@ class MockFeedbackModel(BaseNGModelWrapper):
 
     def get_neural_network(self):
         """Mock get_neural_network"""
-        return self.nss_model.get_neural_network()
+        return self.ng_model.get_neural_network()
 
     def set_neural_network(self, neural_network):
         """Mock set_neural_network"""
-        self.nss_model = neural_network
+        self.ng_model = neural_network
 
 
 # pylint: disable-next=unused-argument

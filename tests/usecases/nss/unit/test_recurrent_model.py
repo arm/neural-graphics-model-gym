@@ -5,6 +5,7 @@ import unittest
 
 import torch
 
+from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model import create_model
 from ng_model_gym.core.utils.types import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
@@ -12,8 +13,8 @@ from tests.testing_utils import create_simple_params
 from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
 
 
-class TestFeedbackModel(BaseGPUMemoryTest):
-    """Tests for FeedbackModel class."""
+class TestFeedbackModelNSS(BaseGPUMemoryTest):
+    """Tests for FeedbackModel class using NSS"""
 
     def setUp(self):
         """Setup feedback model."""
@@ -27,6 +28,8 @@ class TestFeedbackModel(BaseGPUMemoryTest):
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
         self.model = create_model(params, self.device)
+        if not isinstance(self.model, BaseNGModelWrapper):
+            raise TypeError("Model is not a BaseNGModelWrapper")
         self.batch = params.train.batch_size
         self.recurrence = params.dataset.recurrent_samples
         self.data = {
@@ -92,7 +95,7 @@ class TestFeedbackModel(BaseGPUMemoryTest):
             feedback_input_golden["autoencoder_state"]
         )
         autoencoder_with_golden_state.to(self.device)
-        self.model.nss_model.autoencoder = autoencoder_with_golden_state
+        self.model.ng_model.set_neural_network(autoencoder_with_golden_state)
 
         model_out = self.model(feedback_input_golden["feedback_input"])
 
