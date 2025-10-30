@@ -234,9 +234,14 @@ class AppLogLevel(str, Enum):
 
 def version_callback(value: bool):
     """Get current version"""
-    from ng_model_gym import __version__
 
     if value:
+        from importlib.metadata import (  # pylint: disable=import-outside-toplevel
+            version,
+        )
+
+        __version__ = version("ng_model_gym")
+
         print(f"Version: {__version__}")
         raise typer.Exit()
 

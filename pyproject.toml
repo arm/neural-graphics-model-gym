@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["hatchling>=1.18", "packaging>=24.0"]
+requires = ["hatchling>=1.18", "packaging>=24.0", "versioningit>=3.3.0"]
 build-backend = "hatchling.build"
 
 [project]
@@ -81,7 +81,18 @@ Homepage = "https://www.arm.com"
 Repository = "https://github.com/arm/neural-graphics-model-gym"
 
 [tool.hatch.version]
-path = "src/ng_model_gym/__init__.py"
+source = "versioningit"
+
+[tool.versioningit]
+default-version = "0.0.0"
+
+[tool.versioningit.tag2version]
+method = { module = "version", value = "normalise_tag" }
+
+[tool.versioningit.format]
+distance = "{base_version}+{rev}" # ahead of the tag, append the commit hash
+dirty = "{base_version}+dirty"
+distance-dirty = "{base_version}+{rev}.dirty"
 
 [tool.hatch.metadata]
 allow-direct-references = true
