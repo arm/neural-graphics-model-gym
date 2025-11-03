@@ -107,7 +107,7 @@ def train_cli(
         # Overrides the resume flag set in the config files.
         params.train.resume = True
 
-    if params.dataset.path.test is None:
+    if evaluate and params.dataset.path.test is None:
         raise ValueError(
             "Config error: Evaluation is specified but no test dataset path is provided"
         )
