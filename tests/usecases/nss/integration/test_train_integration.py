@@ -171,6 +171,69 @@ class TrainingIntegrationTest(BaseIntegrationTest):
 
         self.assertIn("config error", exc.stderr.lower())
 
+    def test_train_no_eval_no_test_dataset(self):
+        """Test train succeeds with no evaluate and no test dataset path"""
+
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        # Disable test dataset and evaluation
+        cfg_json["dataset"]["path"]["test"] = None
+        cfg_json["train"]["perform_validate"] = False
+
+        self.test_cfg_path = Path(self.test_dir, "test_no_eval_no_test_dataset.json")
+
+        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
+
+        sub_proc = subprocess.run(
+            [
+                "ng-model-gym",
+                f"--config-path={self.test_cfg_path}",
+                "train",
+                "--no-evaluate",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(sub_proc.returncode, 0)
+        self.assertNotIn("config error", (sub_proc.stdout + sub_proc.stderr).lower())
+
+    def test_train_evaluate_but_no_train_dataset(self):
+        """Test train with evaluation but no test dataset raises error"""
+
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        # Override validation dataset path and perform_validate
+        cfg_json["dataset"]["path"]["test"] = None
+        cfg_json["train"]["perform_validate"] = False
+
+        self.test_cfg_path = Path(self.test_dir, "test_validate_error.json")
+
+        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
+
+        with self.assertRaises(subprocess.CalledProcessError) as sub_proc_out:
+            subprocess.run(
+                ["ng-model-gym", f"--config-path={self.test_cfg_path}", "train"],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+        exc = sub_proc_out.exception
+
+        self.assertNotEqual(
+            exc.returncode,
+            0,
+            f"Expected non zero exit code for missing dataset, got {exc.returncode}",
+        )
+
+        self.assertIn("config error: evaluation", exc.stderr.lower())
+
     def test_warning_train_with_validation_false_with_dataset(self):
         """Test train with validation set to false raises warning if dataset path provided"""
 
