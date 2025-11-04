@@ -22,6 +22,7 @@ from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
+from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from ng_model_gym.core.optimizers.adam_w import adam_w_torch
 from ng_model_gym.core.optimizers.lars_adam import lars_adam_torch
 from ng_model_gym.core.schedulers.lr_scheduler import CosineAnnealingWithWarmupLR
@@ -72,6 +73,8 @@ class Trainer:
                 "Model must be an instance of BaseNGModel or BaseNGModelWrapper"
             )
 
+        self.is_feedback = isinstance(self.model, FeedbackModel)
+
         logger.info(f"Model architecture: {self.model}")
         total_params = sum(p.numel() for p in self.model.parameters())
         logger.info(f"Total number of parameters: {total_params:,}")
@@ -79,6 +82,7 @@ class Trainer:
         self.optimizer = get_optimizer_type(
             self.training_mode_params, self.model.parameters()
         )
+
         self.lr_schedule = get_lr_schedule(
             self.training_mode_params,
             self.optimizer,
@@ -114,6 +118,7 @@ class Trainer:
 
         if ng_model.is_qat_model and not ng_model.is_network_quantized:
             input_data = next(iter(self.train_dataloader))[0]
+
             # Tracing must be the exact same model as the trainer forward pass model
             forward_input_data = model_tracer(self.model, input_data)
 
@@ -249,6 +254,16 @@ class Trainer:
             return True
         return False
 
+    def _move_to_device(self, dataset):
+        """Move tensors to device."""
+
+        # If dataset is a dictionary of tensors
+        if isinstance(dataset, dict):
+            return {key: tensor.to(self.device) for key, tensor in dataset.items()}
+
+        # or if dataset is a tensor
+        return dataset.to(self.device)
+
     def train(self, profiler: Optional[torch.profiler.profile] = None):
         """Start training loop"""
 
@@ -256,7 +271,8 @@ class Trainer:
         self.model.train()
 
         for epoch in range(self.starting_epoch, total_epochs + 1):
-            self.model.reset_history_buffers()
+            if self.is_feedback:
+                self.model.reset_history_buffers()
 
             running_epoch_loss = 0.0
             total_batches = len(self.train_dataloader)
@@ -269,13 +285,11 @@ class Trainer:
 
             for iteration, (inputs_dataset, ground_truth_data) in train_pbar:
                 self.optimizer.zero_grad()
-                # Move tensors to device.
-                inputs_dataset = {
-                    key: tensor.to(self.device)
-                    for key, tensor in inputs_dataset.items()
-                }
 
-                ground_truth_data = ground_truth_data.to(self.device)
+                # Move tensors to device.
+                inputs_dataset = self._move_to_device(inputs_dataset)
+
+                ground_truth_data = self._move_to_device(ground_truth_data)
 
                 self.model.y_true = ground_truth_data
 
@@ -290,7 +304,9 @@ class Trainer:
 
                 loss.backward()
                 self.optimizer.step()
-                self.model.detach_buffers()
+
+                if self.is_feedback:
+                    self.model.detach_buffers()
 
                 if self.lr_schedule:
                     self.lr_schedule.step()
@@ -333,12 +349,15 @@ class Trainer:
             # Save after every epoch
             self._save_checkpoint(epoch)
 
-        self.model.reset_history_buffers()
+        if self.is_feedback:
+            self.model.reset_history_buffers()
 
     def validate(self, epoch):
         """Start validation loop."""
         total_epochs = self.training_mode_params.number_of_epochs
-        self.model.reset_history_buffers()
+
+        if self.is_feedback:
+            self.model.reset_history_buffers()
 
         val_dataloader = get_dataloader(
             self.params,
@@ -355,13 +374,11 @@ class Trainer:
 
         self.model.eval()
         running_val_loss = 0.0
+
         for iteration, (inputs_dataset, ground_truth_data) in val_pbar:
             # Move tensors to device.
-            inputs_dataset = {
-                key: tensor.to(self.device) for key, tensor in inputs_dataset.items()
-            }
-
-            ground_truth_data = ground_truth_data.to(self.device)
+            inputs_dataset = self._move_to_device(inputs_dataset)
+            ground_truth_data = self._move_to_device(ground_truth_data)
 
             self.model.y_true = ground_truth_data
 
@@ -391,7 +408,9 @@ class Trainer:
             {"Loss": self.avg_val_loss}, self.metrics, name="Validation/"
         )
         self._tensorboard_update(tb_values, epoch)
-        self.model.reset_history_buffers()
+
+        if self.is_feedback:
+            self.model.reset_history_buffers()
 
     def _save_checkpoint(self, current_epoch):
         """Save checkpoint if end or configured save frequency epoch"""

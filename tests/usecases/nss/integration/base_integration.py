@@ -18,7 +18,7 @@ from ng_model_gym.core.utils.checkpoint_utils import (
     replace_prefix_in_state_dict,
 )
 from ng_model_gym.core.utils.general_utils import create_directory
-from tests.usecases.nss.unit.base_gpu_test import BaseGPUMemoryTest
+from tests.base_gpu_test import BaseGPUMemoryTest
 
 
 class BaseIntegrationTest(BaseGPUMemoryTest):
