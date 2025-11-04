@@ -81,6 +81,10 @@ class NSSModel(BaseNGModel):
         outputs = self.postprocess(
             kernels, inputs, temporal_params, depth_dilated, derivative, feedback
         )
+        if isinstance(inputs, dict):
+            outputs.setdefault(
+                "motion", inputs["motion"]
+            )  # Add input motion vector to outputs
 
         return outputs
 

@@ -286,7 +286,7 @@ class Trainer:
                         "Forward pass must return a dictionary containing 'output' key"
                     )
 
-                loss = self.criterion(ground_truth_data, inference_out | inputs_dataset)
+                loss = self.criterion(ground_truth_data, inference_out)
 
                 loss.backward()
                 self.optimizer.step()
@@ -367,7 +367,7 @@ class Trainer:
 
             inference_out = self.model(inputs_dataset)
 
-            loss = self.criterion(ground_truth_data, inference_out | inputs_dataset)
+            loss = self.criterion(ground_truth_data, inference_out)
 
             # Accumulate the loss
             running_val_loss += loss.item()
