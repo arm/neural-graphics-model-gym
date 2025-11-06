@@ -8,9 +8,12 @@ from typing import Any, List, Optional
 
 import torch
 
+from ng_model_gym.core.data.dataloader import get_dataloader
+from ng_model_gym.core.data.utils import DataLoaderMode
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model_factory import create_model
+from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.types import TrainEvalMode
 
@@ -184,24 +187,29 @@ def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device 
 
     if isinstance(trained_model, BaseNGModelWrapper):
         ng_model = trained_model.get_ng_model()
+    elif isinstance(trained_model, BaseNGModel):
+        ng_model = trained_model
+    else:
+        raise ValueError("trained_model is not a valid type")
 
     # If model is QAT, make sure it is in a traced state for loading in weights
     if (
         params.model_train_eval_mode == TrainEvalMode.QAT_INT8
         and not ng_model.is_network_quantized
     ):
-        ng_model.quantize_modules(
-            (
-                torch.randn(
-                    8,
-                    # TODO: This is specific to NSS. Must be made generic!
-                    ng_model.get_neural_network().in_channels,
-                    128,
-                    128,
-                    device=device,
-                ),
-            ),
+        dataloader = get_dataloader(
+            params,
+            num_workers=params.dataset.num_workers,
+            prefetch_factor=params.dataset.prefetch_factor,
+            loader_mode=DataLoaderMode.TRAIN,
+            trace_mode=False,
         )
+
+        # Get a real batch from the dataloader
+        data = next(iter(dataloader))[0]
+        forward_input_data = model_tracer(trained_model, data)
+
+        ng_model.quantize_modules(forward_input_data)
 
     logger.info(f"Loading model from checkpoint: {model_path}")
     model_state_dict = remap_feedback_model_state_dict(checkpoint["model_state_dict"])
