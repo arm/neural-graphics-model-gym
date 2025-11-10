@@ -25,6 +25,10 @@ from ng_model_gym.core.utils.types import (
 
 # pylint: disable=line-too-long
 
+# Pydantic models representing the configuration file structure.
+# For fields which are not core to all model types (e.g. recurrent_samples),
+# ensure they are marked as Optional with a default of None.
+
 
 class OutputDirModel(BaseModel):
     """Mini model to validate output directory."""
@@ -63,11 +67,15 @@ class PydanticConfigModel(BaseModel):
 class Path(PydanticConfigModel):
     """Paths to train, test and validation dataset"""
 
-    train: Optional[pathlib.Path] = Field(description="Train dataset directory path")
-    validation: Optional[pathlib.Path] = Field(
-        description="Validation dataset directory path"
+    train: Optional[pathlib.Path] = Field(
+        description="Train dataset directory path", default=None
     )
-    test: Optional[pathlib.Path] = Field(description="Test dataset directory path")
+    validation: Optional[pathlib.Path] = Field(
+        description="Validation dataset directory path", default=None
+    )
+    test: Optional[pathlib.Path] = Field(
+        description="Test dataset directory path", default=None
+    )
 
 
 class Processing(PydanticConfigModel):
@@ -82,22 +90,26 @@ class Model(PydanticConfigModel):
     """Model configuration"""
 
     name: str = Field(description="Model name")
-    version: Optional[str] = Field(description="Model version")
+    version: Optional[str] = Field(description="Model version", default=None)
 
 
 class Dataset(PydanticConfigModel):
     """Dataset configuration"""
 
     name: str = Field(description="Dataset name")
-    version: Optional[str] = Field(description="Dataset version")
+    version: Optional[str] = Field(description="Dataset version", default=None)
     path: Path
-    exposure: float = Field(ge=0.0, description="Training dataset exposure value")
-    tonemapper: ToneMapperMode = Field(description="Tonemapping method for dataset")
+    exposure: Optional[float] = Field(
+        ge=0.0, description="Training dataset exposure value", default=None
+    )
+    tonemapper: Optional[ToneMapperMode] = Field(
+        description="Tonemapping method for dataset", default=None
+    )
     health_check: bool = Field(
         description="Run health check on given dataset. health_check() must be implemented in the Dataset."
     )
     recurrent_samples: Optional[int] = Field(
-        gt=1, description="Number of recurrent samples"
+        gt=1, description="Number of recurrent samples", default=None
     )
     gt_augmentation: bool = Field(
         description="Enable dataset augmentations e.g flips, rotations"
@@ -107,6 +119,10 @@ class Dataset(PydanticConfigModel):
         ge=0,
         description="Number of batches loaded in advance by each dataloader worker. "
         "Used only if num_workers > 0",
+    )
+    extension: Optional[str] = Field(
+        description="File extension for dataset files to be found (grep) and loaded, e.g. '.safetensors', '.jpg'. Defaults to .safetensors.",
+        default=".safetensors",
     )
 
 
@@ -141,7 +157,8 @@ class Output(PydanticConfigModel):
         description="Export frames to PNG (for visualization) during model evaluation"
     )
     tensorboard_output_dir: Optional[pathlib.Path] = Field(
-        description="Output directory for tensorboard logs. If null is passed, disable tensorboard"
+        description="Output directory for tensorboard logs. If None is passed, disable tensorboard",
+        default=None,
     )
     export: Export
 
@@ -206,9 +223,9 @@ SchedulerConfig = Annotated[
 class Optimizer(PydanticConfigModel):
     """Optimizer configuration"""
 
-    optimizer_type: Optional[str] = Field(
-        default=OptimizerType.LARS_ADAM.value,
-        description="Optimizer type to use during training. If not set, defaults to lars_adam.",
+    optimizer_type: str = Field(
+        description="Optimizer type to use during training. Choose from: "
+        + ", ".join([e.value for e in OptimizerType]),
     )
     learning_rate: float = Field(
         gt=0.0,
@@ -245,7 +262,7 @@ class Train(PydanticConfigModel):
     seed: int = Field(ge=0, description="Seed for random number generation")
     finetune: bool = Field(description="Fine-tune using pretrained_weights")
     pretrained_weights: Optional[pathlib.Path] = Field(
-        description="Path to the weights of the pretrained model"
+        description="Path to the weights of the pretrained model", default=None
     )
     perform_validate: bool = Field(
         description="Perform validation at the end of specific training epochs, as set by the validate_frequency field."
@@ -257,8 +274,9 @@ class Train(PydanticConfigModel):
     fp32: TrainingConfig
     qat: TrainingConfig
     loss_fn: Optional[str] = Field(
-        default=LossFn.LOSS_V1.value,
-        description="Loss function to use. If not set, defaults to 'loss_v1'",
+        default=None,
+        description="Loss function to use. Choose from: "
+        + ", ".join([e.value for e in LossFn]),
     )
 
 
@@ -270,6 +288,10 @@ class ConfigModel(PydanticConfigModel):
     output: Output
     train: Train
     processing: Processing
+    metrics: Optional[List[str]] = Field(
+        default=None,
+        description="Metric names to instantiate. Temporal metrics are replaced with streaming variants during evaluation.",
+    )
     model_train_eval_mode: Optional[TrainEvalMode] = Field(
         default=None, exclude=True
     )  # Hidden from user. Internal param.

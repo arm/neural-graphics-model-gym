@@ -70,7 +70,7 @@ class NSSDataset(Dataset):
             ]
 
         # Safetensor loading
-        self.sequences = sorted(set(self.data_path.rglob("*.safetensors")))
+        self.sequences = sorted(set(self.data_path.rglob(f"*{self.extension.value}")))
         self.sequence_data = self._generate_frame_indexes(
             self.sequences, self.recurrent_samples
         )
@@ -89,8 +89,8 @@ class NSSDataset(Dataset):
         if not self.frame_indexes:
             logger.error(f"Empty list of file paths returned from {self.data_path}")
             raise ValueError(
-                f"No {extension} files found at {self.data_path} "
-                f"Potential causes: Empty dataset directory or overly-strict exclude parameter."
+                f"No {extension.value} files found. "
+                f"Potential causes: Empty dataset directory or incorrect file extension used."
             )
 
         # Generate a Hash-map for sequences, unique integer for each sequence / recurrent

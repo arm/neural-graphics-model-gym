@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 from enum import Enum
+from typing import Dict, List, Union
 
 import torch
 
@@ -139,3 +140,20 @@ def tonemap_inverse(
         raise ValueError(f"Tonemap: {mode} unsupported")
 
     return x
+
+
+def move_to_device(
+    tensors: Union[torch.Tensor, List[torch.Tensor], Dict[str, torch.Tensor]],
+    device: torch.device,
+):
+    """Send a collection of tensors to device."""
+    if isinstance(tensors, dict):
+        return {k: v.to(device) for k, v in tensors.items()}
+    if isinstance(tensors, list):
+        return [v.to(device) for v in tensors]
+    if isinstance(tensors, tuple):
+        return tuple(v.to(device) for v in tensors)
+    if isinstance(tensors, torch.Tensor):
+        return tensors.to(device)
+
+    raise ValueError("Unsupported type for move_to_device")

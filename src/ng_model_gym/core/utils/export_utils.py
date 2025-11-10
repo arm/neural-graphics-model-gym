@@ -311,6 +311,7 @@ def executorch_vgf_export(
             "Dynamic export is enabled and provided static input shape will be ignored"
         )
 
+    # Resolve weights and load the model.
     # Load on GPU first to accommodate the tracing forward pass of models with shaders.
     model = load_checkpoint(model_path, params, torch.device("cuda"))
     model = model.to("cpu")
@@ -353,7 +354,8 @@ def executorch_vgf_export(
         / f"{model_key}-{export_type.name}-metadata.json"
     )
 
-    _update_metadata_file(metadata_path, model.get_additional_constants())
+    if hasattr(model, "get_additional_constants"):
+        _update_metadata_file(metadata_path, model.get_additional_constants())
 
     _export_module_to_vgf(
         params, model, model_forward_input, export_type, metadata_path

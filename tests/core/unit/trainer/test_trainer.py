@@ -7,7 +7,6 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
-from types import MethodType
 from unittest.mock import Mock
 
 import torch
@@ -56,7 +55,7 @@ class TestTrainerMethods(unittest.TestCase):
         self.mock_trainer.starting_epoch = 1
         self.mock_trainer.device = torch.device("cpu")
         self.mock_trainer.metrics = []
-        self.mock_trainer.is_feedback = True
+        self.mock_trainer.is_feedback = False
 
         # --- Model ---
         self.mock_trainer.model.ng_model = Mock()
@@ -64,12 +63,11 @@ class TestTrainerMethods(unittest.TestCase):
         self.mock_trainer.model.detach_buffers = Mock()
 
         # --- Dataloader ---
-        mock_input = Mock()
-        mock_input.to = Mock(return_value=mock_input)
-        mock_ground_truth = Mock()
-        mock_ground_truth.to = Mock(return_value=mock_ground_truth)
+        self.mock_input = torch.zeros((1, 1))
+        self.mock_ground_truth = torch.zeros((1, 1))
         self.mock_trainer.train_dataloader = [
-            ({"x": mock_input}, mock_ground_truth) for _ in range(10)
+            ({"x": self.mock_input.clone()}, self.mock_ground_truth.clone())
+            for _ in range(10)
         ]
 
         # --- Loss / Criterion ---
@@ -252,35 +250,45 @@ class TestTrainerMethods(unittest.TestCase):
     def test_train_with_different_dataloader_value_types(self):
         """Test type errors not raised when input_dataset or ground_truth
         are either tensors or dictionaries."""
-        mock_input = Mock()
-        mock_ground_truth = Mock()
+        mock_input = self.mock_input
+        mock_ground_truth = self.mock_ground_truth
+        self.mock_trainer.training_mode_params.number_of_epochs = 5
 
-        test_dataloader_outputs = [
+        test_dataloader_sample = [
+            # Tensor / Tensor
             (mock_input, mock_ground_truth),
+            # Dict / Tensor
             ({"input": mock_input}, mock_ground_truth),
+            # Tensor / Dict
             (mock_input, {"ground_truth": mock_ground_truth}),
+            # Dict / Dict
             ({"input": mock_input}, {"ground_truth": mock_ground_truth}),
+            # Tuple / Tensor
+            ((mock_input, mock_input), mock_ground_truth),
+            # Tensor / Tuple
+            (mock_input, (mock_ground_truth, mock_ground_truth)),
+            # Tuple / Tuple
+            ((mock_input, mock_input), (mock_ground_truth, mock_ground_truth)),
+            # List / Tensor
+            ([mock_input, mock_input], mock_ground_truth),
+            # Tensor / List
+            (mock_input, [mock_ground_truth, mock_ground_truth]),
+            # List / List
+            ([mock_input, mock_input], [mock_ground_truth, mock_ground_truth]),
         ]
 
-        for dataloader_output in test_dataloader_outputs:
-            with self.subTest(dataloader_output=dataloader_output):
+        for dataloader_sample in test_dataloader_sample:
+            with self.subTest(dataloader_output=dataloader_sample):
                 self.mock_trainer.train_dataloader = [
-                    dataloader_output for _ in range(10)
+                    dataloader_sample for _ in range(5)
                 ]
-
-                self.mock_trainer._move_to_device = MethodType(
-                    Trainer._move_to_device, self.mock_trainer
-                )
-
-                type_error_raised = False
-
                 try:
                     Trainer.train(self.mock_trainer)
-
-                except TypeError:
-                    type_error_raised = True
-
-                self.assertFalse(type_error_raised)
+                except TypeError as exc:
+                    self.fail(
+                        "Unexpected TypeError raised for dataloader "
+                        f"output {dataloader_sample}: {exc}"
+                    )
 
 
 class TestLossFnFactory(unittest.TestCase):

@@ -205,19 +205,21 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
         )
 
         # Test tPSNR value.
-        tpsnr = self._read_metric_value("tPSNR", expected_results_path)
+        tpsnr = self._read_metric_value("tPSNRStreaming", expected_results_path)
         self.assertIsNotNone(tpsnr)
         self.assertGreater(
-            tpsnr, expected_tpsnr, f"tPSNR should be greater than {expected_tpsnr}"
+            tpsnr,
+            expected_tpsnr,
+            f"tPSNRStreaming should be greater than {expected_tpsnr}",
         )
 
         # Test recPSNR value.
-        recpsnr = self._read_metric_value("recPSNR", expected_results_path)
+        recpsnr = self._read_metric_value("recPSNRStreaming", expected_results_path)
         self.assertIsNotNone(recpsnr)
         self.assertGreater(
             recpsnr,
             expected_recpsnr,
-            f"recPSNR should be greater than {expected_recpsnr}",
+            f"recPSNRStreaming should be greater than {expected_recpsnr}",
         )
         # Ensure png directory is created for exporting
         exported_png = Path(self.model_out_dir, "png", "frame_0000_pred.png")
@@ -285,19 +287,21 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
         )
 
         # Test tPSNR value.
-        tpsnr = self._read_metric_value("tPSNR", expected_results_path)
+        tpsnr = self._read_metric_value("tPSNRStreaming", expected_results_path)
         self.assertIsNotNone(tpsnr)
         self.assertGreater(
-            tpsnr, expected_tpsnr, f"tPSNR should be greater than {expected_tpsnr}"
+            tpsnr,
+            expected_tpsnr,
+            f"tPSNRStreaming should be greater than {expected_tpsnr}",
         )
 
         # Test recPSNR value.
-        recpsnr = self._read_metric_value("recPSNR", expected_results_path)
+        recpsnr = self._read_metric_value("recPSNRStreaming", expected_results_path)
         self.assertIsNotNone(recpsnr)
         self.assertGreater(
             recpsnr,
             expected_recpsnr,
-            f"recPSNR should be greater than {expected_recpsnr}",
+            f"recPSNRStreaming should be greater than {expected_recpsnr}",
         )
 
         # Test SSIM value.

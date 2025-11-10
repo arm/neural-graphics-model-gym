@@ -104,6 +104,7 @@ def create_simple_params(
                 "optimizer": {"optimizer_type": "lars_adam", "learning_rate": "2e-3"},
             },
         },
+        "metrics": ["PSNR", "tPSNR", "RecPSNR", "SSIM"],
     }
 
     # Create output and checkpoint directories

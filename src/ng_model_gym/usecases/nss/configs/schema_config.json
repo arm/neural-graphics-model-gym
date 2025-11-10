@@ -13,6 +13,7 @@
                     "type": "null"
                 }
             ],
+            "default": null,
             "description": "Model version"
         }
     },
@@ -30,6 +31,7 @@
                     "type": "null"
                 }
             ],
+            "default": null,
             "description": "Dataset version"
         },
         "path": {
@@ -43,6 +45,7 @@
                         "type": "null"
                     }
                 ],
+                "default": null,
                 "description": "Train dataset directory path"
             },
             "validation": {
@@ -55,6 +58,7 @@
                         "type": "null"
                     }
                 ],
+                "default": null,
                 "description": "Validation dataset directory path"
             },
             "test": {
@@ -67,25 +71,43 @@
                         "type": "null"
                     }
                 ],
+                "default": null,
                 "description": "Test dataset directory path"
             }
         },
         "exposure": {
-            "description": "Training dataset exposure value",
-            "minimum": 0.0,
-            "type": "number"
+            "anyOf": [
+                {
+                    "minimum": 0.0,
+                    "type": "number"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "description": "Training dataset exposure value"
         },
         "tonemapper": {
-            "description": "Tonemapping method for dataset",
-            "enum": [
-                "reinhard",
-                "karis",
-                "log",
-                "log10",
-                "log_norm",
-                "aces"
+            "anyOf": [
+                {
+                    "description": "Supported modes for tone mapping.",
+                    "enum": [
+                        "reinhard",
+                        "karis",
+                        "log",
+                        "log10",
+                        "log_norm",
+                        "aces"
+                    ],
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
             ],
-            "type": "string"
+            "default": null,
+            "description": "Tonemapping method for dataset"
         },
         "health_check": {
             "description": "Run health check on given dataset. health_check() must be implemented in the Dataset.",
@@ -101,6 +123,7 @@
                     "type": "null"
                 }
             ],
+            "default": null,
             "description": "Number of recurrent samples"
         },
         "gt_augmentation": {
@@ -116,6 +139,18 @@
             "description": "Number of batches loaded in advance by each dataloader worker. Used only if num_workers > 0",
             "minimum": 0,
             "type": "integer"
+        },
+        "extension": {
+            "anyOf": [
+                {
+                    "type": "string"
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": ".safetensors",
+            "description": "File extension for dataset files to be found (grep) and loaded, e.g. '.safetensors', '.jpg'. Defaults to .safetensors."
         }
     },
     "output": {
@@ -138,7 +173,8 @@
                     "type": "null"
                 }
             ],
-            "description": "Output directory for tensorboard logs. If null is passed, disable tensorboard"
+            "default": null,
+            "description": "Output directory for tensorboard logs. If None is passed, disable tensorboard"
         },
         "export": {
             "dynamic_shape": {
@@ -210,6 +246,7 @@
                     "type": "null"
                 }
             ],
+            "default": null,
             "description": "Path to the weights of the pretrained model"
         },
         "perform_validate": {
@@ -295,16 +332,8 @@
             },
             "optimizer": {
                 "optimizer_type": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": "lars_adam",
-                    "description": "Optimizer type to use during training. If not set, defaults to lars_adam."
+                    "description": "Optimizer type to use during training. Choose from: adam_w, lars_adam",
+                    "type": "string"
                 },
                 "learning_rate": {
                     "description": "The learning rate. Scheduler may override this value",
@@ -378,16 +407,8 @@
             },
             "optimizer": {
                 "optimizer_type": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": "lars_adam",
-                    "description": "Optimizer type to use during training. If not set, defaults to lars_adam."
+                    "description": "Optimizer type to use during training. Choose from: adam_w, lars_adam",
+                    "type": "string"
                 },
                 "learning_rate": {
                     "description": "The learning rate. Scheduler may override this value",
@@ -406,8 +427,8 @@
                     "type": "null"
                 }
             ],
-            "default": "loss_v1",
-            "description": "Loss function to use. If not set, defaults to 'loss_v1'"
+            "default": null,
+            "description": "Loss function to use. Choose from: loss_v1"
         }
     },
     "processing": {
@@ -415,5 +436,20 @@
             "description": "Use slang shaders that match deployment shaders",
             "type": "boolean"
         }
+    },
+    "metrics": {
+        "anyOf": [
+            {
+                "items": {
+                    "type": "string"
+                },
+                "type": "array"
+            },
+            {
+                "type": "null"
+            }
+        ],
+        "default": null,
+        "description": "Metric names to instantiate. Temporal metrics are replaced with streaming variants during evaluation."
     }
 }

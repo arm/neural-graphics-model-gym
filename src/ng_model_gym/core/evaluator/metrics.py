@@ -2,10 +2,16 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
+import logging
+
 import torch
 from torchmetrics import Metric
 from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.image.ssim import StructuralSimilarityIndexMeasure
+
+from ng_model_gym.core.utils.config_model import ConfigModel
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_psnr(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
@@ -275,7 +281,7 @@ class TPsnrStreaming(Metric):
     is_streaming = True
 
     def __str__(self):
-        return "tPSNR"
+        return "tPSNRStreaming"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -358,7 +364,7 @@ class RecPsnrStreaming(Metric):
     is_streaming = True
 
     def __str__(self):
-        return "recPSNR"
+        return "recPSNRStreaming"
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -414,12 +420,58 @@ class RecPsnrStreaming(Metric):
 # pylint: enable=no-member
 
 
-def get_metrics(is_test: bool = False) -> list[Metric]:
-    """Return list of metrics to use for evaluation.
+_METRIC_FACTORY: dict[str, type[Metric]] = {
+    "PSNR": Psnr,
+    "tPSNR": TPsnr,
+    "RecPSNR": RecPsnr,
+    "SSIM": Ssim,
+    "tPSNRStreaming": TPsnrStreaming,
+    "RecPSNRStreaming": RecPsnrStreaming,
+}
 
-    If we are doing Testing, we use the streaming versions of temporal metrics.
-    """
+# Mapping from non-streaming to streaming metric names
+_STREAMING_METRIC_MAP: dict[str, str] = {
+    "tPSNR": "tPSNRStreaming",
+    "RecPSNR": "RecPSNRStreaming",
+}
+
+
+def _build_metric(metric_name: str) -> Metric:
+    if metric_name not in _METRIC_FACTORY:
+        raise KeyError(f"Unsupported metric '{metric_name}' in metrics configuration")
+    metric_cls = _METRIC_FACTORY[metric_name]
+    return metric_cls()
+
+
+def _metrics_from_config(params: ConfigModel | None, is_test: bool) -> list[Metric]:
+    if params is None or params.metrics is None:
+        return []
+
+    metric_names = list(params.metrics)
+
+    if is_test:
+        metric_names = [_STREAMING_METRIC_MAP.get(name, name) for name in metric_names]
+
+    return [_build_metric(name) for name in metric_names]
+
+
+def _default_metrics(is_test: bool) -> list[Metric]:
     if is_test:
         return [Psnr(), TPsnrStreaming(), RecPsnrStreaming(), Ssim()]
 
     return [Psnr(), TPsnr(), RecPsnr(), Ssim()]
+
+
+def get_metrics(
+    params: ConfigModel | None = None,
+    is_test: bool = False,
+) -> list[Metric]:
+    """Return list of metrics to use for evaluation.
+
+    For evaluation/test, we use the streaming versions of temporal metrics.
+    """
+    metrics_from_config = _metrics_from_config(params, is_test)
+    metrics = metrics_from_config if metrics_from_config else _default_metrics(is_test)
+    metric_names = ", ".join(str(metric) for metric in metrics)
+    logger.info("Tracking metrics %s", metric_names)
+    return metrics
