@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 from typing import TYPE_CHECKING
 
-__version__ = "0.1.0"
 # pylint: disable=import-outside-toplevel, too-many-return-statements
 
 # noinspection PyUnresolvedReferences
@@ -18,7 +17,6 @@ __all__ = [
     "TrainEvalMode",
     "ExportType",
     "ProfilerType",
-    "__version__",
 ]
 
 
