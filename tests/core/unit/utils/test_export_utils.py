@@ -46,8 +46,8 @@ def _flatten(container):
 class MockNSS(BaseNGModel):
     """Mock class for NSS model."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, params):
+        super().__init__(params)
         self.autoencoder = nn.Identity()
 
     def get_neural_network(self):
@@ -66,11 +66,9 @@ class MockNSS(BaseNGModel):
 class MockFeedbackModel(BaseNGModelWrapper):
     """Mock class for Feedback model."""
 
-    def __init__(
-        self,
-    ):
+    def __init__(self, params):
         super().__init__()
-        self.ng_model = MockNSS()
+        self.ng_model = MockNSS(params)
 
     def get_ng_model(self) -> BaseNGModel:
         return self.ng_model
@@ -126,18 +124,21 @@ class TestExportUtils(unittest.TestCase):
     def setUp(self):
         """Setup common test data and state"""
         self.tmp_path = Path(tempfile.mkdtemp())
+        self.params = make_params(self.tmp_path)
+        self.load_ckpt_patch = patch(
+            "ng_model_gym.core.utils.export_utils.load_checkpoint",
+            new=lambda *a, **k: MockFeedbackModel(self.params),
+        )
+        self.load_ckpt_patch.start()
 
     def tearDown(self):
         """Clean up the temporary directory."""
+        self.load_ckpt_patch.stop()
         shutil.rmtree(self.tmp_path)
 
     # Patch the heavy or external dependencies on every test:
     @patch("ng_model_gym.core.utils.export_utils._update_metadata_file", new=DEFAULT)
     @patch("ng_model_gym.core.utils.export_utils.get_dataloader", side_effect=fake_dl)
-    @patch(
-        "ng_model_gym.core.utils.export_utils.load_checkpoint",
-        new=lambda *a, **k: MockFeedbackModel(),
-    )
     @patch("ng_model_gym.core.utils.export_utils._export_module_to_vgf", new=DEFAULT)
     @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
     @patch(
@@ -148,20 +149,20 @@ class TestExportUtils(unittest.TestCase):
         self, mock_export_module_to_vgf, mock_get_dataloader, mock_update_metadata_file
     ):
         """Test the QAT INT8 export path."""
-        params = make_params(self.tmp_path)
+
         executorch_vgf_export(
-            params=params,
+            params=self.params,
             export_type=ExportType.QAT_INT8,
             model_path=Path("checkpoint.pth"),
         )
 
         # Train/eval mode set correctly.
-        self.assertEqual(params.model_train_eval_mode, TrainEvalMode.QAT_INT8)
+        self.assertEqual(self.params.model_train_eval_mode, TrainEvalMode.QAT_INT8)
 
-        model_key = get_model_key(params.model.name, params.model.version)
+        model_key = get_model_key(self.params.model.name, self.params.model.version)
 
         # Metadata file should be updated with constants.
-        expected_meta = Path(params.output.export.vgf_output_dir) / (
+        expected_meta = Path(self.params.output.export.vgf_output_dir) / (
             f"{model_key}-{ExportType.QAT_INT8.name}-metadata.json"
         )
 
@@ -180,10 +181,10 @@ class TestExportUtils(unittest.TestCase):
         self.assertIsInstance(trace_input, torch.Tensor)
         self.assertEqual(etype, ExportType.QAT_INT8)
 
-        model_key = get_model_key(params.model.name, params.model.version)
+        model_key = get_model_key(self.params.model.name, self.params.model.version)
 
         # Metadata path should match the expected path.
-        expected_meta = Path(params.output.export.vgf_output_dir) / (
+        expected_meta = Path(self.params.output.export.vgf_output_dir) / (
             f"{model_key}-{ExportType.QAT_INT8.name}-metadata.json"
         )
 
@@ -191,10 +192,6 @@ class TestExportUtils(unittest.TestCase):
 
     @patch("ng_model_gym.core.utils.export_utils._update_metadata_file", new=DEFAULT)
     @patch("ng_model_gym.core.utils.export_utils.get_dataloader", side_effect=fake_dl)
-    @patch(
-        "ng_model_gym.core.utils.export_utils.load_checkpoint",
-        new=lambda *a, **k: MockFeedbackModel(),
-    )
     @patch("ng_model_gym.core.utils.export_utils._export_module_to_vgf", new=DEFAULT)
     @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
     @patch(
@@ -205,20 +202,19 @@ class TestExportUtils(unittest.TestCase):
         self, mock_export_module_to_vgf, mock_get_dataloader, mock_update_metadata_file
     ):
         """Test the FP32 export path."""
-        params = make_params(self.tmp_path)
         executorch_vgf_export(
-            params=params,
+            params=self.params,
             export_type=ExportType.FP32,
             model_path=Path("checkpoint.pth"),
         )
 
         # Train/eval mode set correctly.
-        self.assertEqual(params.model_train_eval_mode, TrainEvalMode.FP32)
+        self.assertEqual(self.params.model_train_eval_mode, TrainEvalMode.FP32)
 
-        model_key = get_model_key(params.model.name, params.model.version)
+        model_key = get_model_key(self.params.model.name, self.params.model.version)
 
         # Metadata file should be updated with constants.
-        expected_meta = Path(params.output.export.vgf_output_dir) / (
+        expected_meta = Path(self.params.output.export.vgf_output_dir) / (
             f"{model_key}-{ExportType.FP32.name}-metadata.json"
         )
         mock_update_metadata_file.assert_called_once_with(expected_meta, {"foo": "bar"})
@@ -236,19 +232,15 @@ class TestExportUtils(unittest.TestCase):
         self.assertIsInstance(trace_input, torch.Tensor)
         self.assertEqual(etype, ExportType.FP32)
 
-        model_key = get_model_key(params.model.name, params.model.version)
+        model_key = get_model_key(self.params.model.name, self.params.model.version)
 
         # Metadata path should match the expected path.
-        expected_meta = Path(params.output.export.vgf_output_dir) / (
+        expected_meta = Path(self.params.output.export.vgf_output_dir) / (
             f"{model_key}-{ExportType.FP32.name}-metadata.json"
         )
         self.assertEqual(meta_path, expected_meta)
 
     @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
-    @patch(
-        "ng_model_gym.core.utils.export_utils.load_checkpoint",
-        new=lambda *a, **k: MockFeedbackModel(),
-    )
     @patch("ng_model_gym.core.utils.export_utils.get_dataloader", new=fake_dl)
     @patch(
         "ng_model_gym.core.utils.export_utils._export_module_to_vgf",
@@ -260,16 +252,14 @@ class TestExportUtils(unittest.TestCase):
     )
     def test_metadata_file_is_created(self):
         """Test that metadata file is created with constants when exporting."""
-        params = make_params(self.tmp_path)
-
         # Run with FP32 branch.
-        executorch_vgf_export(params, ExportType.FP32, Path("doesnt_matter.pth"))
+        executorch_vgf_export(self.params, ExportType.FP32, Path("doesnt_matter.pth"))
 
-        model_key = get_model_key(params.model.name, params.model.version)
+        model_key = get_model_key(self.params.model.name, self.params.model.version)
 
         # Build expected path.
         meta_path = (
-            Path(params.output.export.vgf_output_dir)
+            Path(self.params.output.export.vgf_output_dir)
             / f"{model_key}-{ExportType.FP32.name}-metadata.json"
         )
 
@@ -283,10 +273,6 @@ class TestExportUtils(unittest.TestCase):
         self.assertEqual(data, {"foo": "bar"})
 
     @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
-    @patch(
-        "ng_model_gym.core.utils.export_utils.load_checkpoint",
-        new=lambda *a, **k: MockFeedbackModel(),
-    )
     def test_inputs_channels_last_for_4d(self):
         """Ensure 4D tensors become channels_last and non-tensors unchanged."""
 
@@ -333,9 +319,8 @@ class TestExportUtils(unittest.TestCase):
             "ng_model_gym.core.utils.export_utils._update_metadata_file",
             new=lambda *a, **k: None,
         ):
-            params = make_params(self.tmp_path)
             executorch_vgf_export(
-                params=params,
+                params=self.params,
                 export_type=ExportType.FP32,
                 model_path=Path("checkpoint.pt"),
             )

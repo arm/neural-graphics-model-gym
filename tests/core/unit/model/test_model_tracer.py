@@ -10,6 +10,7 @@ from torch import nn
 
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.model_tracer import model_tracer
+from tests.testing_utils import create_simple_params
 
 # pylint: disable=unsubscriptable-object
 
@@ -28,8 +29,8 @@ class TestNN(nn.Module):
 class TestNGModel(BaseNGModel):
     """Test NGModel"""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, params):
+        super().__init__(params)
         self.network = TestNN()
         self.trigger_bad_preprocessing = False
 
@@ -54,9 +55,12 @@ class TestNGModel(BaseNGModel):
 class TestModelTracer(unittest.TestCase):
     """Test model tracer"""
 
+    def setUp(self):
+        self.params = create_simple_params()
+
     def test_tracer_captures_input_tensor(self):
         """Test tracer captures single input tensor"""
-        model = TestNGModel()
+        model = TestNGModel(self.params)
         t1 = torch.randn(2, 4)
 
         traced_data: Tuple[Any, ...] = model_tracer(model, t1)
@@ -73,7 +77,7 @@ class TestModelTracer(unittest.TestCase):
 
     def test_tracer_captures_dict_tensor_input(self):
         """Test tracer captures Dict[str, torch.Tensor]"""
-        model = TestNGModel()
+        model = TestNGModel(self.params)
 
         t1 = torch.randn(2, 4)
         t2 = torch.randn(3, 4)
@@ -105,7 +109,7 @@ class TestModelTracer(unittest.TestCase):
 
     def test_tracer_raise_missing_input_data(self):
         """Test ValueError is raised if tracer input data is None"""
-        model = TestNGModel()
+        model = TestNGModel(self.params)
         model.trigger_bad_preprocessing = True
 
         invalid_input_data = None
@@ -115,7 +119,7 @@ class TestModelTracer(unittest.TestCase):
 
     def test_tracer_raise_missing_bad_forward_input(self):
         """Test ValueError is raised if model forward input is somehow None"""
-        model = TestNGModel()
+        model = TestNGModel(self.params)
         model.trigger_bad_preprocessing = True
         t1 = torch.randn(2, 4)
 
