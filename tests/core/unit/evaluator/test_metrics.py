@@ -16,6 +16,7 @@ from ng_model_gym.core.evaluator.metrics import (
     TPsnr,
     TPsnrStreaming,
 )
+from tests.testing_utils import create_simple_params
 
 
 def generate_mock_data(shape):
@@ -113,15 +114,27 @@ class TestMetrics(unittest.TestCase):
 
     def test_get_metrics(self):
         """Test that get_metrics returns all our expected metrics."""
-        metrics = get_metrics(is_test=False)
-        self.assertEqual(len(metrics), 4)
-        for metric in metrics:
-            self.assertTrue(callable(metric))
+        params = create_simple_params()
 
-        metrics = get_metrics(is_test=True)
+        metrics = get_metrics(params, is_test=False)
         self.assertEqual(len(metrics), 4)
         for metric in metrics:
             self.assertTrue(callable(metric))
+        metric_types = {type(metric) for metric in metrics}
+        self.assertIn(TPsnr, metric_types)
+        self.assertIn(RecPsnr, metric_types)
+        self.assertNotIn(TPsnrStreaming, metric_types)
+        self.assertNotIn(RecPsnrStreaming, metric_types)
+
+        metrics = get_metrics(params, is_test=True)
+        self.assertEqual(len(metrics), 4)
+        for metric in metrics:
+            self.assertTrue(callable(metric))
+        metric_types = {type(metric) for metric in metrics}
+        self.assertIn(TPsnrStreaming, metric_types)
+        self.assertIn(RecPsnrStreaming, metric_types)
+        self.assertNotIn(TPsnr, metric_types)
+        self.assertNotIn(RecPsnr, metric_types)
 
     def test_recpsnr_streaming_different_seq_id_types(self):
         """Recurrent PSNR streamingwith and different seq_id types."""

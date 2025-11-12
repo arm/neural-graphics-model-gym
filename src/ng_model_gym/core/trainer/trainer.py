@@ -15,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 
 from ng_model_gym.core.data.dataloader import get_dataloader
-from ng_model_gym.core.data.utils import DataLoaderMode
+from ng_model_gym.core.data.utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.loss.losses import LossV1
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
@@ -94,7 +94,7 @@ class Trainer:
         self._quantize_modules()
         self._set_up_tensorboard_logging()
 
-        self.metrics = get_metrics()
+        self.metrics = get_metrics(self.params)
         for metric in self.metrics:
             metric.to(self.device)
 
@@ -254,16 +254,6 @@ class Trainer:
             return True
         return False
 
-    def _move_to_device(self, dataset):
-        """Move tensors to device."""
-
-        # If dataset is a dictionary of tensors
-        if isinstance(dataset, dict):
-            return {key: tensor.to(self.device) for key, tensor in dataset.items()}
-
-        # or if dataset is a tensor
-        return dataset.to(self.device)
-
     def train(self, profiler: Optional[torch.profiler.profile] = None):
         """Start training loop"""
 
@@ -286,10 +276,8 @@ class Trainer:
             for iteration, (inputs_dataset, ground_truth_data) in train_pbar:
                 self.optimizer.zero_grad()
 
-                # Move tensors to device.
-                inputs_dataset = self._move_to_device(inputs_dataset)
-
-                ground_truth_data = self._move_to_device(ground_truth_data)
+                inputs_dataset = move_to_device(inputs_dataset, self.device)
+                ground_truth_data = move_to_device(ground_truth_data, self.device)
 
                 self.model.y_true = ground_truth_data
 
@@ -355,7 +343,6 @@ class Trainer:
     def validate(self, epoch):
         """Start validation loop."""
         total_epochs = self.training_mode_params.number_of_epochs
-
         if self.is_feedback:
             self.model.reset_history_buffers()
 
@@ -377,8 +364,8 @@ class Trainer:
 
         for iteration, (inputs_dataset, ground_truth_data) in val_pbar:
             # Move tensors to device.
-            inputs_dataset = self._move_to_device(inputs_dataset)
-            ground_truth_data = self._move_to_device(ground_truth_data)
+            inputs_dataset = move_to_device(inputs_dataset, self.device)
+            ground_truth_data = move_to_device(ground_truth_data, self.device)
 
             self.model.y_true = ground_truth_data
 
@@ -408,7 +395,6 @@ class Trainer:
             {"Loss": self.avg_val_loss}, self.metrics, name="Validation/"
         )
         self._tensorboard_update(tb_values, epoch)
-
         if self.is_feedback:
             self.model.reset_history_buffers()
 

@@ -4,7 +4,7 @@
 import logging
 import time
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 
 import torch
 
@@ -99,6 +99,37 @@ def remap_feedback_model_state_dict(state_dict):
     )
 
 
+def _prepare_qat_forward_input(
+    model: BaseNGModel | BaseNGModelWrapper,
+    params: ConfigModel,
+) -> Tuple[Any, ...]:
+    """Load a sample from train dataloader to trace model before loading real QAT weights."""
+
+    train_path = getattr(params.dataset.path, "train", None)
+    if train_path is None:
+        raise RuntimeError(
+            "Unable to prepare input data for QAT quantization. "
+            "Set `dataset.path.train` in the config so a training sample can be loaded."
+        )
+
+    dataloader = get_dataloader(
+        params,
+        num_workers=0,
+        prefetch_factor=1,
+        loader_mode=DataLoaderMode.TRAIN,
+    )
+
+    try:
+        batch = next(iter(dataloader))
+    except StopIteration as exc:
+        raise RuntimeError(
+            "Training dataloader yielded no data. Ensure the dataset contains samples."
+        ) from exc
+
+    inputs = batch[0] if isinstance(batch, (tuple, list)) else batch
+    return model_tracer(model, inputs)
+
+
 def is_timestamp(dir_name) -> bool:
     """Checks if dir_name matches timestamp schema"""
     try:
@@ -126,14 +157,12 @@ def latest_training_run_dir(checkpoint_dir: Path) -> Path:
             timestamped_directories.append(item.name)
 
     if not timestamped_directories:
-        logger.error(
-            f"Resume training option set but no training runs in "
+        error_msg = (
+            "Resume training option set but no training runs in "
             f"{checkpoint_dir.absolute()} matching format '%y-%m-%d_%H-%M-%S' to restore from"
         )
-        raise LookupError(
-            f"Resume training option set but no training runs in "
-            f"{checkpoint_dir.absolute()} matching format '%y-%m-%d_%H-%M-%S' to restore from"
-        )
+        logger.error(error_msg)
+        raise LookupError(error_msg)
 
     # Max() on list of string timestamps returns most recent
     latest_checkpoint_directory = Path(
@@ -197,18 +226,7 @@ def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device 
         params.model_train_eval_mode == TrainEvalMode.QAT_INT8
         and not ng_model.is_network_quantized
     ):
-        dataloader = get_dataloader(
-            params,
-            num_workers=params.dataset.num_workers,
-            prefetch_factor=params.dataset.prefetch_factor,
-            loader_mode=DataLoaderMode.TRAIN,
-            trace_mode=False,
-        )
-
-        # Get a real batch from the dataloader
-        data = next(iter(dataloader))[0]
-        forward_input_data = model_tracer(trained_model, data)
-
+        forward_input_data = _prepare_qat_forward_input(trained_model, params)
         ng_model.quantize_modules(forward_input_data)
 
     logger.info(f"Loading model from checkpoint: {model_path}")

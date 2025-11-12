@@ -48,10 +48,20 @@ def get_dataset(
     """Return the dataset to be used."""
 
     dataset_cls = get_dataset_from_config(params)
+    if hasattr(params.dataset, "extension"):
+        extension = params.dataset.extension
+    else:
+        raise ValueError("Dataset extension not specified in config parameters.")
 
-    dataset = dataset_cls(
-        params, loader_mode=loader_mode, extension=(DatasetType.SAFETENSOR)
-    )
+    try:
+        extension = DatasetType(extension)
+    except ValueError as e:
+        raise ValueError(
+            f"Unsupported dataset extension: {extension}. "
+            f"Supported extensions are: {[ext.value for ext in DatasetType]}"
+        ) from e
+
+    dataset = dataset_cls(params, loader_mode=loader_mode, extension=extension)
 
     return dataset
 
@@ -93,11 +103,12 @@ def get_dataloader(
     shuffle = loader_mode == DataLoaderMode.TRAIN
 
     if (
-        config_params.dataset.recurrent_samples < 2
+        config_params.dataset.recurrent_samples is not None
+        and config_params.dataset.recurrent_samples < 2
         and loader_mode == DataLoaderMode.TRAIN
     ):
         raise ValueError(
-            "Number of recurrent samples must be greater than 1 for training."
+            "If set, number of recurrent samples must be greater than 1 for training."
         )
 
     g = torch.Generator()

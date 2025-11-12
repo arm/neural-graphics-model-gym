@@ -22,12 +22,24 @@ class TestLossV1(unittest.TestCase):
         )
 
         y_true = loss_input["y_true"]
-        y_pred_and_inps = loss_input["y_pred_and_inps"]
+        # Historic golden files stored both y_pred and inputs_dataset inside a single dict.
+        # Support the legacy combined format first, otherwise rely on the new layout.
+        if "y_pred_and_inps" in loss_input:
+            y_pred_and_inps = loss_input["y_pred_and_inps"]
+            y_pred = {
+                "output": y_pred_and_inps["output"],
+                "out_filtered": y_pred_and_inps["out_filtered"],
+                "motion": y_pred_and_inps["motion"],
+            }
+        else:
+            y_pred = dict(loss_input["y_pred"])
+            self.assertIn("motion", y_pred, "y_pred must contain 'motion' key")
+
         recurrent_samples = y_true.shape[1]
         self.assertEqual(recurrent_samples, 4)
         criterion = LossV1(recurrent_samples, device)
 
-        loss = criterion(y_true, y_pred_and_inps)
+        loss = criterion(y_true, y_pred)
         self.assertAlmostEqual(loss.item(), loss_input["loss"], places=3)
 
 

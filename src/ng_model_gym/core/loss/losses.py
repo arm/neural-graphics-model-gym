@@ -29,22 +29,21 @@ class LossV1(torch.nn.Module):
         self.warp = DenseWarp(interpolation="bilinear_oob_zero")
         self.l1 = torch.nn.L1Loss(reduction="none")
 
-    def forward(
-        self, y_true: torch.Tensor, y_pred_and_inps: TensorData
-    ) -> torch.Tensor:
+    def forward(self, y_true: torch.Tensor, y_pred: TensorData) -> torch.Tensor:
         """Forward pass."""
-        y_pred = y_pred_and_inps["output"]
-        y_pred_filt = y_pred_and_inps["out_filtered"]
-        motion = y_pred_and_inps["motion"]
+
+        y_pred_out = y_pred["output"]
+        y_pred_filt = y_pred["out_filtered"]
+        motion = y_pred["motion"]
 
         # Get dimensions
-        n, t, c, h, w = y_pred.shape
+        n, t, c, h, w = y_pred_out.shape
 
         # Extract Tensor(s) and merge the temporal dimension into the batch dimension
         # This is because `self.warp` expects 4-dim input tensors
-        y_pred_t = torch.reshape(y_pred[:, 1:, ...], ((-1, c, h, w)))
+        y_pred_t = torch.reshape(y_pred_out[:, 1:, ...], ((-1, c, h, w)))
         y_true_t = torch.reshape(y_true[:, 1:, ...], ((-1, c, h, w)))
-        y_pred_tm1 = torch.reshape(y_pred[:, :-1, ...], ((-1, c, h, w)))
+        y_pred_tm1 = torch.reshape(y_pred_out[:, :-1, ...], ((-1, c, h, w)))
         y_true_tm1 = torch.reshape(y_true[:, :-1:, ...], ((-1, c, h, w)))
         motion_t = torch.reshape(motion[:, 1:, ...], ((-1, 2, h, w)))
         warped_y_pred_tm1 = self.warp([y_pred_tm1, motion_t])
@@ -78,7 +77,7 @@ class LossV1(torch.nn.Module):
         with torch.autocast(device_type=str(self.device), dtype=torch.float16):
             for i in range(1, self.recurrent_samples):
                 # The LPIPS call below runs in half precision
-                lpips_val = self.lpips_loss(y_pred[:, i, ...], y_true[:, i, ...])
+                lpips_val = self.lpips_loss(y_pred_out[:, i, ...], y_true[:, i, ...])
                 loss_spatial_lpips_list.append(lpips_val)
 
         # Stack them up and convert back to float32 to merge with the rest of the loss

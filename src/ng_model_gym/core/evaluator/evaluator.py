@@ -13,7 +13,7 @@ import torchvision
 from tqdm.auto import tqdm
 
 from ng_model_gym.core.data.dataloader import get_dataloader
-from ng_model_gym.core.data.utils import DataLoaderMode
+from ng_model_gym.core.data.utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model_factory import BaseNGModel
@@ -33,7 +33,7 @@ class NGModelEvaluator:
         self.export_png_dir = (
             Path(self.out_dir, "png") if self.params.output.export_frame_png else None
         )
-        self.metrics = get_metrics(is_test=True)
+        self.metrics = get_metrics(self.params, is_test=True)
         self.dataloader = None
         self.idx = 0
         self.x_in = None
@@ -76,10 +76,8 @@ class NGModelEvaluator:
         # Run evaluation.
         for self.idx, (self.x_in, self.y_true) in evaluate_pbar:
             # Ensure input data and ground truth are on the same device as the model.
-            self.x_in = {
-                key: tensor.to(self.model.device) for key, tensor in self.x_in.items()
-            }
-            self.y_true = self.y_true.to(self.model.device)
+            self.x_in = move_to_device(self.x_in, self.model.device)
+            self.y_true = move_to_device(self.y_true, self.model.device)
 
             # Run Inference on model - gradients not needed as we only evaluate.
             with torch.no_grad():
@@ -141,6 +139,8 @@ class NGModelEvaluator:
         if self.export_png_dir:
             create_directory(self.export_png_dir)
         self.model.eval()
+        if isinstance(self.model, FeedbackModel):
+            self.model.reset_history_buffers()
 
     def _test_end(self):
         """Called after whole dataset has been evaluated."""

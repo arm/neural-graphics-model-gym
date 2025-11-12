@@ -89,7 +89,7 @@ class TestNGModelEvaluator(unittest.TestCase):
         self.assertIsNotNone(model_evaluator.dataloader)
 
     def test_get_results(self):
-        """Test that get_results() returns results for PSNR, tPSNR, recPSNR and SSIM"""
+        """Test that get_results() returns results for PSNR, streaming tPSNR/recPSNR and SSIM"""
         model_evaluator = NGModelEvaluator(self.model, self.params)
 
         # Pre-load metrics with random values
@@ -106,8 +106,8 @@ class TestNGModelEvaluator(unittest.TestCase):
 
         self.assertEqual(len(results), 4)
         self.assertIn("PSNR", results.keys())
-        self.assertIn("tPSNR", results.keys())
-        self.assertIn("recPSNR", results.keys())
+        self.assertIn("tPSNRStreaming", results.keys())
+        self.assertIn("recPSNRStreaming", results.keys())
         self.assertIn("SSIM", results.keys())
 
     def test_run_model(self):

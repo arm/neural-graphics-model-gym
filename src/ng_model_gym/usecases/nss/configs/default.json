@@ -29,6 +29,12 @@
         }
     },
 
+    "metrics": [
+        "PSNR",
+        "tPSNR",
+        "RecPSNR",
+        "SSIM"
+    ],
     "train": {
         "batch_size": 8,
         "scale": 2.0,
