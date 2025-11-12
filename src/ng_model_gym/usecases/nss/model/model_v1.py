@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # pylint: disable=duplicate-code
 import logging
-from typing import Optional
 
 import torch
 from torch import nn
@@ -35,28 +34,19 @@ logger = logging.getLogger(__name__)
 class NSSModel(BaseNGModel):
     """NSS Model"""
 
-    def __init__(
-        self,
-        params: ConfigModel,
-        feedback_ch: Optional[int] = 4,
-    ):
+    def __init__(self, params: ConfigModel):
         """Set up the model."""
-        super().__init__()
+        super().__init__(params)
 
-        self.model_name = "nss_v1"
-        self.model_params = {
-            "gt_augmentation": params.dataset.gt_augmentation,
-            "recurrent_samples": params.dataset.recurrent_samples,
-        }
+        self.feedback_ch = 4
 
-        self.shader_accurate = params.processing.shader_accurate
+        self.shader_accurate = self.params.processing.shader_accurate
 
-        self.feedback_ch = feedback_ch
-        self.tonemapper = params.dataset.tonemapper
+        self.tonemapper = self.params.dataset.tonemapper
 
         self.autoencoder = AutoEncoderV1(feedback_ch=self.feedback_ch, batch_norm=True)
 
-        self.scale = params.train.scale
+        self.scale = self.params.train.scale
 
         self.dm_scale_on_no_motion = nn.Parameter(
             torch.tensor([0.5]), requires_grad=True

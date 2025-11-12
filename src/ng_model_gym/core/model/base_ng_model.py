@@ -31,6 +31,7 @@ from ng_model_gym.core.quantization.observers import (
     freeze_all_observers,
     FusedMovingAvgObsFakeQuantizeFix,
 )
+from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.tensor_types import TensorData
 from ng_model_gym.core.utils.types import ExportSpec
 
@@ -44,19 +45,22 @@ class BaseNGModel(nn.Module, ABC):
     Subclasses should:
         * Implement getter/setter methods for the core neural network
         * Write the model `forward()` pass. It must return a dictionary with a key named 'output'
+        * Accept 'params' as as argument to the constructor
 
     Optionally:
         * Implement `define_dynamic_export_model_input` if wanting to export a dynamic model
         * For recurrent models, override `init_history_buffers`
         * To include extra metadata during export, override `get_additional_constants`
 
+
     Example::
 
         from torch import nn
+        from ng_model_gym.core.utils.config_model import ConfigModel
 
         class ExampleNGModel(BaseNGModel):
-            def __init__(self):
-                super().__init__()
+            def __init__(self, params: ConfigModel):
+                super().__init__(params)
                 self.neural_network: nn.Module = ExampleNeuralNetwork()
 
             def get_neural_network(self) -> nn.Module:
@@ -72,9 +76,10 @@ class BaseNGModel(nn.Module, ABC):
                 return x
     """
 
-    def __init__(self) -> None:
+    def __init__(self, params: ConfigModel) -> None:
         """Initialise PyTorch nn.Module"""
         super().__init__()
+        self.params = params
         self.is_qat_model = False
         self.is_network_quantized = False
 

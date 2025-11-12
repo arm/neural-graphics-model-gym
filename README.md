@@ -499,13 +499,17 @@ If using the Neural Graphics Model Gym [Python package](#python-package), new mo
 
 #### Registering a custom model
 
-To add a new model, mark the model class with the `@register_model()` decorator, giving the name and optional version to register it under. Models must inherit from the [`BaseNGModel`](./src/ng_model_gym/core/model/base_ng_model.py) class and implement any required methods.
+To add a new model, mark the model class with the `@register_model()` decorator, giving the name and optional version to register it under. Models must inherit from the [`BaseNGModel`](./src/ng_model_gym/core/model/base_ng_model.py) class, implement any required methods, and their constructors must accept `params` as an argument.
 ```python
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.model_registry import register_model
+from ng_model_gym.core.utils.config_model import ConfigModel
 
 @register_model(name="name", version="version")
 class NewModel(BaseNGModel):
+  def __init__(self, params: ConfigModel):
+    super().__init__(params)
+
   ...
 ```
 

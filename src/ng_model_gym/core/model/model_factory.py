@@ -34,7 +34,7 @@ def create_model(
     """Create specified model."""
 
     model_cls = get_model_from_config(params)
-    model = model_cls(params).to(device)
+    model = model_cls(params=params).to(device)
 
     # Make a quantized model if doing QAT
     if params.model_train_eval_mode == TrainEvalMode.QAT_INT8:

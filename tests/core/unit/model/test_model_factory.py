@@ -29,6 +29,10 @@ class MockNNModule:
 class MockBaseNGModel(MockNNModule, ABC):
     """Mock BaseNGModel class."""
 
+    def __init__(self, params):
+        super().__init__()
+        self.params = params
+
     @abstractmethod
     def get_neural_network(self):
         """Mock get_neural_network method."""
@@ -71,12 +75,12 @@ class TestModelFactory(unittest.TestCase):
         """Test registering a model with no version, and getting the model based on the config."""
 
         # pylint: disable=duplicate-code
-        @register_model("MockNSS")
+        @register_model("MockNSSNoVersion")
         class MockNSSModel(MockBaseNGModel):  # pylint: disable=unused-variable
             """Mock NSS model"""
 
             def __init__(self, params):
-                self.params = params
+                super().__init__(params)
                 self.nn = MockNNModule()
 
             def get_neural_network(self):
@@ -91,7 +95,7 @@ class TestModelFactory(unittest.TestCase):
         # pylint: enable=duplicate-code
 
         # Override model name and version from params
-        self.params.model.name = "MockNSS"
+        self.params.model.name = "MockNSSNoVersion"
         self.params.model.version = None
 
         model_cls = get_model_from_config(self.params)
@@ -166,6 +170,41 @@ class TestModelFactory(unittest.TestCase):
         model = create_model(self.params, self.device)
 
         self.assertTrue(model.is_qat_model)
+
+    @patch("ng_model_gym.core.model.model_registry.nn.Module", new=MockNNModule)
+    @patch("ng_model_gym.core.model.model_registry.BaseNGModel", new=MockBaseNGModel)
+    def test_model_init_no_params(self):
+        """Test params missing as an argument for the model's __init__ raises TypeError"""
+
+        # pylint: disable=duplicate-code
+        @register_model("MockNSSNoParamsArg")
+        class MockNSSModel(MockBaseNGModel):  # pylint: disable=unused-variable
+            """Mock NSS model"""
+
+            def __init__(self):
+                super().__init__()  # pylint: disable=no-value-for-parameter
+                self.nn = MockNNModule()
+
+            def get_neural_network(self):
+                return self.nn
+
+            def set_neural_network(self, nn):
+                self.nn = nn
+
+            def forward(self, x):
+                return x
+
+        # pylint: enable=duplicate-code
+
+        # Override model name and version from params
+        self.params.model.name = "MockNSSNoParamsArg"
+        self.params.model.version = None
+
+        with self.assertRaisesRegex(
+            TypeError,
+            r"got an unexpected keyword argument 'params'",
+        ):
+            create_model(self.params, self.device)
 
 
 if __name__ == "__main__":

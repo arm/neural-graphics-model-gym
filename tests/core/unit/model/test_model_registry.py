@@ -25,6 +25,10 @@ class MockNNModule:
 class MockBaseNGModel(MockNNModule, ABC):
     """Mock BaseNGModel class."""
 
+    def __init__(self, params):
+        super().__init__()
+        self.params = params
+
     @abstractmethod
     def get_neural_network(self):
         """Mock get_neural_network method."""
@@ -81,7 +85,7 @@ class TestModelRegistry(unittest.TestCase):
             """NSS model"""
 
             def __init__(self, params):
-                self.params = params
+                super().__init__(params)
                 self.nn = MockNNModule()
 
             def get_neural_network(self):
@@ -111,7 +115,7 @@ class TestModelRegistry(unittest.TestCase):
                 """NSS model"""
 
                 def __init__(self, params):
-                    self.params = params
+                    super().__init__(params)
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
@@ -134,7 +138,7 @@ class TestModelRegistry(unittest.TestCase):
                 """NSS model"""
 
                 def __init__(self, params):
-                    self.params = params
+                    super().__init__(params)
                     self.nn = MockNNModule()
 
                 def forward(self, x):
@@ -161,7 +165,7 @@ class TestModelRegistry(unittest.TestCase):
                 """NSS model"""
 
                 def __init__(self, params):
-                    self.params = params
+                    super().__init__(params)
                     self.nn = MockNNModule()
 
                 def get_neural_network(self):
@@ -208,7 +212,7 @@ class TestModelRegistry(unittest.TestCase):
                 """NSS model"""
 
                 def __init__(self, params):
-                    self.params = params
+                    super().__init__(params)
                     self.nn = MockNNModule()
 
                 def forward(self, x):

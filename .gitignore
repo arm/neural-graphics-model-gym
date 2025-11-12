@@ -27,8 +27,8 @@ checkpoints/*
 !tests/usecases/nss/unit/data/nss_v1_golden_values/*.pt
 *.safetensors
 
-# These two files are generated if the user runs `init`
-config.json
+# These files are generated if the user runs `init`
+config*.json
 schema_config.json
 
 # We do want to keep the default config file in source control
