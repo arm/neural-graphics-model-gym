@@ -584,7 +584,9 @@ The [core](./src/ng_model_gym/core/) directory contains all code shared across u
 
 To train the Neural Super Sampling model, you will first need to capture training data from your game engine in the format expected by the model.
 
-Documentation is provided [here](./docs/nss_dataset_specification.md) that goes into detail for the expected format and specification of the dataset.
+The [data capture guide](./docs/nss/nss_data_capture_guide.md) explains how to capture data from your game and how to convert it into the expected format. This guide also contains recommendations regarding dataset size and types of game data that shpuld be captured.
+
+Documentation is provided [here](./docs/nss/nss_dataset_specification.md) that goes into detail for the expected format and specification of the dataset.
 
 Once you have captured data from your game engine, and it is in the expected format, then you can use the provided script [here](./scripts/safetensors_generator/safetensors_writer.py) to convert captured EXR frames to Safetensors.
 
@@ -613,7 +615,7 @@ Additional optional flags:
 | `-reader` | Name of the data reader to use | `"EXRv101"` |
 | `-crop_size` | Crop size in `outDims` | `256` |
 
-Please see the documentation [here](./docs/nss_dataset_specification.md) for more details on the expected dataset format and layout.
+Please see the documentation [here](./docs/nss/nss_dataset_specification.md) for more details on the expected dataset format and layout.
 
 ## Code contributions
 The full contribution guide can be seen in [CONTRIBUTING.md](./CONTRIBUTING.md).
