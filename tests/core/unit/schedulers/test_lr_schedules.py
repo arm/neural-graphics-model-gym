@@ -38,7 +38,9 @@ class TestLRScheduleFunctions(unittest.TestCase):
         optimizer = torch.optim.Adam(test_weights, lr=lr)
 
         lr_sched = get_lr_schedule(
-            self.params.train.fp32, optimizer, train_size, self.params
+            self.params.train.fp32,
+            optimizer,
+            train_size // self.params.train.batch_size,
         )
         self.assertIsInstance(lr_sched, CosineAnnealingWithWarmupLR)
 
@@ -115,9 +117,7 @@ class TestLRScheduleFunctions(unittest.TestCase):
         decay_step_size = (epochs * train_size) // 5
 
         optimizer = torch.optim.Adam(test_weights, lr=lr)
-        lr_sched = get_lr_schedule(
-            self.params.train.fp32, optimizer, train_size, self.params
-        )
+        lr_sched = get_lr_schedule(self.params.train.fp32, optimizer, train_size)
 
         self.assertIsInstance(lr_sched, torch.optim.lr_scheduler.StepLR)
         self.assertEqual(lr_sched.gamma, self.params.train.fp32.lr_scheduler.decay_rate)
@@ -143,9 +143,7 @@ class TestLRScheduleFunctions(unittest.TestCase):
         self.params.train.fp32.lr_scheduler.type = "static"
         optimizer = torch.optim.Adam(test_weights, lr=lr)
 
-        lr_sched = get_lr_schedule(
-            self.params.train.fp32, optimizer, train_size, self.params
-        )
+        lr_sched = get_lr_schedule(self.params.train.fp32, optimizer, train_size)
 
         self.assertIsNone(lr_sched)
 
@@ -162,7 +160,7 @@ class TestLRScheduleFunctions(unittest.TestCase):
         optimizer = torch.optim.Adam(test_weights, lr=lr)
 
         with self.assertRaises(ValueError):
-            get_lr_schedule(self.params.train.fp32, optimizer, train_size, self.params)
+            get_lr_schedule(self.params.train.fp32, optimizer, train_size)
 
 
 class TestSchedulerConfig(unittest.TestCase):

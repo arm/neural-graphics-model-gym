@@ -64,6 +64,15 @@ class Trainer:
             prefetch_factor=params.dataset.prefetch_factor,
             loader_mode=DataLoaderMode.TRAIN,
         )
+
+        if self.params.train.perform_validate:
+            self.val_dataloader = get_dataloader(
+                self.params,
+                num_workers=self.params.dataset.num_workers,
+                prefetch_factor=self.params.dataset.prefetch_factor,
+                loader_mode=DataLoaderMode.VAL,
+            )
+
         self.criterion = get_loss_fn(self.params, self.device)
         self.starting_epoch = 1
         self.model: nn.Module = create_model(self.params, self.device).to(self.device)
@@ -84,10 +93,7 @@ class Trainer:
         )
 
         self.lr_schedule = get_lr_schedule(
-            self.training_mode_params,
-            self.optimizer,
-            len(self.train_dataloader),
-            params,
+            self.training_mode_params, self.optimizer, len(self.train_dataloader)
         )
 
         self._restore_model_weights()
@@ -258,9 +264,9 @@ class Trainer:
         """Start training loop"""
 
         total_epochs = self.training_mode_params.number_of_epochs
-        self.model.train()
 
         for epoch in range(self.starting_epoch, total_epochs + 1):
+            self.model.train()
             if self.is_feedback:
                 self.model.reset_history_buffers()
 
@@ -346,15 +352,9 @@ class Trainer:
         if self.is_feedback:
             self.model.reset_history_buffers()
 
-        val_dataloader = get_dataloader(
-            self.params,
-            num_workers=self.params.dataset.num_workers,
-            prefetch_factor=self.params.dataset.prefetch_factor,
-            loader_mode=DataLoaderMode.VAL,
-        )
         val_pbar = tqdm(
-            enumerate(val_dataloader, 0),
-            total=len(val_dataloader),
+            enumerate(self.val_dataloader, 0),
+            total=len(self.val_dataloader),
             desc=f"Validation: Epoch {epoch}/{total_epochs}",
             leave=True,
         )
@@ -395,6 +395,10 @@ class Trainer:
             {"Loss": self.avg_val_loss}, self.metrics, name="Validation/"
         )
         self._tensorboard_update(tb_values, epoch)
+
+        for metric in self.metrics:
+            metric.reset()
+
         if self.is_feedback:
             self.model.reset_history_buffers()
 
@@ -443,25 +447,20 @@ class Trainer:
 def get_lr_schedule(
     training_mode: TrainingConfig,
     optimizer: torch.optim.Optimizer,
-    train_data_size: int,
-    params: ConfigModel,
+    dataloader_size: int,
 ):
     """Return the Learning Rate schedule specified in params.
 
     Args:
         training_mode: Set params from "train.fp32" or "train.qat" JSON config section
         optimizer: Training optimizer being used.
-        train_data_size: Size of the training set.
-        params: Dictionary of configuration params.
+        dataloader_size: Size of the dataloader.
 
     Returns:
         Requested LR schedule or None if static.
     """
 
     if training_mode.lr_scheduler.type == LearningRateScheduler.COSINE_ANNEALING:
-        batch_size = params.train.batch_size
-        dataset_length = train_data_size // batch_size
-        steps_per_epoch = max(1, dataset_length)
         total_epochs = training_mode.number_of_epochs
 
         warmup_pct = training_mode.lr_scheduler.warmup_percentage
@@ -470,12 +469,12 @@ def get_lr_schedule(
         logger.info(
             f"Using CosineAnnealing scheduler: "
             f"{warmup_pct*100:.1f}% warmup, min_lr={min_lr}, "
-            f"Scheduler steps per epoch: {steps_per_epoch}"
+            f"Scheduler steps per epoch: {dataloader_size}"
         )
 
         lr_schedule = CosineAnnealingWithWarmupLR(
             optimizer=optimizer,
-            steps_per_epoch=steps_per_epoch,
+            steps_per_epoch=dataloader_size,
             total_epochs=total_epochs,
             warmup_percentage=warmup_pct,
             min_lr=min_lr,
@@ -486,7 +485,7 @@ def get_lr_schedule(
         decay_factor = training_mode.lr_scheduler.decay_factor
         step_size = max(
             1,
-            int((training_mode.number_of_epochs * train_data_size) / decay_factor),
+            int((training_mode.number_of_epochs * dataloader_size) / decay_factor),
         )
 
         logger.info(f"Exponential Step optimizer learning rate step size: {step_size}")
