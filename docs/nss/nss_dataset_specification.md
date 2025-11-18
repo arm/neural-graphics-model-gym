@@ -127,5 +127,5 @@ Metadata is split up into two parts "per sequence," which reflects global inform
 |`CameraFarPlane` | `float` | Far plane in meters from the camera. `-1.0` is used to indicate an infinite far plane.| Mandatory |
 |`ViewProjection` | `list` | ViewProjection matrix's raw data (`float`, column major). | Mandatory |
 |`Jitter` | `dict` | The frame's raw jitter offset in pixels. e.g., `{"X": 0.25, "Y": 0.67}`. | Mandatory |
-|`NormalizedPerRatioJitter` | `list` | List containing per-upscaling ratio normalized jitter offsets (i.e. NormalizedPerRatioJitter [x2_index] would be the jitter offset used for decimating the textures in the x2 scenario). Normalized jitter values are the `Jitter {-0.5, 0.5}` divided by the SrcRes (i.e 920x540) | Mandatory |
+|`NormalizedPerRatioJitter` | `list` | List containing per-upscaling ratio normalized jitter offsets (i.e. NormalizedPerRatioJitter [x2_index] would be the jitter offset used for decimating the textures in the x2 scenario). Normalized jitter values are the `Jitter {-0.5, 0.5}` divided by the SrcRes (i.e 960x540) | Mandatory |
 |`Exposure` | `float` | Exposure value used in the frame for color correction. | Optional |
