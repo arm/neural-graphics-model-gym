@@ -220,12 +220,6 @@ class NSSModel(BaseNGModel):
             "feedback": feedback,
             "derivative": derivative,
             "depth_dilated": depth_dilated,  # on shader accurate this is actually offsets
-            "ground_truth": tonemap_forward(
-                inputs["ground_truth_linear"] * inputs["exposure"], mode=self.tonemapper
-            ),
-            "input_color": tonemap_forward(
-                inputs["colour_linear"] * inputs["exposure"], mode=self.tonemapper
-            ),
         }
         return outputs
 

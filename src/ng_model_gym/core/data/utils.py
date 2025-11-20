@@ -50,7 +50,7 @@ def tonemap_forward(
     Karis:
     http://graphicrants.blogspot.com/2013/12/tone-mapping.html
     """
-    x = torch.max(x, torch.zeros_like(x))
+    x = torch.clamp(x, min=0)
 
     # Tonemap
     if mode == ToneMapperMode.REINHARD:
@@ -90,7 +90,7 @@ def tonemap_inverse(
     Karis:
     http://graphicrants.blogspot.com/2013/12/tone-mapping.html
     """
-    x = torch.max(x, torch.zeros_like(x))
+    x = torch.clamp(x, min=0)
 
     # Tonemap
     if mode == ToneMapperMode.REINHARD:
