@@ -112,6 +112,30 @@ class TestMetrics(unittest.TestCase):
         self.assertGreaterEqual(result.item(), 0.0)
         self.assertLessEqual(result.item(), 1.0)
 
+    def test_ssim_4d(self):
+        """Test our SSIM update matches torchmetrics.image SSIM for 4D input."""
+        # batch_size, number_of_channels, h, w
+        preds, target = generate_mock_data((10, 3, 512, 512))
+
+        ssim = Ssim()
+        ssim.update(preds, target)
+        result = ssim.compute()
+
+        self.assertIsInstance(result, torch.Tensor)
+        # Assert that the returned Tensor is a scalar
+        self.assertEqual(result.shape, ())
+
+        ssim = StructuralSimilarityIndexMeasure(
+            data_range=1.0, kernel_size=11, sigma=1.5, gaussian_kernel=True
+        ).to(preds.device)
+        ssim = ssim(preds, target)
+
+        self.assertAlmostEqual(ssim.numpy(), result.numpy())
+
+        # Assert ssim >= 0.0 and <= 1.0
+        self.assertGreaterEqual(result.item(), 0.0)
+        self.assertLessEqual(result.item(), 1.0)
+
     def test_get_metrics(self):
         """Test that get_metrics returns all our expected metrics."""
         params = create_simple_params()

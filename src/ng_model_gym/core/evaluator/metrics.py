@@ -83,20 +83,22 @@ def calculate_recpsnr(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tenso
 
 def calculate_ssim(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     """Calculate structural similarity index measure between predictions and targets.
-     It is expected that the inputs to this are 2 tensors of 5 dimensions:
-    - preds: Predictions from the model of shape (N,T,C,H,W)
-    - target: Ground truth values of shape (N,T,C,H,W)
+     It is expected that the inputs to this are 2 tensors of 5 dimensions or 4 dimensions:
+    - preds: Predictions from the model of shape (N,T,C,H,W) or (N,C,H,W)
+    - target: Ground truth values of shape (N,T,C,H,W) or (N,C,H,W)
     """
+    if preds.dim() == 5 or targets.dim() == 5:
+        (
+            N,
+            T,
+            C,
+            H,
+            W,
+        ) = preds.shape  # will be 5D during training and evaluation, reshape to 4D
+        preds = preds.view(N * T, C, H, W)
+        targets = targets.view(N * T, C, H, W)
 
-    (
-        N,
-        T,
-        C,
-        H,
-        W,
-    ) = preds.shape  # will be 5D during training and evaluation, reshape to 4D
-    preds = preds.view(N * T, C, H, W)
-    targets = targets.view(N * T, C, H, W)
+    # If 4D already, do nothing
 
     ssim = StructuralSimilarityIndexMeasure(
         data_range=1.0, kernel_size=11, sigma=1.5, gaussian_kernel=True
@@ -429,6 +431,7 @@ _METRIC_FACTORY: dict[str, type[Metric]] = {
     "RecPSNRStreaming": RecPsnrStreaming,
 }
 
+
 # Mapping from non-streaming to streaming metric names
 _STREAMING_METRIC_MAP: dict[str, str] = {
     "tPSNR": "tPSNRStreaming",
@@ -443,20 +446,22 @@ def _build_metric(metric_name: str) -> Metric:
     return metric_cls()
 
 
-def _metrics_from_config(params: ConfigModel | None, is_test: bool) -> list[Metric]:
+def _metrics_from_config(
+    params: ConfigModel | None, use_streaming: bool
+) -> list[Metric]:
     if params is None or params.metrics is None:
         return []
 
     metric_names = list(params.metrics)
 
-    if is_test:
+    if use_streaming:
         metric_names = [_STREAMING_METRIC_MAP.get(name, name) for name in metric_names]
 
     return [_build_metric(name) for name in metric_names]
 
 
-def _default_metrics(is_test: bool) -> list[Metric]:
-    if is_test:
+def _default_metrics(use_streaming: bool) -> list[Metric]:
+    if use_streaming:
         return [Psnr(), TPsnrStreaming(), RecPsnrStreaming(), Ssim()]
 
     return [Psnr(), TPsnr(), RecPsnr(), Ssim()]
@@ -470,8 +475,11 @@ def get_metrics(
 
     For evaluation/test, we use the streaming versions of temporal metrics.
     """
-    metrics_from_config = _metrics_from_config(params, is_test)
-    metrics = metrics_from_config if metrics_from_config else _default_metrics(is_test)
+    use_streaming = is_test and params.dataset.recurrent_samples is not None
+    metrics_from_config = _metrics_from_config(params, use_streaming)
+    metrics = (
+        metrics_from_config if metrics_from_config else _default_metrics(use_streaming)
+    )
     metric_names = ", ".join(str(metric) for metric in metrics)
     logger.info("Tracking metrics %s", metric_names)
     return metrics
