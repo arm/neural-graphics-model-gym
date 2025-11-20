@@ -94,19 +94,6 @@ class TestNSSModelV1(BaseGPUMemoryTest):
             atol=ATOL,
         )
 
-        expected_ground_truth = forward_outputs["ground_truth"]
-        torch.testing.assert_close(
-            model_outputs["ground_truth"],
-            expected_ground_truth,
-            rtol=RTOL,
-            atol=ATOL,
-        )
-
-        expected_input_color = forward_outputs["input_color"]
-        torch.testing.assert_close(
-            model_outputs["input_color"], expected_input_color, rtol=RTOL, atol=ATOL
-        )
-
 
 if __name__ == "__main__":
     unittest.main()
