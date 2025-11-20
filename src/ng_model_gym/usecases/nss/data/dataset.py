@@ -278,6 +278,11 @@ class NSSDataset(Dataset):
                     )
                     * 0.5
                 )
+            if "exposure" not in data_frame:
+                # If exposure missing, set to 0 (i.e. exp(0) = 1.0)
+                data_frame["exposure"] = 0.0 * torch.ones(
+                    (stop - start, 1), dtype=torch.float32
+                )
 
         # Height and weight are hardcoded to match the slang shaders
         data_frame["motion_lr"] = fixed_normalize_mvs(

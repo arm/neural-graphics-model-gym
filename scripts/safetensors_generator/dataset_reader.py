@@ -349,11 +349,13 @@ class NSSEXRDatasetReader(FeatureIterator):
             (1, 1)
         )
 
-        # Exposure output from Engine is assumed to already be exponential.
-        # We take a natural log here,
-        # so this plays nicely with our codebase, which will do exp(exposure)
-        exposure_log = torch.log(torch.tensor(float(frame_meta_data["Exposure"])))
-        out_features["exposure"] = exposure_log.to(torch.float32).reshape((1, 1))
+        # Exposure is an optional field, so we must ensure it exists before using it
+        if "Exposure" in frame_meta_data.keys():
+            # Exposure output from Engine is assumed to already be exponential.
+            # We take a natural log here,
+            # so this plays nicely with our codebase, which will do exp(exposure)
+            exposure_log = torch.log(torch.tensor(float(frame_meta_data["Exposure"])))
+            out_features["exposure"] = exposure_log.to(torch.float32).reshape((1, 1))
 
         # Convert scale factor to relevant index
         scale_idx = self.metadata["UpscalingRatiosIndices"][f"x{self.scale_str}_index"]
