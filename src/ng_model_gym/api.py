@@ -84,7 +84,7 @@ def _cuda_profiler_wrapper(func: Callable, *args, trace_output_dir: Path):
 
 @memory_log_decorator
 @time_decorator
-@gpu_log_decorator(enabled=True, log_level=logging.DEBUG)
+@gpu_log_decorator(enabled=True, log_level=logging.INFO)
 def do_training(
     params: ConfigModel,
     training_mode: TrainEvalMode,

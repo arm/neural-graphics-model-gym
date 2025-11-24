@@ -13,6 +13,36 @@ from tests.usecases.nss.integration.base_integration import BaseIntegrationTest
 class TrainingIntegrationTest(BaseIntegrationTest):
     """Tests for NSS training pipeline."""
 
+    def _assert_peak_vram_usage(
+        self, stdout: str, expected_vram_usage: int, tolerance: float
+    ) -> None:
+        """Assert vram usage does exceed expectation"""
+
+        # Extract memory used from stdout
+        stdout_lines = stdout.lower().splitlines()
+        peak_vram_usage = None
+        for line in reversed(stdout_lines):
+            if "memory used:" in line:
+                peak_vram_usage = float(line.split()[-2])
+                break
+
+        if peak_vram_usage is None:
+            self.fail("Could not find GPU memory usage in stdout")
+
+        print(f"Observed peak GPU memory usage: {peak_vram_usage:.2f} MiB")
+
+        max_vram_allowed = expected_vram_usage * (1 + tolerance)
+        self.assertLessEqual(
+            peak_vram_usage,
+            max_vram_allowed,
+            (
+                "Peak VRAM usage exceeded tolerance- "
+                f"Peak usage: {peak_vram_usage:.2f} MiB, "
+                f"Max allowance: {max_vram_allowed:.2f} MiB based on {expected_vram_usage:.2f}"
+                f" with a tolerance of {1 + tolerance}%"
+            ),
+        )
+
     def run_finetune_training_test(self):
         """E2E test of the model to finetune training."""
 
@@ -23,10 +53,13 @@ class TrainingIntegrationTest(BaseIntegrationTest):
                 "train",
                 "--no-evaluate",
                 "--finetune",
-            ]
+            ],
+            capture_output=True,
+            text=True,
         )
         self.assertEqual(sub_proc.returncode, 0)
         self.check_log(["Fine tuning using weights"])
+        return sub_proc
 
     def test_training_raises_error_missing_dataset(self):
         """Test train raises error if missing dataset path"""
@@ -67,11 +100,13 @@ class TrainingIntegrationTest(BaseIntegrationTest):
 
     def test_model_train(self):
         """Run entire training pipeline."""
-        self.run_training_test()
+        subprocess_out = self.run_training_test()
+        self._assert_peak_vram_usage(subprocess_out.stdout, 14500, 0.005)
 
     def test_model_train_finetune(self):
         """Run entire training pipeline with finetuning."""
-        self.run_finetune_training_test()
+        subprocess_out = self.run_finetune_training_test()
+        self._assert_peak_vram_usage(subprocess_out.stdout, 14500, 0.005)
 
     def test_model_train_resume(self):
         """Run entire training pipeline with resuming."""
