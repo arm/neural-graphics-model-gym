@@ -77,7 +77,10 @@ class TestTrainerMethods(unittest.TestCase):
         self.mock_trainer.criterion = Mock(return_value=mock_loss)
 
         # --- Other ---
-        self.mock_trainer.lr_schedule = None
+        self.mock_trainer.lr_schedule = Mock()
+        self.mock_trainer.lr_schedule.state_dict.return_value = {}
+        self.mock_trainer.lr_schedule.load_state_dict = Mock()
+        self.mock_trainer.lr_schedule.step = Mock()
         self.mock_trainer._save_checkpoint = Mock()
         self.mock_trainer.validate = Mock()
 
@@ -199,6 +202,10 @@ class TestTrainerMethods(unittest.TestCase):
             mock_resume_trainer.optimizer = optim.Adam(
                 self.mock_trainer.model.parameters(), lr=0.001
             )
+            mock_resume_trainer.lr_schedule = Mock()
+            mock_resume_trainer.lr_schedule.state_dict.return_value = {}
+            mock_resume_trainer.lr_schedule.load_state_dict = Mock()
+            mock_resume_trainer.lr_schedule.step = Mock()
 
             mock_resume_trainer.params = create_simple_params()
             mock_resume_trainer.params.train.resume = True

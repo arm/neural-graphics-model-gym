@@ -20,12 +20,12 @@ class CosineAnnealingWithWarmupLR(optim.lr_scheduler.LRScheduler):
         min_lr: float = 1e-6,
         last_epoch: int = -1,
     ) -> None:
-        self.warmup_percentage = min(warmup_percentage, 1.0)
-        if self.warmup_percentage > 1.0:
+        if warmup_percentage > 1.0:
             raise ValueError(
                 "Cosine annealing scheduler warmup percentage "
-                f"must be less than 100% of training, got: {warmup_percentage}"
+                f"must be less than 100% of training, got: {warmup_percentage*100}%"
             )
+        self.warmup_percentage = min(warmup_percentage, 1.0)
         self.total_steps = total_epochs * steps_per_epoch
         self.warmup_steps = int(self.total_steps * self.warmup_percentage)
         self.min_lr = float(min_lr)
