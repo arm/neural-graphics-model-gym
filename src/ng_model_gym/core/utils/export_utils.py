@@ -1,6 +1,17 @@
 # SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: Copyright 2025 NXP
+#
+# Note: Portions of this file are based on code contributed to ExecuTorch.
+# This source code is licensed under the BSD-style license found in the
+# LICENSES/LicenseRef-BSD-ExecuTorch.txt file in the top-level directory.
+#
+# For reference please see:
+# github.com/pytorch/executorch/blob/main/backends/nxp/edge_passes/remove_io_quant_ops_pass.py
+#
+# SPDX-License-Identifier: Apache-2.0 AND LicenseRef-BSD-ExecuTorch
+
+
 # pylint: disable=duplicate-code
 import json
 import logging
@@ -39,7 +50,10 @@ logger = logging.getLogger(__name__)
 def _get_quantizable_input_indices(
     exported_program: EdgeProgramManager,
 ) -> Sequence[int]:
-    """Finds input indices that are quantized in the graph."""
+    """Finds input indices that are quantized in the graph.
+
+    Derived from ExecuTorch, see note at the top of this file.
+    """
     graph = exported_program.graph_module.graph
     user_inputs = exported_program.graph_signature.user_inputs
 
@@ -71,7 +85,10 @@ def _get_quantizable_input_indices(
 def _get_quantizable_output_indices(
     exported_program: EdgeProgramManager,
 ) -> Sequence[int]:
-    """Finds output indices that are quantized in the graph."""
+    """Finds output indices that are quantized in the graph.
+
+    Derived from ExecuTorch, see note at the top of this file.
+    """
     graph = exported_program.graph_module.graph
     outputs = [n for n in graph.nodes if n.op == "output"]
     if len(outputs) != 1:

@@ -2,10 +2,10 @@
 # All rights reserved.
 #
 # This source code is licensed under the BSD 3-Clause license found in the
-# LICENSE file directory containing this source file.
+# LICENSES/LicenseRef-BSD-3-TorchAO.txt file in the top-level directory.
 # SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
-# SPDX-License-Identifier: Apache-2.0
+# SPDX-License-Identifier: Apache-2.0 AND LicenseRef-BSD-3-TorchAO
 # pylint: skip-file
 
 import importlib
