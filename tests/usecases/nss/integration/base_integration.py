@@ -100,13 +100,17 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
                 f"--config-path={self.test_cfg_path}",
                 "train",
                 "--no-evaluate",
-            ]
+            ],
+            capture_output=True,
+            text=True,
         )
         self.assertEqual(sub_proc.returncode, 0)
 
         with self.subTest("TensorBoard logs"):
             files_exist = any(self.tensorboard_dir.iterdir())
             self.assertTrue(files_exist, "TensorBoard logs not found.")
+
+        return sub_proc
 
     def run_training_test_qat(self):
         """E2E test of the model training components for QAT."""
@@ -312,7 +316,10 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
                 mode,
                 "--no-evaluate",
                 "--resume",
-            ]
+            ],
+            capture_output=True,
+            text=True,
         )
         self.assertEqual(sub_proc.returncode, 0)
         self.check_log(["Restoring training from checkpoint"])
+        return sub_proc
