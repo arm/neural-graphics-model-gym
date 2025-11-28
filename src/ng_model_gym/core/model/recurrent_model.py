@@ -5,6 +5,7 @@ from typing import Tuple
 
 import torch
 import torch.nn.functional as F
+from torch import Tensor
 
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
@@ -120,7 +121,7 @@ class FeedbackModel(BaseNGModelWrapper):
 
     def _get_pad_sz(
         self, height: int, width: int, is_unpad: bool = False
-    ) -> Tuple[int, int]:
+    ) -> Tuple[Tensor, Tensor]:
         """Return padding size - new resolutions need to be added to table"""
         padding_table = {
             # 540 -> 1080
@@ -144,6 +145,26 @@ class FeedbackModel(BaseNGModelWrapper):
             size = size + padding if is_unpad else size
             pad_h = torch.where(size == height, padding, pad_h)
             pad_w = torch.where(size == width, padding, pad_w)
+
+        if is_unpad:
+            return pad_h, pad_w
+
+        # Scalar tensors e.g jitter, zFar, zNear etc skipped
+        if height == 1 and width == 1:
+            return pad_h, pad_w
+
+        invalid_h = (height % 8 != 0) and (pad_h.item() == 0)
+        invalid_w = (width % 8 != 0) and (pad_w.item() == 0)
+
+        if invalid_h or invalid_w:
+            padding_sizes = sorted({s.item() for s in padding_table})
+            raise ValueError(
+                f"Unsupported model input resolution - height: {height}, width: {width}."
+                f" Each value must either be:\n"
+                "- Multiple of 8\n"
+                f"- One from the padding table sizes {tuple(padding_sizes)} "
+            )
+
         return pad_h, pad_w
 
     def _pad(self, x: torch.Tensor) -> torch.Tensor:
