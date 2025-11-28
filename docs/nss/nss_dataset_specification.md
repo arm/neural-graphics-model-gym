@@ -113,7 +113,7 @@ Metadata is split up into two parts "per sequence," which reflects global inform
 |`ReverseZ` | `bool` | Whether the depth is stored as reversed-Z order. Preferably this should be `false` i.e. forward-Z. | Mandatory |
 |`OpaqueOnlyColor_Exported`| `bool` | Whether opaque-only color textures are generated. Used for generating the reactive mask. | Optional |
 |`UnjitteredSrcColor_Exported` | `bool` | Whether the unjittered (resampled) color texture has been generated. Useful for debugging jitter vectors. | Optional |
-|`UpscalingRatiosIndices`| `dict` | A mapping between upscaling ratio descriptions and the indices used to look up entries in the `NormalizedPerRatioJitter` list for each frame. | Optional |
+|`UpscalingRatiosIndices`| `dict` | A mapping between upscaling ratio descriptions and the indices used to look up entries in the `NormalizedPerRatioJitter` list for each frame. <br> Dictionary entries should take the format of {`"x<ratio>_index"`: `index`} where `<ratio>` refers to the upscaling ratio. For example, for 2x upscaling the dictionary key will be `x2_index` and for 1.7x upscaling the dictionary key will be `x1_7_index`.| Optional |
 |`MotionVectorsDilated` | `bool` | Whether the motion vectors have been pre-dilated by the capture application. | Optional |
 
 #### Per-frame
