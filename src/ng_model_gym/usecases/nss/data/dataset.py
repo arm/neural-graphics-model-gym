@@ -37,6 +37,7 @@ class NSSDataset(Dataset):
         loader_mode: DataLoaderMode,
         extension: DatasetType = DatasetType.SAFETENSOR,
     ):
+        logger.info("Creating dataloader")
         self.extension = extension
         self.config_params = config_params
         self.loader_mode = loader_mode
@@ -87,9 +88,8 @@ class NSSDataset(Dataset):
 
         # TODO: Bug if a st exists but has less than recurrent_samples frames, it will raise missing
         if not self.frame_indexes:
-            logger.error(f"Empty list of file paths returned from {self.data_path}")
             raise ValueError(
-                f"No {extension.value} files found. "
+                f"No {extension.value} files found at path {self.data_path} "
                 f"Potential causes: Empty dataset directory or incorrect file extension used."
             )
 
