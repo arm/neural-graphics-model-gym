@@ -1,8 +1,9 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 # pylint: disable=duplicate-code
 import logging
+from typing import Tuple
 
 import torch
 from torch import nn
@@ -16,8 +17,13 @@ from ng_model_gym.core.model.graphics_utils import (
 )
 from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.utils.config_model import ConfigModel
+from ng_model_gym.core.utils.tensor_types import TensorData
 from ng_model_gym.core.utils.types import HistoryBufferResetFunction
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
+from ng_model_gym.usecases.nss.model.nss_padding_utils import (
+    NSSPaddingPolicy,
+    Resolution,
+)
 from ng_model_gym.usecases.nss.model.post_processing import (
     PostProcessV1,
     PostProcessV1_ShaderAccurate,
@@ -54,6 +60,8 @@ class NSSModel(BaseNGModel):
 
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
         self.slang_shader_file = "nss_v1.slang"
+
+        self.padding_policy: NSSPaddingPolicy | None = None
 
     def get_neural_network(self) -> nn.Module:
         return self.autoencoder
@@ -302,3 +310,39 @@ class NSSModel(BaseNGModel):
             .numpy()
             .tolist(),
         }
+
+    def create_padding_policy(self, tensor_data: TensorData):
+        """Find the lr and hr resolutions from dataset and create padding policy"""
+        tensor_resolutions: set[Tuple[int, int]] = set()
+
+        for tensor in tensor_data.values():
+            if not isinstance(tensor, torch.Tensor):
+                continue
+
+            if tensor.ndim != 4:
+                raise ValueError("Tensor does not have 4 dimensions")
+
+            height, width = tensor.shape[2], tensor.shape[3]
+
+            # Skip scalar tensors
+            if height == 1 and width == 1:
+                continue
+
+            tensor_resolutions.add((height, width))
+
+        if len(tensor_resolutions) != 2:
+            raise ValueError(
+                f"Expected the presence of hr and lr tensors but found {tensor_resolutions} tensors"
+            )
+
+        # Calculate area to figure out lr and hr values
+        lr_h, lr_w = min(tensor_resolutions, key=lambda hw: hw[0] * hw[1])
+        hr_h, hr_w = max(tensor_resolutions, key=lambda hw: hw[0] * hw[1])
+
+        # Create named tuples
+        lr_res = Resolution(height=lr_h, width=lr_w)
+        hr_res = Resolution(height=hr_h, width=hr_w)
+
+        scale = int(self.params.train.scale)
+        multiple = 8
+        return NSSPaddingPolicy(lr_res, hr_res, multiple, scale)

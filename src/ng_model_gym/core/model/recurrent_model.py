@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 from typing import Tuple
@@ -36,6 +36,10 @@ class FeedbackModel(BaseNGModelWrapper):
         """Run forward pass for the recurrent model.
         Input is in channel-first format (N, T, C, H, W).
         """
+
+        # Clear padding_policy if it was set previously
+        self.ng_model.padding_policy = None
+
         # Get Input Data for t=0
         inputs = self._get_input_data_at_t(x, t=0)
 
@@ -72,6 +76,9 @@ class FeedbackModel(BaseNGModelWrapper):
     def set_buffers(self, x: TensorData) -> TensorData:
         """Set or retrieve history buffers"""
         input_tensors = {}
+
+        if not self.ng_model.padding_policy:
+            self.ng_model.padding_policy = self.ng_model.create_padding_policy(x)
 
         for key, value in x.items():
             input_tensors[key] = self._pad(value)
@@ -123,49 +130,13 @@ class FeedbackModel(BaseNGModelWrapper):
         self, height: int, width: int, is_unpad: bool = False
     ) -> Tuple[Tensor, Tensor]:
         """Return padding size - new resolutions need to be added to table"""
-        padding_table = {
-            # 540 -> 1080
-            # -------------
-            # height:
-            torch.tensor(1080): torch.tensor(8),
-            torch.tensor(540): torch.tensor(4),
-            # 830 -> 1660
-            # -------------
-            # height:
-            torch.tensor(830): torch.tensor(2),
-            torch.tensor(1660): torch.tensor(4),
-            # width:
-            torch.tensor(1476): torch.tensor(4),
-            torch.tensor(2952): torch.tensor(8),
-        }
-        # Default is no padding, unless in table
-        pad_h = torch.tensor(0)
-        pad_w = torch.tensor(0)
-        for size, padding in padding_table.items():
-            size = size + padding if is_unpad else size
-            pad_h = torch.where(size == height, padding, pad_h)
-            pad_w = torch.where(size == width, padding, pad_w)
 
-        if is_unpad:
-            return pad_h, pad_w
-
-        # Scalar tensors e.g jitter, zFar, zNear etc skipped
-        if height == 1 and width == 1:
-            return pad_h, pad_w
-
-        invalid_h = (height % 8 != 0) and (pad_h.item() == 0)
-        invalid_w = (width % 8 != 0) and (pad_w.item() == 0)
-
-        if invalid_h or invalid_w:
-            padding_sizes = sorted({s.item() for s in padding_table})
-            raise ValueError(
-                f"Unsupported model input resolution - height: {height}, width: {width}."
-                f" Each value must either be:\n"
-                "- Multiple of 8\n"
-                f"- One from the padding table sizes {tuple(padding_sizes)} "
-            )
-
-        return pad_h, pad_w
+        pad_h, pad_w = self.ng_model.padding_policy.calculate_padding(
+            height,
+            width,
+            is_unpad=is_unpad,
+        )
+        return torch.tensor(pad_h), torch.tensor(pad_w)
 
     def _pad(self, x: torch.Tensor) -> torch.Tensor:
         height, width = x.shape[2], x.shape[3]
