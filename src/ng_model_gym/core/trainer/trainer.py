@@ -153,6 +153,7 @@ class Trainer:
             )
             self.model.load_state_dict(model_state)
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
+            self.lr_schedule.load_state_dict(checkpoint["lr_scheduler_state_dict"])
             self.starting_epoch = checkpoint["epoch"] + 1
 
             # Make sure starting epoch is not more than configured epochs for training
@@ -413,6 +414,7 @@ class Trainer:
                 "epoch": current_epoch,
                 "model_state_dict": self.model.state_dict(),
                 "optimizer_state_dict": self.optimizer.state_dict(),
+                "lr_scheduler_state_dict": self.lr_schedule.state_dict(),
             },
             save_path.absolute(),
         )
