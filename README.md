@@ -667,6 +667,9 @@ Occasionally, your machine might run out of GPU memory during model training or 
 * **Use fewer recurrent samples** by decreasing the value of `dataset.recurrent_samples`.
 * **Reduce the number of workers** by reducing `dataset.num_workers`. This will increase the time it takes to perform training/evaluation/etc. but the machine is less likely to run out of memory since there are fewer tasks being run in parallel.
 
+### Slow model training in WSL2 or Windows
+A common cause for training running slower than expected in WSL2 or Windows is the GPU running out of device memory and falling back to slower shared system memory. To address this, reduce memory usage as described in the **Out of Memory Errors** section.
+
 ## Security
 
 Arm takes security issues seriously, please see [SECURITY.md](SECURITY.md) for more details.
@@ -690,3 +693,4 @@ Neural Graphics Model Gym is licensed under [Apache License 2.0](LICENSE.md).
 * NVIDIA and the NVIDIA logo are trademarks and/or registered trademarks of NVIDIA Corporation in the U.S. and other countries.
 * “Jupyter” and the Jupyter logos are trademarks or registered trademarks of LF Charities.
 * Vulkan is a registered trademark and the Vulkan SC logo is a trademark of the Khronos Group Inc.
+* Microsoft, Windows are trademarks of the Microsoft group of companies
