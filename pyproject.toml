@@ -67,7 +67,7 @@ dev = [
     "blocklint==0.2.4",
     "coverage==7.3.2",
     "expecttest==0.3.0",
-    "hatch==1.14.1",
+    "hatch==1.16.2",
     "isort==5.13.2",
     "jsonref==1.1.0",
     "pre-commit==3.6.0",
@@ -111,7 +111,6 @@ include = [
 # Name of variable is the name of the CLI program
 ng-model-gym = "ng_model_gym.cli:main"
 model-converter  = "ng_model_gym.bin.model_converter_launcher:main"
-
 
 [tool.isort]
 profile = "black"
@@ -162,3 +161,56 @@ disable = [
     "not-callable",
     "subprocess-run-check"
 ]
+
+[tool.hatch.envs.default]
+features = ["dev"]
+dev-mode = true
+
+[tool.hatch.envs.default.env-vars]
+DEFAULT_USECASE="nss"
+PYTHONUTF8 = "1"
+PYTHONIOENCODING = "utf-8"
+
+[tool.hatch.envs.default.scripts]
+# Build
+build-wheel             = "hatch build"
+
+# Clean
+clean                   = "python -m scripts.utils.clean"
+
+# Security and compliance checks
+bandit-check            = [ "python -c \"print('\\nRunning security checks\\n')\"",
+                            "python -m bandit --configfile=pyproject.toml -r -f=html -o=report.html ." ]
+blocklint               =   "python -m scripts.utils.run_blocklint"
+copyright               = [ "python -c \"print('\\nRunning copyright header check on all files\\n')\"",
+                            "reuse lint" ]
+
+# Coverage
+coverage-check          = [ "python -c \"print('\\nCreating testing coverage report\\n')\"",
+                            "python -m tests.run_tests --coverage --test-dirs tests/core/unit tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit  tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration tests/core/export tests/scripts",
+                            "coverage combine",
+                            "coverage report -i",
+                            "coverage json -i",
+                            "coverage html -i -d coverage_html" ]
+
+# Format
+format                  = [ "python -c \"print('\\nFormatting files with black, isort and autoflake\\n')\"",
+                            "autoflake --remove-unused-variables --remove-all-unused-imports --recursive --in-place .",
+                            "isort .",
+                            "black src/ scripts/ tests/" ]
+
+# Lint
+lint                    =   "python -m scripts.utils.run_pylint --src"
+lint-test               =   "python -m scripts.utils.run_pylint --test --disable=invalid-name"
+lint-all                =   "python -m scripts.utils.run_pylint"
+
+# Test
+test                    = [ "hatch run test-unit",
+                            "hatch run test-integration",
+                            "hatch run test-export" ]
+test-unit               =   "python -m tests.run_tests --test-dirs tests/core/unit tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit tests/scripts"
+test-integration        =   "python -m tests.run_tests --test-dirs tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"
+test-integration-fast   =   "python -m tests.run_tests --fast-test --test-dirs tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"
+test-export             =   "python -m tests.run_tests --test-dirs tests/core/export"
+test-download           =   "python tests/fetch_huggingface.py"
+

@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 
 
 FAST_TEST_ENABLED = os.getenv("FAST_TEST") == "1"
+SKIP_NINJA_CHECK = os.getenv("SKIP_NINJA_CHECK") == "1"
 
 
 def _fix_metadata(shader_path: Path) -> None:
-    """Patching bug in slangtorch pointing to a .pyd Windows files instead of .so for cache"""
+    """Patching bug in slangtorch pointing to .pyd Windows files instead of .so for cache"""
     cache_root = shader_path.parent / ".slangtorch_cache" / shader_path.stem
     if not cache_root.exists():
         return
@@ -77,12 +78,12 @@ if FAST_TEST_ENABLED:
 def load_slang_module(shader_dir, shader_file):
     """
     Load a Slang module from the specified shader path and file.
-    If `FAST_TEST` env var is enabled, load from cache.
+    If `FAST_TEST` or `SKIP_NINJA_CHECK` env vars are enabled, load modules
+    from cache instead of rebuilding.
     """
-
     shader_path = files(shader_dir) / shader_file
 
-    skip_ninja_check = FAST_TEST_ENABLED
+    skip_ninja_check = FAST_TEST_ENABLED or SKIP_NINJA_CHECK
 
     # Check if program was invoked by CLI
     if is_invoked_cli():

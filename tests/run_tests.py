@@ -4,6 +4,7 @@
 import argparse
 import glob
 import os
+import platform
 import subprocess
 import sys
 import unittest
@@ -14,6 +15,10 @@ from unittest.mock import patch
 from tests.fetch_huggingface import validate_nss_downloads
 
 from .pkgutil_patch import apply_patch
+
+if platform.system() == "Windows":
+    # For Windows, avoid rebuilding .dlls that might already be loaded in another process
+    os.environ.setdefault("SKIP_NINJA_CHECK", "1")
 
 
 def run_tests(start_test_dir, run_coverage=False, fast_test=False):
@@ -44,8 +49,13 @@ def execute_code_coverage(start_test_dir):
 
         cmd = ["coverage", "run", "--parallel-mode", test_file]
 
+        root = str(Path.cwd())
+        src = str(Path.cwd() / "src")
+
         env = os.environ.copy()
-        env["PYTHONPATH"] = f"{os.getcwd()}:{env.get('PYTHONPATH', '')}"
+        env["PYTHONPATH"] = os.pathsep.join(
+            [root, src, env.get("PYTHONPATH", "")]
+        ).rstrip(os.pathsep)
 
         result = subprocess.run(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env

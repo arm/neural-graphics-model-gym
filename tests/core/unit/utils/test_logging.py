@@ -39,19 +39,20 @@ class TestFileLogging(unittest.TestCase):
     def setUp(self):
         """Create a temporary directory for testing"""
         self.test_dir = tempfile.mkdtemp()
+        self.logger_name = "test_logger"
 
     def tearDown(self):
         """Clean up the temporary directory and remove handlers from loggers."""
-        shutil.rmtree(self.test_dir)
         clear_loggers()
+        shutil.rmtree(self.test_dir)
 
     def test_add_file_handler(self):
         """Test add_file_handler function."""
-        logger_name = "test_logger"
-        logger = logging.getLogger(logger_name)
 
-        set_log_level(logger_name, logging.INFO)
-        add_file_handler(logger_name, self.test_dir, "output.log")
+        logger = logging.getLogger(self.logger_name)
+
+        set_log_level(self.logger_name, logging.INFO)
+        add_file_handler(self.logger_name, self.test_dir, "output.log")
         logger.info("Test message.")
 
         # Verify that the log file was created.

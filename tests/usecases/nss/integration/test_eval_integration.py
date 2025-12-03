@@ -40,7 +40,7 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
                 f"--config-path={self.test_cfg_path}",
                 "train",
                 "--evaluate",
-            ]
+            ],
         )
 
         self.assertEqual(sub_proc.returncode, 0)
@@ -97,7 +97,7 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
                 f"--config-path={self.test_cfg_path}",
                 "qat",
                 "--evaluate",
-            ]
+            ],
         )
 
         self.assertEqual(sub_proc.returncode, 0)
@@ -173,7 +173,7 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
                 "evaluate",
                 f"--model-path={model_path}",
                 "--model-type=fp32",
-            ]
+            ],
         )
         # pylint: enable=duplicate-code
 
@@ -257,7 +257,7 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
                 "evaluate",
                 f"--model-path={model_path}",
                 "--model-type=qat_int8",
-            ]
+            ],
         )
 
         self.assertEqual(sub_proc.returncode, 0)

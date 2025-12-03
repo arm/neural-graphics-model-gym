@@ -19,6 +19,7 @@ from ng_model_gym.core.utils.checkpoint_utils import (
 )
 from ng_model_gym.core.utils.general_utils import create_directory
 from tests.base_gpu_test import BaseGPUMemoryTest
+from tests.testing_utils import clear_loggers
 
 
 class BaseIntegrationTest(BaseGPUMemoryTest):
@@ -78,19 +79,23 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
     def tearDown(self):
         """Clean up the temporary directory."""
         super().tearDown()
+
+        clear_loggers()
         shutil.rmtree(self.test_dir)
 
     def check_log(self, msgs: List):
         """Verify that the log file contents matches the log."""
         log_file_path = Path(self.model_out_dir, "output.log")
-        with open(log_file_path, "r", encoding="utf-8") as file:
-            lines = file.readlines()
+
+        text = log_file_path.read_text(encoding="utf-8")
+        # Replace new line and path characters for Windows
+        text = text.replace("\\", "/")
 
         for msg in msgs:
-            self.assertTrue(
-                any(msg in line for line in lines),
-                ("Message not found in log: %s", msg),
-            )
+            # Replace new line and path characters for Windows
+            m = msg.replace("\\", "/")
+            if m not in text and Path(m).name not in text:
+                self.fail(f"Message not found in log: {msg}")
 
     def run_training_test(self):
         """E2E test of the model training components."""

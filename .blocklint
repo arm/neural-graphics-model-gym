@@ -18,4 +18,4 @@ wordlist = he,she,him,her,his,hers,dumb,neurotic,sane,woman,gal,lady,babe,bimbo,
 ; exactlist =
 
 # Files that should not be checked by blocklint.
-# skip_files = Makefile,src/ng_model_gym/usecases/nss/model/shaders/depth_clip.slang
+# skip_files = src/ng_model_gym/usecases/nss/model/shaders/depth_clip.slang

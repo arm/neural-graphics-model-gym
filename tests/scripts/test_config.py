@@ -47,16 +47,19 @@ class TestConfig(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             with tempfile.NamedTemporaryFile(
-                dir=tmp_dir, mode="w+", suffix=".json"
+                dir=tmp_dir, mode="w+", suffix=".json", delete=False
             ) as temp_file:
                 temp_file.write(params)
                 temp_file.flush()
+                temp_path = Path(temp_file.name)
 
-                # load user config
-                user_config = load_config_file(Path(temp_file.name))
+            # load user config
+            user_config = load_config_file(temp_path)
 
-                # Check user config overrides default params
-                self.assertEqual(user_config.train.seed, 9876)
+            # Check user config overrides default params
+            self.assertEqual(user_config.train.seed, 9876)
+
+            temp_path.unlink(missing_ok=True)
 
     def test_config_validation(self):
         """Test validation logic is present"""
@@ -68,17 +71,20 @@ class TestConfig(unittest.TestCase):
             }
 
             with tempfile.NamedTemporaryFile(
-                dir=tmp_dir, mode="w+", suffix=".json"
+                dir=tmp_dir, mode="w+", suffix=".json", delete=False
             ) as temp_file:
                 json.dump(user_config, temp_file)
                 temp_file.flush()
+                temp_path = Path(temp_file.name)
 
-                # load user config
-                with redirect_stdout(StringIO()):
-                    with self.assertRaises(SystemExit) as e:
-                        load_config_file(Path(temp_file.name))
+            # load user config
+            with redirect_stdout(StringIO()):
+                with self.assertRaises(SystemExit) as e:
+                    load_config_file(temp_path)
 
-                self.assertEqual(e.exception.code, 1)
+            self.assertEqual(e.exception.code, 1)
+
+            temp_path.unlink(missing_ok=True)
 
     def test_outdated_config_validation(self):
         """Test exception raised when parameter in user config is outdated"""
@@ -90,17 +96,20 @@ class TestConfig(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             with tempfile.NamedTemporaryFile(
-                dir=tmp_dir, mode="w+", suffix=".json"
+                dir=tmp_dir, mode="w+", suffix=".json", delete=False
             ) as temp_file:
                 temp_file.write(user_config)
                 temp_file.flush()
+                temp_path = Path(temp_file.name)
 
-                # load user config
-                with redirect_stdout(StringIO()):
-                    with self.assertRaises(SystemExit) as e:
-                        load_config_file(Path(temp_file.name))
+            # load user config
+            with redirect_stdout(StringIO()):
+                with self.assertRaises(SystemExit) as e:
+                    load_config_file(temp_path)
 
-                self.assertEqual(e.exception.code, 1)
+            self.assertEqual(e.exception.code, 1)
+
+            temp_path.unlink(missing_ok=True)
 
     def test_invalid_json_file(self):
         """Test invalid JSON file throws exception"""
@@ -108,21 +117,22 @@ class TestConfig(unittest.TestCase):
         user_config = user_config.model_dump_json()
         with tempfile.TemporaryDirectory() as tmp_dir:
             with tempfile.NamedTemporaryFile(
-                dir=tmp_dir, mode="w+", suffix=".json"
+                dir=tmp_dir, mode="w+", suffix=".json", delete=False
             ) as temp_file:
                 temp_file.write(user_config)
                 temp_file.flush()
+                temp_path = Path(temp_file.name)
 
-                # Invalidate the JSON structure
-                with open(Path(temp_file.name), "w+", encoding="utf-8") as f:
-                    json_file = f.read()
-                    invalid_json = json_file.replace('"', "'")
-                    f.seek(0)
-                    f.write(invalid_json)
+            # Invalidate the JSON structure
+            with open(temp_path, "w+", encoding="utf-8") as f:
+                json_file = f.read()
+                invalid_json = json_file.replace('"', "'")
+                f.seek(0)
+                f.write(invalid_json)
 
-                self.assertRaises(
-                    json.JSONDecodeError, load_config_file, Path(temp_file.name)
-                )
+            self.assertRaises(json.JSONDecodeError, load_config_file, temp_path)
+
+            temp_path.unlink(missing_ok=True)
 
     def test_reject_incomplete_config(self):
         """Test incomplete config throws exception"""
@@ -133,17 +143,20 @@ class TestConfig(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             with tempfile.NamedTemporaryFile(
-                dir=tmp_dir, mode="w+", suffix=".json"
+                dir=tmp_dir, mode="w+", suffix=".json", delete=False
             ) as temp_file:
                 temp_file.write(params)
                 temp_file.flush()
+                temp_path = Path(temp_file.name)
 
-                # load user config
-                with redirect_stdout(StringIO()):
-                    with self.assertRaises(SystemExit) as e:
-                        load_config_file(Path(temp_file.name))
+            # load user config
+            with redirect_stdout(StringIO()):
+                with self.assertRaises(SystemExit) as e:
+                    load_config_file(temp_path)
 
-                self.assertEqual(e.exception.code, 1)
+            self.assertEqual(e.exception.code, 1)
+
+            temp_path.unlink(missing_ok=True)
 
 
 class TestConfigLogging(unittest.TestCase):
@@ -169,12 +182,15 @@ class TestConfigLogging(unittest.TestCase):
         create_directory(user_config.output.tensorboard_output_dir)
         user_config = user_config.model_dump_json()
 
-        with tempfile.NamedTemporaryFile(mode="w+", suffix=".json") as temp_file:
+        with tempfile.NamedTemporaryFile(
+            mode="w+", suffix=".json", delete=False
+        ) as temp_file:
             temp_file.write(user_config)
             temp_file.flush()
+            temp_path = Path(temp_file.name)
 
-            with self.assertRaises(SystemExit):
-                load_config_file(Path(temp_file.name))
+        with self.assertRaises(SystemExit):
+            load_config_file(temp_path)
 
         for handler in config_validation_logger.handlers:
             handler.flush()
@@ -190,6 +206,8 @@ class TestConfigLogging(unittest.TestCase):
         self.assertIn("train.fp32.number_of_epochs", added_content)
         self.assertIn("input=0", added_content)
         self.assertIn("Configuration has 1 issue", added_content)
+
+        temp_path.unlink(missing_ok=True)
 
 
 class TestConfigSchemaGenerator(unittest.TestCase):

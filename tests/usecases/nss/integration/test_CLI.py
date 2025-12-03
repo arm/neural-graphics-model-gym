@@ -4,6 +4,7 @@
 import contextlib
 import io
 import json
+import os
 import subprocess
 import tempfile
 import time
@@ -73,11 +74,16 @@ class CLIIntegrationTest(BaseIntegrationTest):
         with tempfile.TemporaryDirectory() as tmpdir:
             out_dir = Path(tmpdir)
 
+            env = os.environ.copy()
+            env["PYTHONUTF8"] = "1"
+            env["PYTHONIOENCODING"] = "utf-8"
+
             # First invocation: should create config.json and schema_config.json
             sub_process1 = subprocess.run(
                 ["ng-model-gym", "init", "--out-dir", tmpdir],
                 capture_output=True,
                 text=True,
+                env=env,
             )
             self.assertEqual(sub_process1.returncode, 0, sub_process1.stderr)
 
@@ -96,6 +102,7 @@ class CLIIntegrationTest(BaseIntegrationTest):
                 ["ng-model-gym", "init", "--out-dir", tmpdir],
                 capture_output=True,
                 text=True,
+                env=env,
             )
             self.assertEqual(sub_process_2.returncode, 0, sub_process_2.stderr)
 
