@@ -13,6 +13,7 @@ RUN apt-get update && \
     apt-get install -y \
     make \
     git \
+    git-lfs \
     locales \
     vim \
     python3.10 \
