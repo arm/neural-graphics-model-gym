@@ -49,7 +49,7 @@ def create_depth_params(data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor
         infinite=make_image_like(data["infinite_zFar"]).to(torch.bool),
         renderSizeWidth=make_image_like(data["render_size"])[:, 1:2, ...],
         renderSizeHeight=make_image_like(data["render_size"])[:, 0:1, ...],
-        inverted=torch.tensor(False, dtype=torch.bool),
+        inverted=data["ReverseZ"],
     ).squeeze()
     return depth_params
 
@@ -306,8 +306,17 @@ class NSSEXRDatasetReader(FeatureIterator):
         out_features["motion_lr"] = process_motion(mv_lr_raw)
         out_features["motion"] = process_motion(mv_raw)
 
-        # Depth is usable as-is, **should not be inverted**
-        out_features["depth"] = depth_raw.to(torch.float32)
+        reverse_z = self.metadata["ReverseZ"]
+        out_features["ReverseZ"] = torch.tensor(reverse_z, dtype=torch.bool).reshape(
+            (1, 1)
+        )
+        if reverse_z:
+            # Invert depth
+            depth_raw = 1.0 - depth_raw.to(torch.float32)
+            out_features["depth"] = depth_raw
+        else:
+            # Depth is usable as-is, **should not be inverted**
+            out_features["depth"] = depth_raw.to(torch.float32)
 
         # Transform colour data
         out_features["colour_linear"] = colour_raw
