@@ -7,8 +7,10 @@ import unittest
 
 import torch
 from safetensors import safe_open
+from safetensors.torch import save_file
 
 from ng_model_gym.core.data.utils import DataLoaderMode, DatasetType
+from ng_model_gym.core.utils.general_utils import create_directory
 from ng_model_gym.usecases.nss.data.dataset import NSSDataset
 from tests.testing_utils import create_simple_params
 
@@ -106,6 +108,61 @@ class TestNSSDataset(unittest.TestCase):
             self.assertTrue(
                 torch.equal(tensor, expected_tensor), f"Tensors {key} not equal"
             )
+
+    def test_missing_exposure_field(self):
+        """Test handling of missing exposure field in Safetensors file"""
+        # Create a new Safetensors file without exposure field for testing
+        original_safetensor_path = (
+            "./tests/usecases/nss/datasets/train/train_cropped_sample.safetensors"
+        )
+        original_metadata = {}
+        tensors = {}
+
+        with safe_open(original_safetensor_path, framework="pt") as f:
+            # Save original metadata so that it can be used in the new safetensors file
+            original_metadata = f.metadata()
+            # Copy all tensors except exposure
+            for key in f.keys():
+                if key != "exposure":
+                    tensors[key] = f.get_tensor(key)
+
+        # Create new safetensors file
+        new_safetensor_path = "./tests/usecases/nss/datasets/missing_exposure_field/missing_exposure.safetensors"  # pylint: disable=line-too-long
+        create_directory("./tests/usecases/nss/datasets/missing_exposure_field")
+        save_file(tensors, new_safetensor_path, metadata=original_metadata)
+
+        # Create params pointing to SafeTensors dataset with missing exposure field
+        params = create_simple_params(
+            dataset="tests/usecases/nss/datasets/missing_exposure_field"
+        )
+
+        # Set exposure to None to match missing dataset field
+        params.dataset.exposure = None
+        params.dataset.recurrent_samples = 4
+
+        dataset = NSSDataset(params, DataLoaderMode.TRAIN)
+
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            shuffle=False,
+            batch_size=1,
+            num_workers=0,
+            pin_memory=True,
+            prefetch_factor=None,
+            drop_last=True,
+            persistent_workers=False,
+        )
+        data = next(iter(dataloader))[0]
+
+        # Check that exposure field exists in returned `data` and is correctly set
+        self.assertIsInstance(data, dict)
+        self.assertIn("exposure", data)
+        # Check exposure tensor is all ones (exp(0) = 1.0)
+        expected_exposure = torch.ones_like(data["exposure"])
+        self.assertTrue(
+            torch.equal(data["exposure"], expected_exposure),
+            "Exposure tensor should be filled with ones.",
+        )
 
 
 if __name__ == "__main__":
