@@ -2,14 +2,17 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import argparse
+import json
 import math
 import shutil
+import tempfile
 import unittest
 from pathlib import Path
 
 import numpy as np
 import torch
 
+from ng_model_gym.core.utils.exr_utils import read_exr_torch
 from scripts.safetensors_generator.dataset_reader import (
     generic_safetensors_reader,
     NSSEXRDatasetReader,
@@ -192,6 +195,54 @@ class TestSafetensorsWriter(unittest.TestCase):
 
         self.assertEqual(colour_h, math.ceil(self.args.crop_size / scale))
         self.assertEqual(colour_w, math.ceil(self.args.crop_size / scale))
+
+    def test_reverse_z_depth_is_inverted(self):
+        """Ensure ReverseZ datasets store inverted depth."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_dir_path = Path(tmp_dir)
+            reverse_src = tmp_dir_path / "reverse_z_src"
+            shutil.copytree(self.args.src, reverse_src)
+
+            metadata_path = reverse_src / f"{self.seq_path}.json"
+            with open(metadata_path, "r", encoding="utf-8") as src_file:
+                metadata = json.load(src_file)
+            metadata["ReverseZ"] = True
+            with open(metadata_path, "w", encoding="utf-8") as dst_file:
+                json.dump(metadata, dst_file, indent=2)
+
+            reverse_args = argparse.Namespace(**vars(self.args))
+            reverse_args.src = reverse_src
+            reverse_args.dst = tmp_dir_path / "reverse_z_dst"
+            reverse_args.dst.mkdir(parents=True, exist_ok=True)
+            reverse_args.dst_root = reverse_args.dst / Path(reverse_args.src.parts[-1])
+
+            generic_safetensors_writer(reverse_args)
+
+            depth_exr_path = sorted(
+                (reverse_src / "x2" / "depth" / self.seq_path).glob("*.exr")
+            )[0]
+            original_depth = read_exr_torch(
+                depth_exr_path,
+                dtype=np.float32,
+                channels="R",
+            ).to(torch.float32)
+            expected_depth = 1.0 - original_depth
+
+            output_safetensors = reverse_args.dst_root / f"{self.seq_path}.safetensors"
+            self.assertTrue(
+                output_safetensors.exists(),
+                msg=f"{output_safetensors} was not created for ReverseZ dataset.",
+            )
+
+            written = generic_safetensors_reader(output_safetensors, 0)
+            self.assertTrue(
+                bool(written["ReverseZ"].item()),
+                msg="ReverseZ flag not persisted in written safetensors.",
+            )
+            self.assertTrue(
+                torch.allclose(written["depth"], expected_depth, atol=1e-6),
+                msg="Depth tensor was not inverted for ReverseZ dataset.",
+            )
 
 
 if __name__ == "__main__":
