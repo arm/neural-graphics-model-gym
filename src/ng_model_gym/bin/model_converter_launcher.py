@@ -15,8 +15,10 @@ def main():
     ExecuTorch currently expects it to still be called model-converter.
     """
 
-    if platform.system() != "Linux":
-        raise OSError(f"Unsupported OS: {platform.system()!r}. Requires Linux")
+    if platform.system() not in ("Linux", "Windows"):
+        raise OSError(
+            f"Unsupported OS: {platform.system()!r} for model-converter. Requires Linux or Windows."
+        )
 
     # Find the pip-installed executable on PATH
     bin_path = shutil.which("model_converter")

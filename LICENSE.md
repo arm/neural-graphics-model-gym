@@ -223,7 +223,7 @@ license text is included in, or next to, those files.
   code must also be made under the terms of [Apache License 2.0](./LICENSES/Apache-2.0.txt).
   These files are:
 
-   -  `src/ng_model_gym/core/utils/patch/patch_file.py`
+   -  `src/ng_model_gym/core/utils/patch/torchao_patch.py`
 
 - There are snippets which come from the [ExecuTorch](https://github.com/pytorch/executorch) project.
   The snippets are licensed under the [BSD-3-Clause License](./LICENSES/BSD-ExecuTorch.txt), which is a
@@ -232,6 +232,7 @@ license text is included in, or next to, those files.
   Relevant files:
 
    - `src/ng_model_gym/core/utils/export_utils.py`
+   - `src/ng_model_gym/core/utils/patch/executorch_patch.py`
 
 - Some code replicates functionality from the [TensorFlow](https://github.com/tensorflow/tensorflow) project.
   These portions are also licensed under the [Apache 2.0 License](./LICENSES/Apache-2.0.txt).

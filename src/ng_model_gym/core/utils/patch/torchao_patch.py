@@ -67,7 +67,7 @@ def _apply_patch():
 
     if hasattr(module, target_function):
         module._get_aten_graph_module_for_pattern = _get_aten_graph_module_for_pattern
-        logger.debug("Patch applied.")
+        logger.debug(f"Patch applied: {target_module}.{target_function}")
     else:
         logger.debug(f"Patch not applied: target function {target_function} not found.")
 

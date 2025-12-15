@@ -159,7 +159,7 @@ def add_file_handler(logger_name, output_dir="", log_file_name="output.log"):
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     log_file_path = Path(output_dir, log_file_name)
-    file_handler = logging.FileHandler(filename=log_file_path)
+    file_handler = logging.FileHandler(filename=log_file_path, encoding="utf-8")
     file_handler.setFormatter(formatter)
 
     global_logger.addHandler(file_handler)

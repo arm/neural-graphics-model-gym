@@ -18,7 +18,11 @@ SPDX-License-Identifier: Apache-2.0
 1. [Introduction](#introduction)
 2. [Prerequisites](#prerequisites)
 3. [Setup](#setup)
+    * [Windows (experimental)](#windows-experimental)
     * [Setup locally](#setup-locally)
+      * [Standard installation](#standard-installation)
+      * [Editable installation with Hatch](#editable-installation-with-hatch)
+      * [Wheel installation](#wheel-installation)
     * [Docker® image](#how-to-build-a-docker-image-for-neural-graphics-model-gym)
     * [(Optional) Sample datasets and pretrained weights](#optional-sample-datasets-and-pretrained-weights)
 4. [Usage](#usage)
@@ -63,38 +67,95 @@ To build and run Neural Graphics Model Gym, the following are required:
 
 ## Setup
 
+### Windows (experimental)
+
+Support for Windows is experimental. Known limitations:
+
+* To be able to use `torch.compile` on Windows, a C++ compiler is required.
+
+#### Install Visual Studio 2022:
+1. [Install Visual Studio 2022](https://visualstudio.microsoft.com/vs/older-downloads/), making sure **Workloads > Desktop & Mobile > Desktop Development with C++** is checked during installation.
+
+2. Launch `Visual Studio 2022 Developer Command Prompt` or `x64 Native Tools Command Prompt for VS 2022`.
+
+3. Verify the compiler is found:
+    ```bat
+    cl.exe
+    ```
+
+Follow the Windows specific setup steps in [Setup locally](#setup-locally).
+
 ### Setup locally
+
+#### **Standard installation**
 
 We recommend doing development within a **virtual environment** (e.g. using venv).
 
-#### 1. Create and activate a Python venv:
+**1. Create and activate a Python venv:**
 
+Linux:
 ```bash
+# Create a virtual environment
 python -m venv venv
+
+# Activate it
 source venv/bin/activate
 ```
 
-#### 2. Available local installation options:
-
-**Standard installation** -
-Installs the package into your active environment:
-
+Windows:
 ```bash
-make install
+# Create a virtual environment
+python -m venv venv
+
+# Activate it
+venv\Scripts\activate
 ```
 
-**Editable installation** -
-Enables live package edits and includes dev tools and dependencies:
+**2. Install the package into your active environment:**
 
 ```bash
-make install-dev
+pip install .
 ```
 
-**Wheel Installation** -
-Build and install a Python wheel:
+#### **Editable dev installation with Hatch**
+An editable installation for development can be created using [Hatch](https://github.com/pypa/hatch).
+
+The development environment enables live package edits and includes dev tools and dependencies for uses such as testing, linting and code checking.
+
+First install Hatch, either following the installation steps [here](https://github.com/pypa/hatch/blob/master/docs/install.md), or by running:
 
 ```bash
-make build-wheel
+pip install hatch==1.16.2
+```
+
+Then create the Hatch environment with:
+
+```bash
+hatch -v env create
+```
+
+Enter the Hatch development environment with:
+```bash
+hatch shell
+```
+
+To exit the Hatch environment, run:
+```bash
+exit
+```
+
+To remove the Hatch environment, run:
+```bash
+hatch env remove
+```
+
+#### **Wheel Installation**
+Build and install a Python wheel using Hatch:
+
+First follow the [editable installation with Hatch](#editable-installation-with-hatch) section above, then run:
+
+```bash
+hatch build-wheel
 pip install dist/ng_model_gym-{version}-py3-none-any.whl
 ```
 
@@ -109,7 +170,7 @@ To create a Docker image for Neural Graphics Model Gym, including all the requir
 Run the following command to build the Docker image:
 
 ```bash
-bash build_docker_image.sh
+docker build . -t ng-model-gym-image -f Dockerfile
 ```
 
 #### Increase shared memory
@@ -132,47 +193,16 @@ You can then run any of the commands in the next sections from within your Docke
 ### (Optional) Sample datasets and pretrained weights
 Sample datasets and pretrained weights are provided on Hugging Face, mainly used for [testing](#testing) and demonstration purposes.
 
-To quickly try out the repository without preparing your own data, run:
+To quickly try out the repository without preparing your own data, first follow the [editable installation with Hatch](#editable-installation-with-hatch) section, then run:
 
 ```bash
-# Install huggingface_hub (if not already installed)
-make install-dev
-
 # Download pretrained model weights and datasets from Hugging Face
-make test-download
+hatch test-download
 ```
 
 * Example datasets will be placed under `tests/usecases/nss/datasets/`.
 * Pretrained weights will be placed under `tests/usecases/nss/weights/`.
 
-### Windows (experimental)
-
-Support for Windows is experimental. Known limitations:
-
-* There is no pre-built ML SDK Model Converter binary for Windows, so exporting a VGF will require additional setup steps.
-
-There are no prebuilt ExecuTorch wheels for Windows,
-so it must be downloaded as source code and added to `PYTHONPATH`. Make sure to get the version of the source code that corresponds with the build version specified in the `pyproject.toml`.
-As the C++/runtime part of ExecuTorch isn't needed (only the ahead-of-time Python part is needed)
-there is no need to build the downloaded source. Note that `PYTHONPATH` needs to be set to the folder _above_ the `executorch` folder.
-
-For example (in PowerShell):
-
-```
-cd <folder>
-git clone --depth=1 https://github.com/pytorch/executorch.git --branch 737916343a0c96ec36d678643dc01356a995f388
-cd executorch
-git submodule update --init --recursive -q
-$env:PYTHONPATH=<folder>
-```
-
-ExecuTorch also has some Python dependencies that we need to install. These can be found from ExecuTorch's pyproject.toml,
-which the following PowerShell snippet will extract and install:
-
-```
-cd executorch
-pip install @([regex]::Matches((Get-Content pyproject.toml -Raw), '(?s)dependencies\s*=\s*\[(.*?)\]').Groups[1].Value | % { [regex]::Matches($_, '"([^"]+)"') | % { $_.Groups[1].Value } })
-```
 
 ## Usage
 
@@ -435,64 +465,67 @@ ngmg.logging_config(parameters)
 
 ## Testing
 
-A collection of unit and integration tests are provided to ensure the functionality of Neural Graphics Model Gym. The tests depend on pretrained weights and datasets from Hugging Face. To automatically download the required files, run the following make commands:
+A collection of unit and integration tests are provided to ensure the functionality of Neural Graphics Model Gym.
+
+Testing can be run using Hatch commands.
+First [install Hatch and create an environment](#editable-installation-with-hatch).
+
+This will install all of the dependencies for Neural Graphics Model Gym, plus the additional dependencies required for testing.
+
+The tests depend on pretrained weights and datasets from Hugging Face. To automatically download the required files, run the following command:
 
 ```bash
-# Install additional dependencies required for testing
-make install-dev
-
-# Download pretrained model weights and datasets from Hugging Face
-make test-download
+hatch run test-download
 ```
 
-To run all tests:
+**To run tests:**
 
 ```bash
 # Run all tests
-make test
+hatch run test
 
-# Run unit tests
+# Run all unit tests
 # (Test individual functions)
-make test-unit
+hatch run test-unit
 
-# Run integration tests
+# Run all integration tests
 # (Test how parts of the application work together)
-make test-integration
+hatch run test-integration
+
+# Run export tests
+hatch run test-export
 ```
 
-To run unit tests for a specific use case (e.g. NSS):
+**To run unit or integration tests for only a specific use case (e.g. NSS):**
 
+First set an environment variable for the usecase, then run the test command:
+
+Linux (bash):
 ```bash
-make test-unit USECASE=nss
+export USECASE=nss && hatch run test-unit
 ```
 
-To run unit tests from one specific file with tests:
-
-```bash
-python -m unittest tests.core.unit.utils.test_checkpoint_utils
+Windows (cmd):
+```bat
+set USECASE=nss && hatch run test-unit
 ```
 
-To run integration tests for a specific use case:
+**To run unit tests from one specific file with tests:**
 
 ```bash
-make test-integration USECASE=nss
+hatch run python -m unittest tests.core.unit.utils.test_checkpoint_utils
 ```
 
-To run export integration tests:
+**To create a test coverage report:**
+
 ```bash
-make test-export
+hatch run coverage-check
 ```
 
-To see the test coverage report:
+**All available commands in the Hatch environment are listed under scripts when running:**
 
 ```bash
-make coverage
-```
-
-To see all available commands:
-
-```bash
-make list
+hatch env show
 ```
 
 ## Adding custom models and datasets
@@ -623,25 +656,20 @@ The full contribution guide can be seen in [CONTRIBUTING.md](./CONTRIBUTING.md).
 Before making a pull request for any code changes, you must run the following checks:
 
 ```bash
-make test       # Run all tests
-make format     # Format files
-make lint       # Lints src files
-make lint-test  # Lints test files
-make coverage   # Create coverage report
-make bandit     # Run security check
+hatch run test            # Run all tests
+hatch run format          # Format files
+hatch run lint-all        # Lints src and test files
+hatch run coverage-check  # Create coverage report
+hatch run bandit-check    # Run security check
+hatch run blocklint       # Run non-inclusive language check
+hatch run copyright       # Run copyright header check
 ```
 
 ### pre-commit module
 
 pre-commit is used to run the checks mentioned above when making a new commit.
 
-pre-commit will be installed when running
-
-```bash
-make install-dev
-```
-
-or it can be manually installed with
+pre-commit will be installed when following the [editable installation with Hatch](#editable-installation-with-hatch), or it can be manually installed with:
 
 ```bash
 pip install pre-commit
@@ -674,10 +702,9 @@ A common cause for training running slower than expected in WSL2 or Windows is t
 
 Arm takes security issues seriously, please see [SECURITY.md](SECURITY.md) for more details.
 
-You can run the checker for security vulnerabilities with the following command:
-
+After following [editable installation with Hatch](#editable-installation-with-hatch), you can run the checker for security vulnerabilities with the following command:
 ```bash
-make bandit
+hatch run bandit-check
 ```
 
 ## License

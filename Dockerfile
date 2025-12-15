@@ -47,6 +47,6 @@ COPY . ${NG_MODEL_GYM_DIR}
 
 # Install Python packages from pyproject.toml
 RUN python -m pip install -U pip
-RUN make install
+RUN pip install .
 
 CMD ["/bin/bash"]
