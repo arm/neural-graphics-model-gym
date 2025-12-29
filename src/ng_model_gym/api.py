@@ -277,6 +277,8 @@ def do_export(
         executorch_vgf_export,
     )
 
+    ConfigModel.model_validate(params)
+
     # Create output directory if it doesn't exist.
     create_directory(params.output.dir)
     create_directory(params.output.export.vgf_output_dir)

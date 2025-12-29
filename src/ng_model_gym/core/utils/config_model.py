@@ -2,6 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import pathlib
+import tempfile
 from typing import Annotated, List, Literal, Optional, Union
 
 from pydantic import (
@@ -150,6 +151,25 @@ class Export(PydanticConfigModel):
     vgf_output_dir: pathlib.Path = Field(
         description="Output directory for the VGF file"
     )
+
+    @field_validator("vgf_output_dir", mode="after")
+    @classmethod
+    def _validate_vgf_output_dir(cls, value: pathlib.Path) -> pathlib.Path:
+        """Disallow temp paths for vgf output dir"""
+        temp_root = pathlib.Path(tempfile.gettempdir()).resolve(strict=False)
+        path = value.expanduser().resolve(strict=False)
+
+        try:
+            path.relative_to(temp_root)
+        except ValueError:
+            return path  # Success, path is not in a tmp dir
+
+        # If path.relative_to() did not raise an error, that means path is in /tmp folder
+        raise PydanticCustomError(
+            "TempDir",
+            "vgf_output_dir must not be under the system temp directory. "
+            "Choose a path to a persistent directory ",
+        )
 
 
 class Output(PydanticConfigModel):

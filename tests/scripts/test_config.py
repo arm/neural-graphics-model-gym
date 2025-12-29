@@ -86,6 +86,31 @@ class TestConfig(unittest.TestCase):
 
             temp_path.unlink(missing_ok=True)
 
+    def test_reject_vgf_output_dir_in_tmp(self):
+        """Test vgf_output_dir cannot be set to a temp directory"""
+        user_config = create_simple_params().model_dump_json()
+        user_config_dict = json.loads(user_config)
+        user_config_dict["output"]["export"]["vgf_output_dir"] = str(
+            Path(tempfile.gettempdir()) / "vgf"
+        )
+        user_config = json.dumps(user_config_dict)
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with tempfile.NamedTemporaryFile(
+                dir=tmp_dir, mode="w+", suffix=".json", delete=False
+            ) as temp_file:
+                temp_file.write(user_config)
+                temp_file.flush()
+                temp_path = Path(temp_file.name)
+
+            with redirect_stdout(StringIO()):
+                with self.assertRaises(SystemExit) as e:
+                    load_config_file(temp_path)
+
+            self.assertEqual(e.exception.code, 1)
+
+            temp_path.unlink(missing_ok=True)
+
     def test_outdated_config_validation(self):
         """Test exception raised when parameter in user config is outdated"""
 
