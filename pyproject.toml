@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -71,6 +71,8 @@ dev = [
     "isort==5.13.2",
     "jsonref==1.1.0",
     "pre-commit==3.6.0",
+    "pytest==8.4.2",
+    "pytest-cov==5.0.0",
     "pylint==3.0.1",
     "reuse==3.0.1",
     "huggingface-hub==0.34.3"
@@ -166,10 +168,45 @@ disable = [
 features = ["dev"]
 dev-mode = true
 
-[tool.hatch.envs.default.env-vars]
+[tool.hatch.envs.test]
+features = ["dev"]
+dev-mode = true
+
+[tool.hatch.envs.test.env-vars]
 DEFAULT_USECASE="nss"
 PYTHONUTF8 = "1"
 PYTHONIOENCODING = "utf-8"
+
+[tool.hatch.envs.test.scripts]
+# Test
+unit = "python -m pytest tests/core/unit tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit tests/scripts"
+integration = "python -m pytest tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"
+integration-fast = "python -m pytest --fast-test tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"
+export = "python -m pytest tests/core/export"
+test = [
+    "python -m pytest tests/core/unit tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit tests/scripts",
+    "python -m pytest tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration",
+    "python -m pytest tests/core/export"
+]
+
+# Coverage
+coverage-check = [
+  "python -c \"print('\\nCreating testing coverage report\\n')\"",
+  """
+  python -m pytest \
+    --cov=ng_model_gym \
+    --cov-report=term \
+    --cov-report=json:coverage.json \
+    --cov-report=html:coverage_html \
+    --fast-test \
+    tests/core/unit \
+    tests/core/integration \
+    tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit \
+    tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration \
+    tests/core/export \
+    tests/scripts \
+  """
+]
 
 [tool.hatch.envs.default.scripts]
 # Build
@@ -183,34 +220,26 @@ bandit-check            = [ "python -c \"print('\\nRunning security checks\\n')\
                             "python -m bandit --configfile=pyproject.toml -r -f=html -o=report.html ." ]
 blocklint               =   "python -m scripts.utils.run_blocklint"
 copyright               = [ "python -c \"print('\\nRunning copyright header check on all files\\n')\"",
-                            "reuse lint" ]
-
-# Coverage
-coverage-check          = [ "python -c \"print('\\nCreating testing coverage report\\n')\"",
-                            "python -m tests.run_tests --coverage --test-dirs tests/core/unit tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit  tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration tests/core/export tests/scripts",
-                            "coverage combine",
-                            "coverage report -i",
-                            "coverage json -i",
-                            "coverage html -i -d coverage_html" ]
+                            "python -m reuse lint" ]
 
 # Format
 format                  = [ "python -c \"print('\\nFormatting files with black, isort and autoflake\\n')\"",
-                            "autoflake --remove-unused-variables --remove-all-unused-imports --recursive --in-place .",
-                            "isort .",
-                            "black src/ scripts/ tests/" ]
+                            "python -m autoflake --remove-unused-variables --remove-all-unused-imports --recursive --in-place .",
+                            "python -m isort .",
+                            "python -m black src/ scripts/ tests/" ]
 
 # Lint
 lint                    =   "python -m scripts.utils.run_pylint --src"
 lint-test               =   "python -m scripts.utils.run_pylint --test --disable=invalid-name"
 lint-all                =   "python -m scripts.utils.run_pylint"
 
-# Test
-test                    = [ "hatch run test-unit",
-                            "hatch run test-integration",
-                            "hatch run test-export" ]
-test-unit               =   "python -m tests.run_tests --test-dirs tests/core/unit tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit tests/scripts"
-test-integration        =   "python -m tests.run_tests --test-dirs tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"
-test-integration-fast   =   "python -m tests.run_tests --fast-test --test-dirs tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"
-test-export             =   "python -m tests.run_tests --test-dirs tests/core/export"
-test-download           =   "python tests/fetch_huggingface.py"
+# Download test data
+test-download = "python tests/fetch_huggingface.py"
 
+# Hatch envionmment for testing across all supported Python versions
+[tool.hatch.envs.test-matrix]
+template = "test"
+matrix-name-format = "py{value}"
+
+[[tool.hatch.envs.test-matrix.matrix]]
+python = ["3.10", "3.11", "3.12"]

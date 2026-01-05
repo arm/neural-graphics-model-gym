@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import json
@@ -241,7 +241,3 @@ class TestConfigSchemaGenerator(unittest.TestCase):
                         "The schema_config.json file is outdated,"
                         " regenerate using the script in /scripts/generate_config_schema.py",
                     )
-
-
-if __name__ == "__main__":
-    unittest.main()

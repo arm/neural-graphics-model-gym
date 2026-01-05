@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -36,7 +36,3 @@ class TestTimeDecorator(unittest.TestCase):
             any(substring in message for message in al.output),
             f"'{substring}' not found in log messages: {al.output}",
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

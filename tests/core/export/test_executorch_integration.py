@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import glob
@@ -336,7 +336,3 @@ class TestExecuTorchIntegration(unittest.TestCase):
             f"Did not see expected log. Got:"
             f" {[log.getMessage() for log in log_capture.records]}",
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

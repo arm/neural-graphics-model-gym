@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import filecmp
@@ -56,7 +56,3 @@ class TestDdsUtils(unittest.TestCase):
                 "tests/core/unit/utils/data/GoldenDDS.dds", test_dds_path, shallow=False
             )
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

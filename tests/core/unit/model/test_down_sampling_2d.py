@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import unittest
@@ -88,7 +88,3 @@ class TestDownSampling2DLayer(unittest.TestCase):
         y = layer_with_antialias(x)
         expected_shape = (1, 3, 32, 32)
         self.assertEqual(y.shape, expected_shape)
-
-
-if __name__ == "__main__":
-    unittest.main()

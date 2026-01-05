@@ -1,9 +1,8 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import json
 import subprocess
-import unittest
 from pathlib import Path
 
 from tests.usecases.nss.integration.base_integration import BaseIntegrationTest
@@ -104,7 +103,3 @@ class QATIntegrationTest(BaseIntegrationTest):
     def test_cuda_profiler(self):
         """Test trace is generated with profiler=gpu_memory flag"""
         self.run_cuda_profiler_test("qat")
-
-
-if __name__ == "__main__":
-    unittest.main()

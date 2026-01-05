@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import unittest
@@ -114,7 +114,3 @@ class TestDatasetFactory(unittest.TestCase):
 
         self.assertIsInstance(dataset, Dataset)
         self.assertEqual(dataset.loader_mode, loader_mode)
-
-
-if __name__ == "__main__":
-    unittest.main()

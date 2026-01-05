@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -140,7 +140,3 @@ class TestHistoryBuffer(unittest.TestCase):
         old = history_buffer.state_tm1
         history_buffer.detach()
         self.assertIsNot(history_buffer.state_tm1, old)
-
-
-if __name__ == "__main__":
-    unittest.main()
