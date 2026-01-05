@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import pathlib
@@ -24,6 +24,8 @@ from ng_model_gym.core.utils.types import (
 )
 
 # pylint: disable=line-too-long
+
+CONFIG_SCHEMA_VERSION = "1"
 
 # Pydantic models representing the configuration file structure.
 # For fields which are not core to all model types (e.g. recurrent_samples),
@@ -283,6 +285,10 @@ class Train(PydanticConfigModel):
 class ConfigModel(PydanticConfigModel):
     """Pydantic model representing configuration file"""
 
+    config_schema_version: str = Field(
+        CONFIG_SCHEMA_VERSION,
+        description="Config schema version. Used to check compatibility.",
+    )
     model: Model
     dataset: Dataset
     output: Output

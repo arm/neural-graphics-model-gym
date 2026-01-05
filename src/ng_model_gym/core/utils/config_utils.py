@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -16,7 +16,11 @@ from rich import print_json
 from rich.console import Console
 from rich.table import Column, Table
 
-from ng_model_gym.core.utils.config_model import ConfigModel, OutputDirModel
+from ng_model_gym.core.utils.config_model import (
+    CONFIG_SCHEMA_VERSION,
+    ConfigModel,
+    OutputDirModel,
+)
 from ng_model_gym.core.utils.json_reader import read_json_file
 from ng_model_gym.core.utils.logging import setup_logging
 
@@ -125,6 +129,8 @@ def load_config_file(user_config_path: Path) -> ConfigModel:
 
     user_config: dict = read_json_file(user_config_path)
 
+    validate_schema_version(user_config)
+
     try:
         return ConfigModel.model_validate(user_config)
     except ValidationError as e:
@@ -213,6 +219,27 @@ def load_config_file(user_config_path: Path) -> ConfigModel:
         error_str = re.sub(r"\[/?[^\]]+\]", "", error_str).lstrip("\n")
         config_logger.error(error_str)
 
+        sys.exit(1)
+
+
+def validate_schema_version(user_config: dict) -> None:
+    """Check the user provided config file has a valid schema version"""
+
+    schema_version = user_config.get("config_schema_version")
+
+    if schema_version != CONFIG_SCHEMA_VERSION:
+        console = Console()
+        provided_version = (
+            f"'{schema_version}'" if schema_version is not None else "missing"
+        )
+        # pylint: disable=line-too-long
+
+        console.print(
+            f"\n[bold magenta]Configuration file version mismatch[/bold magenta]\n"
+            f"[bold red]→[/bold red] Expected config_schema_version: [bold bright_green]{CONFIG_SCHEMA_VERSION}[/bold bright_green]\n"
+            f"[bold red]→[/bold red] Provided config_schema_version: [bold bright_cyan]{provided_version}[/bold bright_cyan]\n"
+            f"\nCreate an updated config with [bold]ng-model-gym init[/bold] or update it to the latest template.\n"
+        )
         sys.exit(1)
 
 
