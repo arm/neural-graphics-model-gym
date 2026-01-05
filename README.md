@@ -1,5 +1,5 @@
 <!---
-SPDX-FileCopyrightText: Copyright 2024-2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+SPDX-FileCopyrightText: Copyright 2024-2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 SPDX-License-Identifier: Apache-2.0
 --->
 <h1 align="center">Neural Graphics Model Gym</h1>
@@ -470,7 +470,7 @@ A collection of unit and integration tests are provided to ensure the functional
 Testing can be run using Hatch commands.
 First [install Hatch and create an environment](#editable-installation-with-hatch).
 
-This will install all of the dependencies for Neural Graphics Model Gym, plus the additional dependencies required for testing.
+This will install all the dependencies for Neural Graphics Model Gym, plus the additional dependencies required for testing.
 
 The tests depend on pretrained weights and datasets from Hugging Face. To automatically download the required files, run the following command:
 
@@ -482,18 +482,27 @@ hatch run test-download
 
 ```bash
 # Run all tests
-hatch run test
+hatch run test:test
 
 # Run all unit tests
 # (Test individual functions)
-hatch run test-unit
+hatch run test:unit
 
 # Run all integration tests
 # (Test how parts of the application work together)
-hatch run test-integration
+hatch run test:integration
 
 # Run export tests
-hatch run test-export
+hatch run test:export
+```
+
+To run tests across all supported Python versions, you can run commands like the following:
+```bash
+# Run all tests across all supported Python versions
+hatch run test-matrix:test
+
+# Run unit tests across all supported Python versions
+hatch run test-matrix:unit
 ```
 
 **To run unit or integration tests for only a specific use case (e.g. NSS):**
@@ -502,24 +511,24 @@ First set an environment variable for the usecase, then run the test command:
 
 Linux (bash):
 ```bash
-export USECASE=nss && hatch run test-unit
+export USECASE=nss && hatch run test:unit
 ```
 
 Windows (cmd):
 ```bat
-set USECASE=nss && hatch run test-unit
+set USECASE=nss && hatch run test:unit
 ```
 
 **To run unit tests from one specific file with tests:**
 
 ```bash
-hatch run python -m unittest tests.core.unit.utils.test_checkpoint_utils
+hatch run python -m pytest tests/core/unit/utils/test_checkpoint_utils.py
 ```
 
 **To create a test coverage report:**
 
 ```bash
-hatch run coverage-check
+hatch run test:coverage-check
 ```
 
 **All available commands in the Hatch environment are listed under scripts when running:**

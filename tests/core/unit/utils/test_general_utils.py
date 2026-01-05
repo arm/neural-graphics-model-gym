@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import io
@@ -24,7 +24,3 @@ class TestPrintConfigOptions(unittest.TestCase):
         self.assertIn('"recurrent_samples"', output)
         self.assertIn('"output"', output)
         self.assertIn('"train"', output)
-
-
-if __name__ == "__main__":
-    unittest.main()

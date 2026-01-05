@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -63,7 +63,3 @@ class TestFileLogging(unittest.TestCase):
         with open(file_path, "r", encoding="utf-8") as file:
             contents = file.read()
         self.assertIn("test_logger - INFO - Test message.\n", contents)
-
-
-if __name__ == "__main__":
-    unittest.main()

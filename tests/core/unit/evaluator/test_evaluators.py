@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import shutil
@@ -115,42 +115,43 @@ class TestNGModelEvaluator(unittest.TestCase):
         # Mock the dataloader to yield a single example batch
         sample_input = torch.rand((1, 1, 3, 256, 256))
         sample_target = torch.rand((1, 1, 3, 256, 256))
-        import ng_model_gym.core.evaluator.evaluator as evaluator_module  # pylint: disable=import-outside-toplevel
 
-        evaluator_module.get_dataloader = lambda *args, **kwargs: [
-            (sample_input, sample_target)
-        ]
-        # Stub the model to return a dict so it's subscriptable
-        self.model.return_value = {"output": sample_input}
-        model_evaluator = NGModelEvaluator(self.model, self.params)
+        with patch(
+            "ng_model_gym.core.evaluator.evaluator.get_dataloader",
+            return_value=[(sample_input, sample_target)],
+        ):
+            # Stub the model to return a dict so it's subscriptable
+            self.model.return_value = {"output": sample_input}
+            model_evaluator = NGModelEvaluator(self.model, self.params)
 
-        model_evaluator._run_model()
-        # Ensure the model was called exactly once
-        self.assertEqual(self.model.call_count, 1)
+            model_evaluator._run_model()
+            # Ensure the model was called exactly once
+            self.assertEqual(self.model.call_count, 1)
 
     def test_evaluate(self):
         """Test that evaluate() calls the necessary functions and outputs a JSON file"""
-        import ng_model_gym.core.evaluator.evaluator as evaluator_module  # pylint: disable=import-outside-toplevel
 
-        evaluator_module.get_dataloader = lambda *args, **kwargs: []
-        # Stub the model to return a dict with the expected output key
-        predicted = torch.rand((1, 32, 3, 256, 256))
-        self.model.return_value = {"output": predicted}
+        with patch(
+            "ng_model_gym.core.evaluator.evaluator.get_dataloader", return_value=[]
+        ):
+            # Stub the model to return a dict with the expected output key
+            predicted = torch.rand((1, 32, 3, 256, 256))
+            self.model.return_value = {"output": predicted}
 
-        model_evaluator = NGModelEvaluator(self.model, self.params)
+            model_evaluator = NGModelEvaluator(self.model, self.params)
 
-        existing_results = set(Path(self.params.output.dir).glob("eval_metrics_*.json"))
+            existing_results = set(
+                Path(self.params.output.dir).glob("eval_metrics_*.json")
+            )
 
-        model_evaluator.evaluate()
+            model_evaluator.evaluate()
 
-        # Check that results.log and metrics json exist
-        expected_results_logfile = Path(self.params.output.dir, "results.log")
-        self.assertTrue(expected_results_logfile.exists())
+            # Check that results.log and metrics json exist
+            expected_results_logfile = Path(self.params.output.dir, "results.log")
+            self.assertTrue(expected_results_logfile.exists())
 
-        all_results_json = set(Path(self.params.output.dir).glob("eval_metrics_*.json"))
-        expected_results_json = all_results_json - existing_results
-        self.assertTrue(expected_results_json)
-
-
-if __name__ == "__main__":
-    unittest.main()
+            all_results_json = set(
+                Path(self.params.output.dir).glob("eval_metrics_*.json")
+            )
+            expected_results_json = all_results_json - existing_results
+            self.assertTrue(expected_results_json)

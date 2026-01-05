@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import unittest
@@ -59,7 +59,3 @@ class TestProcessFunctions(unittest.TestCase):
 
         for name, tensor in data_out.items():
             self.assertEqual(expected_shape[name], tensor.shape)
-
-
-if __name__ == "__main__":
-    unittest.main()

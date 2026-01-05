@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -65,7 +65,3 @@ class TestGeneratingConfigFile(unittest.TestCase):
         """Test the function raises if invalid dir is passed"""
         with self.assertRaises(FileNotFoundError):
             generate_config_file("/invalid_dir")
-
-
-if __name__ == "__main__":
-    unittest.main()

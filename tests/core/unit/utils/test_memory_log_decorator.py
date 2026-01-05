@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -32,7 +32,3 @@ class TestMemoryLogDecorator(unittest.TestCase):
             any(s in msg for msg in output),
             f"'Could not found {s}' log messages: {output}",
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

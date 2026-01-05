@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import unittest
@@ -225,7 +225,3 @@ class TestModelRegistry(unittest.TestCase):
             model_registry.MODEL_REGISTRY.list_registered(),
             [get_model_key(model_name, model_version)],
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -354,7 +354,3 @@ class TestExportUtils(unittest.TestCase):
         self.assertIsInstance(transformed, tuple)
         self.assertEqual(transformed[0]["meta"]["k"], 123)
         self.assertEqual(transformed[0]["meta"]["s"], "testing")
-
-
-if __name__ == "__main__":
-    unittest.main()

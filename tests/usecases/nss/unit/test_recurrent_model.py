@@ -1,8 +1,6 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-import unittest
-
 import torch
 
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
@@ -216,7 +214,3 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
                 pad_h, pad_w = self.model._get_pad_sz(height, width, is_unpad=True)
                 self.assertEqual(pad_h.item(), exp_h)
                 self.assertEqual(pad_w.item(), exp_w)
-
-
-if __name__ == "__main__":
-    unittest.main()

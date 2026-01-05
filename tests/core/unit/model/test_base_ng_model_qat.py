@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import unittest
@@ -83,7 +83,3 @@ class TestBaseNGModelQAT(unittest.TestCase):
         self.assertTrue(fp32_model.training)
         fp32_model.eval()
         self.assertFalse(fp32_model.training)
-
-
-if __name__ == "__main__":
-    unittest.main()

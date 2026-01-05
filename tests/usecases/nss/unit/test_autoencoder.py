@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import unittest
@@ -188,7 +188,3 @@ class TestAutoEncoderGolden(BaseGPUMemoryTest):
         self.assertTrue(
             torch.allclose(feedback_out, expected_feedback_out, rtol=1e-3, atol=1e-3)
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

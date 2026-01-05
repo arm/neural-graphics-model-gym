@@ -1,8 +1,6 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-import unittest
-
 import torch
 
 from ng_model_gym.usecases.nss.model.post_processing import (
@@ -260,7 +258,3 @@ class TestShaderAccPostprocessGolden(BaseGPUMemoryTest):
         torch.testing.assert_close(
             out_filtered, expected_out_filtered, rtol=RTOL, atol=ATOL
         )
-
-
-if __name__ == "__main__":
-    unittest.main()

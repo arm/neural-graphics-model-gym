@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -102,7 +102,3 @@ class StateDictPrefixReplacement(unittest.TestCase):
         self.assertIsInstance(out_state_dict, dict)
 
         self.assertTrue(all(key.startswith("ng_model") for key in state_dict.keys()))
-
-
-if __name__ == "__main__":
-    unittest.main()
