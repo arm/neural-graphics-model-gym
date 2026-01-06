@@ -28,6 +28,7 @@ classifiers = [
 dependencies = [
     "gpustat==1.1.1",
     "gputil==1.4.0",
+    "huggingface-hub==0.34.3",
     "lpips==0.1.4",
     "memory-profiler==0.61.0",
     "numpy==2.0.0",
@@ -75,7 +76,6 @@ dev = [
     "pytest-cov==5.0.0",
     "pylint==3.0.1",
     "reuse==3.0.1",
-    "huggingface-hub==0.34.3"
 ]
 
 [project.urls]

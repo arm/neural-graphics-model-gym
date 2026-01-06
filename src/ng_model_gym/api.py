@@ -4,13 +4,14 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Union
+from typing import Callable
 
 import torch
 from torch.profiler import schedule
 
 import ng_model_gym.core.utils.patch.torchao_patch  # pylint: disable=unused-import # isort: split
 import ng_model_gym.core.utils.patch.executorch_patch  # pylint: disable=unused-import # isort: split
+from ng_model_gym import download_pretrained_model
 from ng_model_gym.core.evaluator.evaluator import NGModelEvaluator
 from ng_model_gym.core.trainer.trainer import Trainer
 from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
@@ -88,6 +89,17 @@ def _cuda_profiler_wrapper(func: Callable, *args, trace_output_dir: Path):
     logger.info("Pickle file can be viewed at https://pytorch.org/memory_viz")
 
 
+def _check_download_required(model_path: Path | str | None) -> Path | str | None:
+    """
+    Check if the path/string passed is an identifier to a remote model and return
+    the downloaded model. Otherwise, return the local model path without action.
+    """
+    if model_path and str(model_path).startswith("@"):
+        # Download model to cache
+        model_path = download_pretrained_model(model_name=str(model_path))
+    return model_path
+
+
 @memory_log_decorator
 @time_decorator
 @gpu_log_decorator(enabled=True, log_level=logging.INFO)
@@ -110,12 +122,16 @@ def do_training(
           - `ProfilerType.TRACE`: CPU tracing
           - `ProfilerType.GPU_MEMORY`: GPU memory profiling
         resume_model_path (Path | str | None): Path to checkpoint file or directory for resuming training
-        finetune_model_path (Path | str | None): Path to pretrained weights for finetuning
+        finetune_model_path (Path | str | None): Path to pretrained weights on disk for finetuning or
+                string identifier @<repo_name>/<filename> to automatically fetch and finetune remote model
     Returns:
         Tuple[torch.nn.Module, Path]: Trained model and path to its checkpoint.
 
     Example:
        >>> checkpoint_path = do_training(params, TrainEvalMode.FP32)
+       >>> # Finetuning - preexisting weights as starting point for training
+       >>> checkpoint_path = do_training(params, TrainEvalMode.FP32, finetune_model_path='./path/to/model.pt')
+       >>> checkpoint_path = do_training(params, TrainEvalMode.FP32, finetune_model_path='@neural-super-sampling/nss_v0.1.0_fp32.pt')
     """
 
     if not isinstance(training_mode, TrainEvalMode):
@@ -131,6 +147,8 @@ def do_training(
 
     if resume_model_path and finetune_model_path:
         raise ValueError("resume and finetune cannot be set at the same time.")
+
+    finetune_model_path = _check_download_required(finetune_model_path)
 
     resume_path = Path(resume_model_path) if resume_model_path else None
     finetune_path = Path(finetune_model_path) if finetune_model_path else None
@@ -163,7 +181,7 @@ def do_training(
 @time_decorator
 def do_evaluate(
     params: ConfigModel,
-    model_path: Union[str, Path],
+    model_path: str | Path,
     model_type: TrainEvalMode,
     profile_setting: ProfilerType = ProfilerType.DISABLED,
 ):
@@ -173,7 +191,8 @@ def do_evaluate(
 
     Args:
         params (ConfigModel): Configuration object obtained via `load_config_file(path)`.
-        model_path (str or Path): Filesystem path to the model checkpoint (.pt file).
+        model_path (Path or str): Filesystem path to the model checkpoint (.pt file) or
+                string identifier @<repo_name>/<filename> to automatically fetch remote model
         model_type (TrainEvalMode): Model type e.g. `TrainEvalMode.FP32` or `TrainEvalMode.QAT`.
         profile_setting (Optional, ProfilerType, ): Profiling strategy to use during evaluation:
             - `ProfilerType.DISABLED` (default): No profiling
@@ -198,11 +217,14 @@ def do_evaluate(
     if params_for_eval.dataset.path.test is None:
         raise ValueError("Config error: No test dataset path provided for evaluation")
 
+    model_path = _check_download_required(model_path)
     model_path = Path(model_path)
+
+    if not model_path.is_file():
+        raise FileNotFoundError(f"Could not find model at {model_path}")
+
     if model_path.suffix.lower() != ModelType.PT:
         raise ValueError(f"Expected a .pt file, got {model_path.name}")
-
-    model_path = Path(model_path)
 
     # Load user's specified model
     params_for_eval.model_train_eval_mode = model_type
@@ -227,7 +249,7 @@ def do_evaluate(
 @memory_log_decorator
 @time_decorator
 def do_export(
-    params: ConfigModel, model_path: Union[str, Path], export_type: ExportType
+    params: ConfigModel, model_path: str | Path, export_type: ExportType
 ) -> None:
     """
     Export a trained .pt model checkpoint to a VGF file.
@@ -239,7 +261,8 @@ def do_export(
 
     Args:
         params (ConfigModel): Configuration object containing export settings
-        model_path (str or Path): Path to the input .pt model file
+        model_path (str or Path): Path to the input .pt model file or
+                string identifier @<repo_name>/<filename> to automatically fetch remote model
         export_type (ExportType): The exported model type e.g ExportType.FP32, ExportType.QAT_INT8
 
     Example:
@@ -259,6 +282,11 @@ def do_export(
     create_directory(params.output.export.vgf_output_dir)
 
     model_path = Path(model_path)
+    model_path = _check_download_required(model_path)
+
+    if not model_path.is_file():
+        raise FileNotFoundError(f"Could not find model at {model_path}")
+
     if model_path.suffix.lower() != ModelType.PT:
         raise ValueError(f"Expected a .pt file, got {model_path.name}")
 

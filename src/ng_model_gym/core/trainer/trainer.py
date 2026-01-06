@@ -184,7 +184,7 @@ class Trainer:
 
             if not finetune_path.exists() or not finetune_path.is_file():
                 raise FileNotFoundError(
-                    f"Couldn't find {finetune_path} for fine-tuning"
+                    f"Couldn't find local model at path '{finetune_path}' for fine-tuning"
                 )
             if finetune_path.suffix.lower() != ModelType.PT:
                 raise ValueError(

@@ -62,6 +62,25 @@ class TrainingIntegrationTest(BaseIntegrationTest):
         self.check_log(["Fine tuning using weights"])
         return sub_proc
 
+    def run_finetune_training_test_model_hf(self):
+        """E2E test of the model to finetune training."""
+
+        sub_proc = subprocess.run(
+            [
+                "ng-model-gym",
+                f"--config-path={self.test_cfg_path}",
+                "train",
+                "--no-evaluate",
+                "--finetune",
+                "@neural-super-sampling/nss_v0.1.0_fp32.pt",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(sub_proc.returncode, 0)
+        self.check_log(["Fine tuning using weights nss_v0.1.0_fp32.pt"])
+        return sub_proc
+
     def test_training_raises_error_missing_dataset(self):
         """Test train raises error if missing dataset path"""
 
@@ -108,6 +127,10 @@ class TrainingIntegrationTest(BaseIntegrationTest):
         """Run entire training pipeline with finetuning."""
         subprocess_out = self.run_finetune_training_test()
         self._assert_peak_vram_usage(subprocess_out.stdout, 14500, 0.005)
+
+    def test_model_train_finetune_model_from_hf(self):
+        """Run finetuning pipeline using model from HF using unique identifier"""
+        self.run_finetune_training_test_model_hf()
 
     def test_model_train_resume(self):
         """Run entire training pipeline with resuming."""

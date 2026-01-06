@@ -147,10 +147,8 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
 
     # pylint: enable=duplicate-code
 
-    def test_evaluate_from_checkpoints(self):
+    def _evaluate_from_checkpoints(self, model_path):
         """E2E test of evaluating a previously trained model from checkpoints"""
-        model_path = "tests/usecases/nss/weights/nss_v0.1.0_fp32.pt"
-
         # Update config to enable frame export
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
@@ -467,3 +465,11 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
     def test_cuda_profiler(self):
         """Test trace is generated with profiler=gpu_memory flag"""
         self.run_cuda_profiler_test("eval")
+
+    def test_evaluate_from_checkpoint_local(self):
+        """Evaluate using local model"""
+        self._evaluate_from_checkpoints("tests/usecases/nss/weights/nss_v0.1.0_fp32.pt")
+
+    def test_evaluate_from_identifier(self):
+        """Evaluate using remote model"""
+        self._evaluate_from_checkpoints("@neural-super-sampling/nss_v0.1.0_fp32.pt")

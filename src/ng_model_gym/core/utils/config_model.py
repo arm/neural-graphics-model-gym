@@ -263,8 +263,10 @@ class Train(PydanticConfigModel):
         description="Upscale parameter for the NSS model. Note only 2x for now is supported in this version",
     )
     seed: int = Field(ge=0, description="Seed for random number generation")
-    finetune: SkipJsonSchema[Optional[pathlib.Path]] = Field(
-        default=None, exclude=True
+    finetune: SkipJsonSchema[str | pathlib.Path | None] = Field(
+        default=None,
+        exclude=True,
+        union_mode="left_to_right",
     )  # Hidden from user
     perform_validate: bool = Field(
         description="Perform validation at the end of specific training epochs, as set by the validate_frequency field."

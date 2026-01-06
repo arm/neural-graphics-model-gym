@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 from typing import TYPE_CHECKING
@@ -14,6 +14,8 @@ __all__ = [
     "do_export",
     "do_evaluate",
     "print_config_options",
+    "list_pretrained_models",
+    "download_pretrained_model",
     "TrainEvalMode",
     "ExportType",
     "ProfilerType",
@@ -28,6 +30,10 @@ if TYPE_CHECKING:
         ExportType,
         ProfilerType,
         TrainEvalMode,
+    )
+    from ng_model_gym.core.model.repos.remote_model_manager import (
+        download_pretrained_model,
+        list_pretrained_models,
     )
     from ng_model_gym.core.utils.config_utils import (
         generate_config_file,
@@ -50,6 +56,18 @@ else:
             from ng_model_gym.api import do_export
 
             return do_export
+        if attr == "list_pretrained_models":
+            from ng_model_gym.core.model.repos.remote_model_manager import (
+                list_pretrained_models,
+            )
+
+            return list_pretrained_models
+        if attr == "download_pretrained_model":
+            from ng_model_gym.core.model.repos.remote_model_manager import (
+                download_pretrained_model,
+            )
+
+            return download_pretrained_model
         if attr == "load_config_file":
             from ng_model_gym.core.utils.config_utils import load_config_file
 

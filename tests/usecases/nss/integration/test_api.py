@@ -39,7 +39,7 @@ class ApiIntegrationTest(BaseIntegrationTest):
         self.assertIsNotNone(model, "do_training did not return a model")
 
     def test_resume_finetune_flags_mutually_exclusive(self):
-        """Test erorr raised if both resume and finetune args specified"""
+        """Test error raised if both resume and finetune args specified"""
         with self.assertRaises(ValueError):
             do_training(
                 self.config,

@@ -45,6 +45,37 @@ class QATIntegrationTest(BaseIntegrationTest):
         )
         # pylint: enable=duplicate-code
 
+    def run_finetune_training_test_hf_model(self):
+        """E2E test of the model to finetune training using HF model"""
+
+        sub_proc = subprocess.run(
+            [
+                "ng-model-gym",
+                f"--config-path={self.test_cfg_path}",
+                "qat",
+                "--no-evaluate",
+                "--finetune",
+                "@neural-super-sampling/nss_v0.1.0_fp32.pt",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        self.assertEqual(sub_proc.returncode, 0)
+
+        out = sub_proc.stdout.decode("utf-8", errors="ignore")
+        err = sub_proc.stderr.decode("utf-8", errors="ignore")
+        self.check_log(["Fine tuning using weights nss_v0.1.0_fp32.pt"])
+
+        self.assertEqual(
+            sub_proc.returncode,
+            0,
+            (
+                f"QAT finetune failed exit code: {sub_proc.returncode})\n"
+                f"STDOUT:\n{out}\n"
+                f"STDERR: \n{err}"
+            ),
+        )
+
     def test_qat_raises_error_missing_dataset(self):
         """Test qat raises error if missing dataset path"""
 

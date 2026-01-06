@@ -72,6 +72,98 @@ def generate_config(
     )
 
 
+@app.command(name="list-models")
+def list_models_cli():
+    """List pretrained models available from configured repositories."""
+    from ng_model_gym.core.model.repos.remote_model_manager import (
+        list_pretrained_models,
+    )
+
+    console = Console()
+    try:
+        available = list_pretrained_models()  # Dict[str, List[ModelRepository]]
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        console.print(f"[red]Failed to list models: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    if not available:
+        console.print("[yellow]No downloadable models found.[/yellow]")
+        return
+
+    for server_name, repos in available.items():
+        if not repos:
+            continue
+
+        console.print(f"\n[bold]{server_name}[/bold]")
+
+        for repo in repos:
+            repo_id = repo.repository.name
+            revision = repo.repository.revision
+            repo_url = repo.repository.url
+
+            revision_suffix = f" @ {revision[:7]}" if revision else ""
+
+            repo_line = f"  [bold]{repo_id}[/bold]{revision_suffix}"
+            repo_line = f"{repo_line} ([dim]{repo_url}[/dim])"
+            console.print(repo_line)
+
+            if not repo.models:
+                console.print("    [yellow](no .pt models found)[/yellow]")
+                continue
+
+            for model in repo.models:
+                console.print(f"    * {model.file_name}")
+
+        console.print()
+
+    console.print(
+        "[dim]See [bold]ng-model-gym download --help[/bold] for downloading models[/dim]\n"
+    )
+
+
+@app.command(name="download")
+def download_cli(
+    model_name: Annotated[
+        str,
+        typer.Argument(
+            help=(
+                "Model filename to download (e.g. nss_v0.1.0_fp32.pt) or a "
+                "model reference (e.g. hf://Org/Repo/filename.pt)"
+            )
+        ),
+    ],
+    destination: Annotated[
+        Path,
+        typer.Argument(
+            ...,
+            help="Directory to save the downloaded model",
+            file_okay=False,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ],
+):
+    """Download pretrained model checkpoint from configured repositories"""
+    from ng_model_gym.core.model.repos.remote_model_manager import (
+        download_pretrained_model,
+    )
+
+    console = Console()
+    try:
+        downloaded_path = download_pretrained_model(
+            model_name=model_name,
+            destination=destination,
+        )
+    except Exception as exc:  # pylint: disable=broad-exception-caught
+        console.print(f"[red]Download failed: {exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    console.print(
+        f"[bold bright_green]Downloaded[/bold bright_green] "
+        f"{model_name} to [bold]{downloaded_path}[/bold]"
+    )
+
+
 @app.command(name="train")
 def train_cli(
     resume: Annotated[
@@ -91,11 +183,8 @@ def train_cli(
         typer.Option(
             "--finetune",
             "-f",
-            help="Path to pre-trained model weights (.pt) to fine-tune from",
-            exists=True,
-            readable=True,
-            file_okay=True,
-            dir_okay=False,
+            help="Path to local pre-trained model weights (.pt) or remote model"
+            " identifier @<repo_name>/<file_name> to fine-tune from",
         ),
     ] = None,
     evaluate: Annotated[
@@ -149,10 +238,6 @@ def qat_cli(
             "--finetune",
             "-f",
             help="Path to pre-trained model weights (.pt) to fine-tune from",
-            exists=True,
-            readable=True,
-            file_okay=True,
-            dir_okay=False,
         ),
     ] = None,
     evaluate: Annotated[
@@ -191,7 +276,8 @@ def eval_cli(
     model_path: Annotated[
         Path,
         typer.Option(
-            help="Path to model .pt file", exists=True, dir_okay=False, readable=True
+            help="Path to local model .pt file or remote model identifier @<repo_name>/<file_name> "
+            "to evaluate",
         ),
     ],
     model_type: Annotated[
@@ -216,10 +302,8 @@ def export_cli(
     model_path: Annotated[
         Path,
         typer.Option(
-            help="Path to model .pt file for VGF file export",
-            exists=True,
-            dir_okay=False,
-            readable=True,
+            help="Path to model .pt file or remote model identifier @<repo_name>/<file_name> "
+            "for VGF file export",
         ),
     ],
     export_type: Annotated[

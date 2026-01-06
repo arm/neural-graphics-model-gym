@@ -40,7 +40,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         if cls.tosa_out_dir and Path(cls.tosa_out_dir).exists():
             shutil.rmtree(cls.tosa_out_dir)
 
-    def validate_vgf_export(self):
+    def _validate_vgf_export(self):
         """Check VGF file is produced"""
         with self.subTest("Validate VGF file export"):
             vgf_output_dir = Path(self.tosa_out_dir)
@@ -53,26 +53,9 @@ class TestExecuTorchIntegration(unittest.TestCase):
                 size, 100_000, f"VGF file size {size / 1000}KB is smaller than 100 KB"
             )
 
-    def test_executorch_tosa_export_fp32(self):
-        """Load an NSS model and export it to a TOSA file via ExecuTorch."""
-        # Load config and setup for current test
-        params = create_simple_params()
-        params.dataset.path.test = Path("tests/usecases/nss/datasets/test")
+    def _validate_tosa_files(self, tosa_out_dir: Path) -> int:
+        """Verify TOSA folder and output files created. Returns largest_file_size"""
 
-        params.output.export.vgf_output_dir = self.tosa_out_dir
-        params.model_train_eval_mode = TrainEvalMode.FP32
-
-        # Ensure TOSA output directory does not exist
-        tosa_out_dir = Path(params.output.export.vgf_output_dir)
-        self.assertFalse(tosa_out_dir.exists())
-
-        do_export(
-            params,
-            "./tests/usecases/nss/weights/nss_v0.1.0_fp32.pt",
-            ExportType.FP32,
-        )
-
-        # Verify TOSA folder and output files created
         output_tosa_files = glob.glob(f"{tosa_out_dir}/*.tosa")
         output_json_file_exists = glob.glob(f"{tosa_out_dir}/*.json")
         self.assertTrue(tosa_out_dir.exists())
@@ -99,134 +82,124 @@ class TestExecuTorchIntegration(unittest.TestCase):
             "TOSA file generated incorrectly "
             f"as per the large file size of {largest_file_size / 1000} KB. ",
         )
+        return largest_file_size
 
-        TestExecuTorchIntegration.fp32_file_size = largest_file_size
-        self.validate_vgf_export()
+    def test_executorch_tosa_export_fp32(self):
+        """Load an NSS model and export it to a TOSA file via ExecuTorch."""
+
+        models = [
+            "./tests/usecases/nss/weights/nss_v0.1.0_fp32.pt",
+            "@neural-super-sampling/nss_v0.1.0_fp32.pt",
+        ]
+
+        for model in models:
+            with self.subTest(model):
+                # Load config and setup for current test
+                params = create_simple_params()
+                params.dataset.path.test = Path("tests/usecases/nss/datasets/test")
+                params.output.export.vgf_output_dir = self.tosa_out_dir
+                params.model_train_eval_mode = TrainEvalMode.FP32
+                # Ensure TOSA output directory does not exist
+                tosa_out_dir = Path(params.output.export.vgf_output_dir)
+                self.assertFalse(tosa_out_dir.exists())
+                do_export(
+                    params,
+                    model,
+                    ExportType.FP32,
+                )
+                largest_file_size = self._validate_tosa_files(tosa_out_dir)
+                TestExecuTorchIntegration.fp32_file_size = largest_file_size
+                self._validate_vgf_export()
+                self.tearDown()
 
     def test_executorch_tosa_export_ptq_int8(self):
         """Load an NSS model and export it to an int8 TOSA file via ExecuTorch."""
-        # Load config and setup for current test
-        params = create_simple_params()
-        params.output.export.vgf_output_dir = self.tosa_out_dir
-        params.dataset.path.test = Path("tests/usecases/nss/datasets/test")
 
-        # Ensure TOSA output directory does not exist
-        tosa_out_dir = Path(params.output.export.vgf_output_dir)
-        self.assertFalse(tosa_out_dir.exists())
-
-        do_export(
-            params,
+        models = [
             "./tests/usecases/nss/weights/nss_v0.1.0_fp32.pt",
-            ExportType.PTQ_INT8,
-        )
+            "@neural-super-sampling/nss_v0.1.0_fp32.pt",
+        ]
 
-        # Verify TOSA folder and output files created
-        output_tosa_files = glob.glob(f"{tosa_out_dir}/*.tosa")
-        output_json_file_exists = glob.glob(f"{tosa_out_dir}/*.json")
-        self.assertTrue(tosa_out_dir.exists())
-        self.assertTrue(output_tosa_files)
-        self.assertTrue(output_json_file_exists)
+        for model in models:
+            # Load config and setup for current test
+            params = create_simple_params()
+            params.output.export.vgf_output_dir = self.tosa_out_dir
+            params.dataset.path.test = Path("tests/usecases/nss/datasets/test")
 
-        # Find the largest TOSA file
-        largest_file_size = 0
-        for tosa_file in output_tosa_files:
-            file_size = Path(tosa_file).stat().st_size
-            if file_size > largest_file_size:
-                largest_file_size = file_size
+            # Ensure TOSA output directory does not exist
+            tosa_out_dir = Path(params.output.export.vgf_output_dir)
+            self.assertFalse(tosa_out_dir.exists())
 
-        self.assertGreater(
-            largest_file_size,
-            100_000,
-            "TOSA file generated incorrectly "
-            f"as per the small file size of {largest_file_size / 1000} KB. ",
-        )
-
-        self.assertLess(
-            largest_file_size,
-            1_000_000,
-            "TOSA file generated incorrectly "
-            f"as per the large file size of {largest_file_size / 1000} KB. ",
-        )
-
-        # Compare .tosa file sizes between ptq int8 model
-        # and fp32 model if fp32 test ran successfully
-        if TestExecuTorchIntegration.fp32_file_size is not None:
-            ptq_int8_file_size = largest_file_size
-            model_size_ratio = (
-                ptq_int8_file_size / TestExecuTorchIntegration.fp32_file_size
+            do_export(
+                params,
+                model,
+                ExportType.PTQ_INT8,
             )
 
-            # Ensure int8 model is ~1/4 size of fp32 model
-            self.assertAlmostEqual(
-                model_size_ratio,
-                0.25,
-                delta=0.1,
-                msg="int8 TOSA file from PTQ is not ~1/4 size of fp32 TOSA file.",
-            )
+            largest_file_size = self._validate_tosa_files(tosa_out_dir)
 
-        self.validate_vgf_export()
+            # Compare .tosa file sizes between ptq int8 model
+            # and fp32 model if fp32 test ran successfully
+            if TestExecuTorchIntegration.fp32_file_size is not None:
+                ptq_int8_file_size = largest_file_size
+                model_size_ratio = (
+                    ptq_int8_file_size / TestExecuTorchIntegration.fp32_file_size
+                )
+
+                # Ensure int8 model is ~1/4 size of fp32 model
+                self.assertAlmostEqual(
+                    model_size_ratio,
+                    0.25,
+                    delta=0.1,
+                    msg="int8 TOSA file from PTQ is not ~1/4 size of fp32 TOSA file.",
+                )
+
+            self._validate_vgf_export()
+            self.tearDown()
 
     def test_executorch_tosa_qat_int8_export(self):
         """Load checkpoint produced from QAT training"""
-        params = create_simple_params()
-        params.output.export.vgf_output_dir = self.tosa_out_dir
-        params.dataset.path.train = Path("tests/usecases/nss/datasets/train")
 
-        # Ensure tosa output directory does not exist
-        tosa_out_dir = Path(params.output.export.vgf_output_dir)
-        self.assertFalse(tosa_out_dir.exists())
-
-        do_export(
-            params,
+        models = [
             "./tests/usecases/nss/weights/nss_v0.1.1_int8.pt",
-            ExportType.QAT_INT8,
-        )
+            "@neural-super-sampling/nss_v0.1.1_int8.pt",
+        ]
 
-        # Verify tosa folder and output files created
-        output_tosa_files = glob.glob(f"{tosa_out_dir}/*.tosa")
-        output_json_file_exists = glob.glob(f"{tosa_out_dir}/*.json")
-        self.assertTrue(tosa_out_dir.exists())
-        self.assertTrue(output_tosa_files)
-        self.assertTrue(output_json_file_exists)
+        for model in models:
+            params = create_simple_params()
+            params.output.export.vgf_output_dir = self.tosa_out_dir
+            params.dataset.path.train = Path("tests/usecases/nss/datasets/train")
 
-        # Find the largest .tosa file to validate correct file output
-        largest_file_size = 0
-        for tosa_file in output_tosa_files:
-            file_size = Path(tosa_file).stat().st_size
-            if file_size > largest_file_size:
-                largest_file_size = file_size
+            # Ensure tosa output directory does not exist
+            tosa_out_dir = Path(params.output.export.vgf_output_dir)
+            self.assertFalse(tosa_out_dir.exists())
 
-        self.assertGreater(
-            largest_file_size,
-            100_000,
-            "TOSA file generated incorrectly "
-            f"as per the small file size of {largest_file_size / 1000} KB. ",
-        )
-
-        self.assertLess(
-            largest_file_size,
-            1_000_000,
-            "TOSA file generated incorrectly  "
-            f"as per the large file size of {largest_file_size / 1000} KB. ",
-        )
-
-        # Compare .tosa file sizes between qat int8 model and
-        # fp32 model if fp32 test ran successfully
-        if TestExecuTorchIntegration.fp32_file_size is not None:
-            qat_int8_file_size = largest_file_size
-            model_size_ratio = (
-                qat_int8_file_size / TestExecuTorchIntegration.fp32_file_size
+            do_export(
+                params,
+                model,
+                ExportType.QAT_INT8,
             )
 
-            # Ensure int8 model is ~1/4 size of fp32 model
-            self.assertAlmostEqual(
-                model_size_ratio,
-                0.25,
-                delta=0.1,
-                msg="int8 TOSA file from QAT is not ~1/4 size of fp32 TOSA file.",
-            )
+            largest_file_size = self._validate_tosa_files(tosa_out_dir)
 
-        self.validate_vgf_export()
+            # Compare .tosa file sizes between qat int8 model and
+            # fp32 model if fp32 test ran successfully
+            if TestExecuTorchIntegration.fp32_file_size is not None:
+                qat_int8_file_size = largest_file_size
+                model_size_ratio = (
+                    qat_int8_file_size / TestExecuTorchIntegration.fp32_file_size
+                )
+
+                # Ensure int8 model is ~1/4 size of fp32 model
+                self.assertAlmostEqual(
+                    model_size_ratio,
+                    0.25,
+                    delta=0.1,
+                    msg="int8 TOSA file from QAT is not ~1/4 size of fp32 TOSA file.",
+                )
+
+            self._validate_vgf_export()
+            self.tearDown()
 
     def test_export_function_raises_error_missing_dataset_path(self):
         """Test export raises error if missing dataset path"""
