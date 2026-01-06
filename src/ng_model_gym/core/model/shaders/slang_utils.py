@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import json
@@ -11,7 +11,7 @@ from pathlib import Path
 import slangtorch
 from rich.console import Console
 
-from ng_model_gym.core.utils.general_utils import is_invoked_cli
+from ng_model_gym.core.utils.general_utils import is_invoked_cli, suspend_tqdm_bar
 
 logger = logging.getLogger(__name__)
 
@@ -84,18 +84,18 @@ def load_slang_module(shader_dir, shader_file):
     shader_path = files(shader_dir) / shader_file
 
     skip_ninja_check = FAST_TEST_ENABLED or SKIP_NINJA_CHECK
-
-    # Check if program was invoked by CLI
-    if is_invoked_cli():
-        with Console().status("[bold green]Loading Slang shaders…", spinner="dots"):
-            module = slangtorch.loadModule(
-                shader_path,
-                skipNinjaCheck=skip_ninja_check,
-                verbose=False,
-            )
-
-    else:
+    if not is_invoked_cli():
         logger.info("Loading Slang shaders...")
+        return slangtorch.loadModule(
+            shader_path,
+            skipNinjaCheck=skip_ninja_check,
+            verbose=False,
+        )
+
+    status = Console().status("[bold green]Loading Slang shaders...", spinner="dots")
+
+    # Suspend tqdm bar and show spinner in CLI
+    with suspend_tqdm_bar(), status:
         module = slangtorch.loadModule(
             shader_path,
             skipNinjaCheck=skip_ninja_check,
