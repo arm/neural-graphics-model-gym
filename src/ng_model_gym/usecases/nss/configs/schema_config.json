@@ -1,4 +1,9 @@
 {
+    "config_schema_version": {
+        "default": "1",
+        "description": "Config schema version. Used to check compatibility.",
+        "type": "string"
+    },
     "model": {
         "name": {
             "description": "Model name",

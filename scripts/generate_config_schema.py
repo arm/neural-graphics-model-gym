@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import json
@@ -56,6 +56,9 @@ def format_schema(schema):
 
 def generate_schema(output_path: Path):
     """Generate schema of the config model"""
+    logger.warning(
+        "Make sure that you have bumped CONFIG_SCHEMA_VERSION in config_model.py!"
+    )
     with open(output_path, "w", encoding="utf-8") as schema_file:
         # Inline the "refs" keys in the generated JSON schema spec
         schema = jsonref.replace_refs(
