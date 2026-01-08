@@ -1,6 +1,6 @@
 {
     "config_schema_version": {
-        "default": "1",
+        "default": "2",
         "description": "Config schema version. Used to check compatibility.",
         "type": "string"
     },
@@ -221,10 +221,6 @@
             "minimum": 1,
             "type": "integer"
         },
-        "resume": {
-            "description": "Resume training from the most recent saved checkpoint",
-            "type": "boolean"
-        },
         "scale": {
             "default": 2.0,
             "description": "Upscale parameter for the NSS model. Note only 2x for now is supported in this version",
@@ -236,23 +232,6 @@
             "description": "Seed for random number generation",
             "minimum": 0,
             "type": "integer"
-        },
-        "finetune": {
-            "description": "Fine-tune using pretrained_weights",
-            "type": "boolean"
-        },
-        "pretrained_weights": {
-            "anyOf": [
-                {
-                    "format": "path",
-                    "type": "string"
-                },
-                {
-                    "type": "null"
-                }
-            ],
-            "default": null,
-            "description": "Path to the weights of the pretrained model"
         },
         "perform_validate": {
             "description": "Perform validation at the end of specific training epochs, as set by the validate_frequency field.",

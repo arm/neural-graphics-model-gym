@@ -24,6 +24,7 @@ class QATIntegrationTest(BaseIntegrationTest):
                 "qat",
                 "--no-evaluate",
                 "--finetune",
+                self.finetune_weights,
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -67,6 +68,7 @@ class QATIntegrationTest(BaseIntegrationTest):
                     "qat",
                     "--no-evaluate",
                     "--finetune",
+                    str(self.finetune_weights),
                 ],
                 check=True,
                 capture_output=True,
@@ -95,6 +97,30 @@ class QATIntegrationTest(BaseIntegrationTest):
         """Run entire training pipeline with resuming."""
         self.test_model_train()
         self.run_resume_training_test(mode="qat", num_epochs=3)
+
+    def test_qat_flags_mutually_exclusive(self):
+        """CLI should reject resume and finetune together."""
+        with self.assertRaises(subprocess.CalledProcessError) as ctx:
+            subprocess.run(
+                [
+                    "ng-model-gym",
+                    f"--config-path={self.test_cfg_path}",
+                    "qat",
+                    "--no-evaluate",
+                    "--resume",
+                    str(self.finetune_weights),
+                    "--finetune",
+                    str(self.finetune_weights),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertNotEqual(ctx.exception.returncode, 0)
+        stderr_lower = ctx.exception.stderr.lower()
+        for keyword in ("cannot specify both", "resume", "finetune"):
+            self.assertIn(keyword, stderr_lower)
 
     def test_trace_profiler(self):
         """Test JSON trace is generated with profiler=trace flag"""

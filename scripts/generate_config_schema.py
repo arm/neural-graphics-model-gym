@@ -26,7 +26,6 @@ def format_schema(schema):
         "title",
         "required",
         "additionalProperties",
-        "model_train_eval_mode",
         "mapping",
     ] + [key for key in ("description", "type") if schema.get("type") == "object"]
 
@@ -57,7 +56,9 @@ def format_schema(schema):
 def generate_schema(output_path: Path):
     """Generate schema of the config model"""
     logger.warning(
-        "Make sure that you have bumped CONFIG_SCHEMA_VERSION in config_model.py!"
+        "Make sure that you have: "
+        "\n - Bumped CONFIG_SCHEMA_VERSION in config_model.py"
+        "\n - Updated default.json"
     )
     with open(output_path, "w", encoding="utf-8") as schema_file:
         # Inline the "refs" keys in the generated JSON schema spec

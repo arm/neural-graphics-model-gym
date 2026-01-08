@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -20,7 +20,12 @@ from ng_model_gym.core.utils.gpu_log_decorator import gpu_log_decorator
 from ng_model_gym.core.utils.logging import log_gpu_torch
 from ng_model_gym.core.utils.memory_log_decorator import memory_log_decorator
 from ng_model_gym.core.utils.time_decorator import time_decorator
-from ng_model_gym.core.utils.types import ExportType, ProfilerType, TrainEvalMode
+from ng_model_gym.core.utils.types import (
+    ExportType,
+    ModelType,
+    ProfilerType,
+    TrainEvalMode,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,17 +95,22 @@ def do_training(
     params: ConfigModel,
     training_mode: TrainEvalMode,
     profile_setting: ProfilerType = ProfilerType.DISABLED,
+    finetune_model_path: Path | str | None = None,
+    resume_model_path: Path | str | None = None,
 ):
+    # pylint: disable=line-too-long
     """
     Run training on the model specified in the configuration.
 
     Args:
         params (ConfigModel): Configuration model from `load_config_file()`.
-        training_mode (TrainEvalMode): Select FP32 training or QAT INT8
+        training_mode (TrainEvalMode): Select FP32 training or QAT INT8.
         profile_setting (Optional, ProfilerType, ): Profiling strategy to use during training:
           - `ProfilerType.DISABLED` (default): No profiling
           - `ProfilerType.TRACE`: CPU tracing
           - `ProfilerType.GPU_MEMORY`: GPU memory profiling
+        resume_model_path (Path | str | None): Path to checkpoint file or directory for resuming training
+        finetune_model_path (Path | str | None): Path to pretrained weights for finetuning
     Returns:
         Tuple[torch.nn.Module, Path]: Trained model and path to its checkpoint.
 
@@ -119,7 +129,15 @@ def do_training(
             "Config error: Perform validate is enabled and no path specified for validation dataset"
         )
 
+    if resume_model_path and finetune_model_path:
+        raise ValueError("resume and finetune cannot be set at the same time.")
+
+    resume_path = Path(resume_model_path) if resume_model_path else None
+    finetune_path = Path(finetune_model_path) if finetune_model_path else None
+
     params.model_train_eval_mode = training_mode
+    params.train.resume = resume_path
+    params.train.finetune = finetune_path
 
     log_gpu_torch()
 
@@ -155,7 +173,7 @@ def do_evaluate(
 
     Args:
         params (ConfigModel): Configuration object obtained via `load_config_file(path)`.
-        model_path (str or Path): Filesystem path to the model checkpoint (.pt or .pth file).
+        model_path (str or Path): Filesystem path to the model checkpoint (.pt file).
         model_type (TrainEvalMode): Model type e.g. `TrainEvalMode.FP32` or `TrainEvalMode.QAT`.
         profile_setting (Optional, ProfilerType, ): Profiling strategy to use during evaluation:
             - `ProfilerType.DISABLED` (default): No profiling
@@ -181,7 +199,7 @@ def do_evaluate(
         raise ValueError("Config error: No test dataset path provided for evaluation")
 
     model_path = Path(model_path)
-    if model_path.suffix.lower() != ".pt":
+    if model_path.suffix.lower() != ModelType.PT:
         raise ValueError(f"Expected a .pt file, got {model_path.name}")
 
     model_path = Path(model_path)
@@ -241,7 +259,7 @@ def do_export(
     create_directory(params.output.export.vgf_output_dir)
 
     model_path = Path(model_path)
-    if model_path.suffix.lower() != ".pt":
+    if model_path.suffix.lower() != ModelType.PT:
         raise ValueError(f"Expected a .pt file, got {model_path.name}")
 
     if export_type in ExportType:

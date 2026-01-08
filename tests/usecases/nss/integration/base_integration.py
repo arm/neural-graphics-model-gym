@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import json
@@ -13,8 +13,7 @@ from typing import List
 import torch
 
 from ng_model_gym.core.utils.checkpoint_utils import (
-    latest_checkpoint_path,
-    latest_training_run_dir,
+    latest_checkpoint_in_dir,
     replace_prefix_in_state_dict,
 )
 from ng_model_gym.core.utils.general_utils import create_directory
@@ -43,7 +42,7 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
             self.train_data_dir = "tests/usecases/nss/datasets/train"
             self.test_data_dir = "tests/usecases/nss/datasets/test"
 
-        self.pretrained_weights = "tests/usecases/nss/weights/nss_v0.1.0_fp32.pt"
+        self.finetune_weights = "tests/usecases/nss/weights/nss_v0.1.0_fp32.pt"
         self.tensorboard_dir = Path(self.test_dir, "tensorboard-logs")
         create_directory(self.tensorboard_dir)
         config_path = files("ng_model_gym.usecases.nss.configs") / "default.json"
@@ -60,7 +59,6 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         self.cfg_json["train"]["qat"]["checkpoints"]["dir"] = str(
             self.qat_checkpoint_dir
         )
-        self.cfg_json["train"]["pretrained_weights"] = str(self.pretrained_weights)
         self.cfg_json["train"]["perform_validate"] = False
         self.cfg_json["output"]["dir"] = str(self.model_out_dir)
         # integration-test dataset
@@ -155,7 +153,7 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         )
         self.assertEqual(sub_proc.returncode, 0)
 
-        trained_checkpoint = latest_checkpoint_path(Path(self.checkpoint_dir))
+        trained_checkpoint = latest_checkpoint_in_dir(Path(self.checkpoint_dir))
 
         golden_model_state_dict = torch.load(
             Path("tests", "nss", "integration", golden_weight_file),
@@ -226,7 +224,7 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
             dir_to_search = (
                 self.checkpoint_dir if mode == "train" else self.qat_checkpoint_dir
             )
-            trace_save_dir = latest_training_run_dir(Path(dir_to_search))
+            trace_save_dir = latest_checkpoint_in_dir(Path(dir_to_search)).parent
 
         trace_file_exists = False
         for item in trace_save_dir.iterdir():
@@ -285,7 +283,7 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
             dir_to_search = (
                 self.checkpoint_dir if mode == "train" else self.qat_checkpoint_dir
             )
-            trace_save_dir = latest_training_run_dir(Path(dir_to_search))
+            trace_save_dir = latest_checkpoint_in_dir(Path(dir_to_search)).parent
 
         self.check_log("CUDA memory profiler is enabled")
 
@@ -321,6 +319,9 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
                 mode,
                 "--no-evaluate",
                 "--resume",
+                str(
+                    self.checkpoint_dir if mode == "train" else self.qat_checkpoint_dir
+                ),
             ],
             capture_output=True,
             text=True,

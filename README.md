@@ -266,29 +266,20 @@ To perform training without evaluation, run:
 ng-model-gym -c <path/to/config/file> train --no-evaluate
 ```
 
-To load a set of previously trained model weights and perform finetuning:
-
-Specify the path to the pretrained weights file in your [configuration file](#configuration-file) under
-
-```json
-"train": {
-  "pretrained_weights": "path/to/pretrained_weights.pt"
-}
-```
-
-Then run:
+To fine-tune from an existing checkpoint, pass the weights path directly:
 
 ```bash
-ng-model-gym -c <path/to/config/file> train --finetune
+ng-model-gym -c <path/to/config/file> train --finetune path/to/pretrained_weights.pt
 ```
 
-To resume training from the latest saved checkpoint specified in your configuration file, run:
+To resume training from an existing checkpoint file or a directory containing checkpoints, run:
 
 ```bash
-ng-model-gym -c <path/to/config/file> train --resume
+ng-model-gym -c <path/to/config/file> train --resume path/to/checkpoint.pt
+ng-model-gym -c <path/to/config/file> train --resume path/to/checkpoint_dir/
 ```
 
-Other actions can be specified using additional flags.
+`--finetune` and `--resume` flags are mutually exclusive and should not be set at the same time. Other actions can be specified using additional flags.
 
 To see all available flags, run:
 

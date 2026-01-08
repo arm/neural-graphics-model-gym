@@ -13,6 +13,7 @@ from pydantic import (
     PositiveInt,
     StrictFloat,
 )
+from pydantic.json_schema import SkipJsonSchema
 from pydantic_core import PydanticCustomError
 
 from ng_model_gym.core.data.utils import ToneMapperMode
@@ -25,7 +26,7 @@ from ng_model_gym.core.utils.types import (
 
 # pylint: disable=line-too-long
 
-CONFIG_SCHEMA_VERSION = "1"
+CONFIG_SCHEMA_VERSION = "2"
 
 # Pydantic models representing the configuration file structure.
 # For fields which are not core to all model types (e.g. recurrent_samples),
@@ -252,9 +253,9 @@ class Train(PydanticConfigModel):
         ge=1,
         description="Number of samples processed together in one pass before updating model weights",
     )
-    resume: bool = Field(
-        description="Resume training from the most recent saved checkpoint"
-    )
+    resume: SkipJsonSchema[Optional[pathlib.Path]] = Field(
+        default=None, exclude=True
+    )  # Hidden from user
     scale: StrictFloat = Field(
         2.0,
         ge=2.0,
@@ -262,10 +263,9 @@ class Train(PydanticConfigModel):
         description="Upscale parameter for the NSS model. Note only 2x for now is supported in this version",
     )
     seed: int = Field(ge=0, description="Seed for random number generation")
-    finetune: bool = Field(description="Fine-tune using pretrained_weights")
-    pretrained_weights: Optional[pathlib.Path] = Field(
-        description="Path to the weights of the pretrained model", default=None
-    )
+    finetune: SkipJsonSchema[Optional[pathlib.Path]] = Field(
+        default=None, exclude=True
+    )  # Hidden from user
     perform_validate: bool = Field(
         description="Perform validation at the end of specific training epochs, as set by the validate_frequency field."
     )
@@ -298,6 +298,6 @@ class ConfigModel(PydanticConfigModel):
         default=None,
         description="Metric names to instantiate. Temporal metrics are replaced with streaming variants during evaluation.",
     )
-    model_train_eval_mode: Optional[TrainEvalMode] = Field(
+    model_train_eval_mode: SkipJsonSchema[Optional[TrainEvalMode]] = Field(
         default=None, exclude=True
     )  # Hidden from user. Internal param.

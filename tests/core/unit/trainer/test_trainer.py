@@ -194,6 +194,7 @@ class TestTrainerMethods(unittest.TestCase):
             self.mock_trainer.optimizer.state["state"]["mock_data"] = 0.1234
 
             self.mock_trainer.model_save_path = model_save_path
+            # Create checkpoint ckpt-10.pt
             Trainer._save_checkpoint(self.mock_trainer, current_epoch=10)
 
             # Fake a new training run (e.g. re-run training after interruption)
@@ -208,7 +209,9 @@ class TestTrainerMethods(unittest.TestCase):
             mock_resume_trainer.lr_schedule.step = Mock()
 
             mock_resume_trainer.params = create_simple_params()
-            mock_resume_trainer.params.train.resume = True
+            mock_resume_trainer.params.train.resume = Path(
+                model_save_path, "ckpt-10.pt"
+            )
             mock_resume_trainer.params.train.fp32.number_of_epochs = 15
             mock_resume_trainer.params.train.fp32.checkpoints.dir = (
                 model_save_path.parent
