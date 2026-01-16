@@ -1,7 +1,22 @@
 #!/usr/bin/env python3
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+
+"""Uses the ML SDK Scenario Runner to run NSS over all frames in a given .safetensor file
+
+This expects you to have cloned https://huggingface.co/Arm/neural-super-sampling and have a
+.safetensor file of test inputs,
+ such as from https://huggingface.co/datasets/Arm/neural-graphics-dataset/tree/main/test
+
+This script currently only works on Windows.
+Your user will need to be able to create symlinks.
+
+Example of how to run:
+$ hatch shell
+$ python ./scripts/run_scenario.py --model-repo <path/to/neural-super-sampling>
+ --input-safetensors <path/to/test_full_resolution_sample.safetensors> --output-dir ./output/
+"""
 
 import argparse
 import json
@@ -309,6 +324,13 @@ def write_scenario(
         dds_utils.DXGI_FORMAT_R11G11B10_FLOAT,
     )
 
+    gt_colour = tensors.get_slice("ground_truth_linear")[frame_idx]
+    dds_utils.save_dds(
+        gt_colour.numpy(),
+        dest_scenario_path / "gt_colour.dds",
+        dds_utils.DXGI_FORMAT_R11G11B10_FLOAT,
+    )
+
     in_depth = tensors.get_slice("depth")[frame_idx]
     in_depth = apply_padding(in_depth)
     dds_utils.save_dds(
@@ -392,6 +414,8 @@ def write_scenario(
             dest_scenario_path / "in_nearest_offset_tm1.dds",
         )
 
+    return unpadded_output_height, unpadded_output_width
+
 
 def main():
     """Main function"""
@@ -404,7 +428,8 @@ def main():
         "--model-repo",
         type=pathlib.Path,
         required=True,
-        help="Path to the model repository (containing the base scenario description). "
+        help="Path to the cloned model NSS repository from Hugging Face "
+        "(containing the base scenario description). "
         "Known working revision: 6d5a8d4ad0792aba40e8a02fc84e5a483d651a97",
     )
     p.add_argument(
@@ -439,7 +464,7 @@ def main():
             # Create a scenario description for this frame
             base_scenario_path = args.model_repo / "scenario"
             frame_scenario_path = args.output_dir / f"frame_{frame_idx:04d}"
-            write_scenario(
+            unpadded_output_height, unpadded_output_width = write_scenario(
                 tensors,
                 frame_idx,
                 parameters_json,
@@ -467,6 +492,19 @@ def main():
                     ),
                 },
                 check=True,
+            )
+
+            # Remove the padding added during processing NSS to match the ground truth size.
+            out_padded_colour = dds_utils.read_dds(
+                os.path.join(frame_scenario_path, "out_colour.dds")
+            )
+            out_padded_colour = out_padded_colour[
+                ..., :unpadded_output_height, :unpadded_output_width
+            ]
+            dds_utils.save_dds(
+                out_padded_colour,
+                frame_scenario_path / "out_colour_unpadded.dds",
+                dds_utils.DXGI_FORMAT_R11G11B10_FLOAT,
             )
 
 
