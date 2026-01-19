@@ -53,6 +53,7 @@ class TrainingIntegrationTest(BaseIntegrationTest):
                 "train",
                 "--no-evaluate",
                 "--finetune",
+                self.finetune_weights,
             ],
             capture_output=True,
             text=True,
@@ -112,6 +113,30 @@ class TrainingIntegrationTest(BaseIntegrationTest):
         """Run entire training pipeline with resuming."""
         self.run_training_test()
         self.run_resume_training_test(mode="train", num_epochs=2)
+
+    def test_train_flags_mutually_exclusive(self):
+        """CLI should reject resume and finetune together."""
+        with self.assertRaises(subprocess.CalledProcessError) as ctx:
+            subprocess.run(
+                [
+                    "ng-model-gym",
+                    f"--config-path={self.test_cfg_path}",
+                    "train",
+                    "--no-evaluate",
+                    "--resume",
+                    str(self.finetune_weights),
+                    "--finetune",
+                    str(self.finetune_weights),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertNotEqual(ctx.exception.returncode, 0)
+        stderr_lower = ctx.exception.stderr.lower()
+        for keyword in ("cannot specify both", "resume", "finetune"):
+            self.assertIn(keyword, stderr_lower)
 
     def test_trace_profiler(self):
         """Test JSON trace is generated with profiler=trace flag"""

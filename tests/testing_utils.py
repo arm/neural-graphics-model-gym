@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -34,7 +34,6 @@ def create_simple_params(
     output_dir="./output",
     dataset=None,
     checkpoints="./checkpoints",
-    pretrained_weights_path=None,
 ) -> ConfigModel:
     """
     Returns configuration created with test parameters.
@@ -72,11 +71,8 @@ def create_simple_params(
         },
         "train": {
             "batch_size": 8,
-            "resume": False,
             "scale": 2.0,
             "seed": 123456,
-            "finetune": False,
-            "pretrained_weights": pretrained_weights_path,
             "perform_validate": False,
             "loss_fn": "loss_v1",
             "fp32": {

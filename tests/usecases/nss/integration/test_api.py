@@ -38,6 +38,17 @@ class ApiIntegrationTest(BaseIntegrationTest):
         self.assertEqual(before, after, "do_training mutated the config!")
         self.assertIsNotNone(model, "do_training did not return a model")
 
+    def test_resume_finetune_flags_mutually_exclusive(self):
+        """Test erorr raised if both resume and finetune args specified"""
+        with self.assertRaises(ValueError):
+            do_training(
+                self.config,
+                TrainEvalMode.FP32,
+                ProfilerType.DISABLED,
+                finetune_model_path="random_weight.pt",
+                resume_model_path="ckpt10.pt",
+            )
+
     def test_do_evaluate_no_mutation(self):
         """do_evaluate should not modify the config."""
         # Load model from .pt file first

@@ -1,10 +1,9 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
-import time
 from pathlib import Path
-from typing import Any, List, Optional, Tuple
+from typing import Any, Tuple
 
 import torch
 
@@ -15,7 +14,7 @@ from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.utils.config_model import ConfigModel
-from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.core.utils.types import ModelType, TrainEvalMode
 
 logger = logging.getLogger(__name__)
 
@@ -130,72 +129,33 @@ def _prepare_qat_forward_input(
     return model_tracer(model, inputs)
 
 
-def is_timestamp(dir_name) -> bool:
-    """Checks if dir_name matches timestamp schema"""
-    try:
-        time.strptime(dir_name, "%y-%m-%d_%H-%M-%S")
-        return True
-    except ValueError:
-        return False
+def latest_checkpoint_in_dir(user_checkpoint_dir: Path) -> Path:
+    """Returns the path to the latest checkpoint file using file modification time"""
 
+    if user_checkpoint_dir.is_file():
+        if user_checkpoint_dir.suffix.lower() != ModelType.PT:
+            raise ValueError(
+                f"Weight file must have a .pt extension, not: {user_checkpoint_dir.suffix}"
+            )
+        return user_checkpoint_dir
 
-def latest_training_run_dir(checkpoint_dir: Path) -> Path:
-    """Find the directory containing the latest training run checkpoints"""
-
-    # Verify directory set in user config exists
-    if not checkpoint_dir.is_dir():
-        logger.error(
-            f"Checkpoint directory {checkpoint_dir.absolute()} set in config does not exist"
-        )
+    if not user_checkpoint_dir.exists() or not user_checkpoint_dir.is_dir():
         raise NotADirectoryError(
-            f"Checkpoint directory {checkpoint_dir.absolute()} set in config does not exist"
+            f"Checkpoint directory {user_checkpoint_dir.absolute()} does not exist"
         )
 
-    timestamped_directories = []
-    for item in checkpoint_dir.iterdir():
-        if item.is_dir() and is_timestamp(item.name):
-            timestamped_directories.append(item.name)
+    # Collect all .pt files within the directory tree
+    ckpt_files = [p for p in user_checkpoint_dir.rglob("*.pt") if p.is_file()]
 
-    if not timestamped_directories:
-        error_msg = (
-            "Resume training option set but no training runs in "
-            f"{checkpoint_dir.absolute()} matching format '%y-%m-%d_%H-%M-%S' to restore from"
-        )
-        logger.error(error_msg)
-        raise LookupError(error_msg)
-
-    # Max() on list of string timestamps returns most recent
-    latest_checkpoint_directory = Path(
-        checkpoint_dir, f"{max(timestamped_directories)}"
-    )
-    return latest_checkpoint_directory
-
-
-def latest_checkpoint_path(user_checkpoint_dir: Path):
-    """Returns the path to the latest checkpoint file"""
-
-    latest_checkpoint_directory = latest_training_run_dir(user_checkpoint_dir)
-    is_checkpoint_file = lambda ckpt: ckpt.is_file() and ckpt.suffix in ".pt"
-
-    # Get list of checkpoint files with pattern "ckpt-XX" where suffix XX is the epoch
-    checkpoints_in_directory: List[Optional[int]] = [
-        int(str(f.stem).split("-", maxsplit=1)[-1])
-        for f in latest_checkpoint_directory.iterdir()
-        if is_checkpoint_file(f) and str(f.stem).split("-", maxsplit=1)[-1].isdigit()
-    ]
-    if not checkpoints_in_directory:
-        logger.error(
-            f"Resume training option set but no .pt checkpoints in "
-            f"{latest_checkpoint_directory.absolute()} to restore from"
-        )
+    if not ckpt_files:
         raise FileNotFoundError(
             f"Resume training option set but no .pt checkpoints in "
-            f"{latest_checkpoint_directory.absolute()} to restore from"
+            f"{user_checkpoint_dir.absolute()} to restore from"
         )
-    latest_checkpoint = Path(
-        latest_checkpoint_directory, f"ckpt-{max(checkpoints_in_directory)}.pt"
-    )
-    return latest_checkpoint
+
+    # Find the most recently modified file
+    latest_checkpoint_path = max(ckpt_files, key=lambda p: p.stat().st_mtime)
+    return latest_checkpoint_path
 
 
 def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device = None):
@@ -205,7 +165,7 @@ def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device 
 
     if not model_path.exists() or not model_path.is_file():
         raise FileNotFoundError(f"Weight file not found: {model_path}")
-    if model_path.suffix.lower() != ".pt":
+    if model_path.suffix.lower() != ModelType.PT:
         raise ValueError(
             f"Weight file must have a .pt extension, not: {model_path.suffix}"
         )

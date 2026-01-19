@@ -153,7 +153,7 @@ class TestExportUtils(unittest.TestCase):
         executorch_vgf_export(
             params=self.params,
             export_type=ExportType.QAT_INT8,
-            model_path=Path("checkpoint.pth"),
+            model_path=Path("checkpoint.pt"),
         )
 
         # Train/eval mode set correctly.
@@ -205,7 +205,7 @@ class TestExportUtils(unittest.TestCase):
         executorch_vgf_export(
             params=self.params,
             export_type=ExportType.FP32,
-            model_path=Path("checkpoint.pth"),
+            model_path=Path("checkpoint.pt"),
         )
 
         # Train/eval mode set correctly.
@@ -253,7 +253,7 @@ class TestExportUtils(unittest.TestCase):
     def test_metadata_file_is_created(self):
         """Test that metadata file is created with constants when exporting."""
         # Run with FP32 branch.
-        executorch_vgf_export(self.params, ExportType.FP32, Path("doesnt_matter.pth"))
+        executorch_vgf_export(self.params, ExportType.FP32, Path("doesnt_matter.pt"))
 
         model_key = get_model_key(self.params.model.name, self.params.model.version)
 

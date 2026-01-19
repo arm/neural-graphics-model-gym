@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
@@ -75,17 +75,29 @@ def generate_config(
 @app.command(name="train")
 def train_cli(
     resume: Annotated[
-        bool,
+        Optional[Path],
         typer.Option(
-            "--resume", "-r", help="Restore training from most recent checkpoint"
+            "--resume",
+            "-r",
+            help="Path to checkpoint file or directory to resume training from",
+            exists=True,
+            readable=True,
+            file_okay=True,
+            dir_okay=True,
         ),
-    ] = False,
+    ] = None,
     finetune: Annotated[
-        bool,
+        Optional[Path],
         typer.Option(
-            help="Fine-tune from provided pre-trained model (specified in config)"
+            "--finetune",
+            "-f",
+            help="Path to pre-trained model weights (.pt) to fine-tune from",
+            exists=True,
+            readable=True,
+            file_okay=True,
+            dir_okay=False,
         ),
-    ] = False,
+    ] = None,
     evaluate: Annotated[
         bool, typer.Option(help="Run evaluation metrics on trained model")
     ] = True,
@@ -95,24 +107,23 @@ def train_cli(
 
     params = cli_state["params"]
 
-    # Fine-tuning and resuming are different, because
-    # fine-tuning - we take the pretrained model from the included checkpoints;
-    # resuming - we resume our training as it has been stopped, so
-    # we could resume training for the fine-tuned model.
-    if finetune:
-        # Overrides the finetune flag set in the config files.
-        params.train.finetune = True
-
-    if resume:
-        # Overrides the resume flag set in the config files.
-        params.train.resume = True
-
     if evaluate and params.dataset.path.test is None:
         raise ValueError(
             "Config error: Evaluation is specified but no test dataset path is provided"
         )
+    if resume and finetune:
+        raise typer.BadParameter(
+            "Cannot specify both --resume and --finetune",
+            param_hint="--resume/--finetune",
+        )
 
-    model_path = do_training(params, TrainEvalMode.FP32, cli_state["profiler"])
+    model_path = do_training(
+        params,
+        TrainEvalMode.FP32,
+        cli_state["profiler"],
+        finetune_model_path=finetune,
+        resume_model_path=resume,
+    )
 
     if evaluate:
         do_evaluate(params, model_path, model_type=TrainEvalMode.FP32)
@@ -121,17 +132,29 @@ def train_cli(
 @app.command(name="qat")
 def qat_cli(
     resume: Annotated[
-        bool,
+        Optional[Path],
         typer.Option(
-            "--resume", "-r", help="Restore QAT training from most recent checkpoint"
+            "--resume",
+            "-r",
+            help="Path to checkpoint file or directory to resume QAT training from",
+            exists=True,
+            readable=True,
+            file_okay=True,
+            dir_okay=True,
         ),
-    ] = False,
+    ] = None,
     finetune: Annotated[
-        bool,
+        Optional[Path],
         typer.Option(
-            help="Fine-tune from provided pre-trained model (specified in config)"
+            "--finetune",
+            "-f",
+            help="Path to pre-trained model weights (.pt) to fine-tune from",
+            exists=True,
+            readable=True,
+            file_okay=True,
+            dir_okay=False,
         ),
-    ] = False,
+    ] = None,
     evaluate: Annotated[
         bool, typer.Option(help="Run evaluation metrics on trained QAT model")
     ] = True,
@@ -141,24 +164,23 @@ def qat_cli(
 
     params = cli_state["params"]
 
-    # Fine-tuning and resuming are different, because
-    # fine-tuning - we take the pretrained model from the included checkpoints;
-    # resuming - we resume our training as it has been stopped, so
-    # we could resume training for the fine-tuned model.
-    if finetune:
-        # Overrides the finetune flag set in the config files.
-        params.train.finetune = True
-
-    if resume:
-        # Overrides the resume flag set in the config files.
-        params.train.resume = True
-
     if evaluate and params.dataset.path.test is None:
         raise ValueError(
             "Config error: Evaluation is specified but no test dataset path is provided"
         )
+    if resume and finetune:
+        raise typer.BadParameter(
+            "Cannot specify both --resume and --finetune",
+            param_hint="--resume/--finetune",
+        )
 
-    model_path = do_training(params, TrainEvalMode.QAT_INT8, cli_state["profiler"])
+    model_path = do_training(
+        params,
+        TrainEvalMode.QAT_INT8,
+        cli_state["profiler"],
+        resume_model_path=resume,
+        finetune_model_path=finetune,
+    )
 
     if evaluate:
         do_evaluate(params, model_path, model_type=TrainEvalMode.QAT_INT8)

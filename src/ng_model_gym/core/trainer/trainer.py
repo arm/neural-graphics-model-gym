@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import json
@@ -27,7 +27,7 @@ from ng_model_gym.core.optimizers.adam_w import adam_w_torch
 from ng_model_gym.core.optimizers.lars_adam import lars_adam_torch
 from ng_model_gym.core.schedulers.lr_scheduler import CosineAnnealingWithWarmupLR
 from ng_model_gym.core.utils.checkpoint_utils import (
-    latest_checkpoint_path,
+    latest_checkpoint_in_dir,
     remap_feedback_model_state_dict,
 )
 from ng_model_gym.core.utils.config_model import ConfigModel, TrainingConfig
@@ -35,6 +35,7 @@ from ng_model_gym.core.utils.general_utils import create_directory
 from ng_model_gym.core.utils.types import (
     LearningRateScheduler,
     LossFn,
+    ModelType,
     OptimizerType,
     TrainEvalMode,
 )
@@ -135,12 +136,22 @@ class Trainer:
 
         self.model_save_path = None
 
-        if self.params.train.resume:
-            # Path to directory containing all the training runs
-            user_checkpoint_save_dir = Path(self.training_mode_params.checkpoints.dir)
+        resume_path = self.params.train.resume
 
-            # Grab the most recent ckpt-XX.pt file
-            checkpoint_path = latest_checkpoint_path(user_checkpoint_save_dir)
+        if resume_path:
+            checkpoint_path = None
+
+            if resume_path.is_dir():
+                checkpoint_path = latest_checkpoint_in_dir(resume_path)
+
+            elif resume_path.is_file() and resume_path.suffix.lower() == ModelType.PT:
+                checkpoint_path = resume_path
+
+            if checkpoint_path is None:
+                raise ValueError(
+                    f"Resume must be an existing directory or a .pt file, got: {resume_path}"
+                )
+
             self.model_save_path = checkpoint_path.parent
 
             # If model is QAT, make sure it is in a traced state for loading in weights
@@ -169,17 +180,15 @@ class Trainer:
             )
 
         elif self.params.train.finetune:
-            if self.params.train.pretrained_weights is None:
-                raise ValueError(
-                    "Config error: Finetuning but no pretrained weights specified"
-                )
-
-            # Read the user specified fine tune model path
-            finetune_path = Path(self.params.train.pretrained_weights)
+            finetune_path = Path(self.params.train.finetune)
 
             if not finetune_path.exists() or not finetune_path.is_file():
                 raise FileNotFoundError(
                     f"Couldn't find {finetune_path} for fine-tuning"
+                )
+            if finetune_path.suffix.lower() != ModelType.PT:
+                raise ValueError(
+                    f"Fine-tune weights must be a .pt file, got {finetune_path.name}"
                 )
 
             finetune_weight = torch.load(finetune_path, weights_only=True)
