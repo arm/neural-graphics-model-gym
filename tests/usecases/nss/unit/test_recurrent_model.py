@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+from typing import NamedTuple, Tuple
+
 import torch
 
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
@@ -14,6 +16,26 @@ from tests.testing_utils import create_simple_params
 
 class TestFeedbackModelNSS(BaseGPUMemoryTest):
     """Tests for FeedbackModel class using NSS"""
+
+    def _data_creator_helper(self, lr_h, lr_w, hr_h, hr_w):
+        data = {
+            "colour_linear": torch.randn(self.batch, self.recurrence, 3, lr_h, lr_w),
+            "depth": torch.randn(self.batch, self.recurrence, 1, lr_h, lr_w),
+            "depth_params": torch.randn(self.batch, self.recurrence, 4, lr_h, lr_w),
+            "ground_truth_linear": torch.randn(
+                self.batch, self.recurrence, 3, hr_h, hr_w
+            ),
+            "jitter": torch.randn(self.batch, self.recurrence, 2, 1, 1),
+            "motion": torch.randn(self.batch, self.recurrence, 2, hr_h, hr_w),
+            "render_size": torch.randn(self.batch, self.recurrence, 2, 1, 1),
+            "zNear": torch.randn(self.batch, self.recurrence, 1, 1, 1),
+            "zFar": torch.randn(self.batch, self.recurrence, 1, 1, 1),
+            "seq": torch.randn(self.batch, self.recurrence, 1, 1, 1),
+            "exposure": torch.randn(self.batch, self.recurrence, 1, 1, 1),
+            "colour": torch.randn(self.batch, self.recurrence, 3, lr_h, lr_w),
+        }
+        tensor_dict = {key: tensor.to(self.device) for key, tensor in data.items()}
+        return tensor_dict
 
     def setUp(self):
         """Setup feedback model."""
@@ -31,24 +53,8 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
             raise TypeError("Model is not a BaseNGModelWrapper")
         self.batch = params.train.batch_size
         self.recurrence = params.dataset.recurrent_samples
-        self.data = {
-            "colour_linear": torch.randn(self.batch, self.recurrence, 3, 128, 128),
-            "depth": torch.randn(self.batch, self.recurrence, 1, 128, 128),
-            "depth_params": torch.randn(self.batch, self.recurrence, 4, 128, 128),
-            "ground_truth_linear": torch.randn(
-                self.batch, self.recurrence, 3, 256, 256
-            ),
-            "jitter": torch.randn(self.batch, self.recurrence, 2, 1, 1),
-            "motion": torch.randn(self.batch, self.recurrence, 2, 256, 256),
-            "render_size": torch.randn(self.batch, self.recurrence, 2, 1, 1),
-            "zNear": torch.randn(self.batch, self.recurrence, 1, 1, 1),
-            "zFar": torch.randn(self.batch, self.recurrence, 1, 1, 1),
-            "seq": torch.randn(self.batch, self.recurrence, 1, 1, 1),
-            "exposure": torch.randn(self.batch, self.recurrence, 1, 1, 1),
-            "colour": torch.randn(self.batch, self.recurrence, 3, 128, 128),
-        }
-
-        self.data = {key: tensor.to(self.device) for key, tensor in self.data.items()}
+        self.data = self._data_creator_helper(128, 128, 256, 256)
+        self.params = params
 
     def test_shape_feedback_model_forward_pass(self):
         """Test feedback model training shape"""
@@ -135,82 +141,134 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
             atol=tolerance,
         )
 
-    def test_pad_sz(self):
-        """Check pad_sz correctly pads"""
-        self.assertIsInstance(self.model, FeedbackModel)
+    def test_pad_sz_and_unpad(self):
+        """Check padding and unpadding for a variety of resolutions"""
 
-        # (height, width, is_unpad, expected_pad_h, expected_pad_w)
-        valid_cases = [
-            # height and width in padding_table
-            (1080, 1476, False, 8, 4),
-            (540, 2952, False, 4, 8),
-            (830, 1476, False, 2, 4),
-            (1660, 2952, False, 4, 8),
-            (830, 2952, False, 2, 8),
-            (1660, 1476, False, 4, 4),
-            # Multiples of 8, no padding required
-            (800, 1280, False, 0, 0),
-            (8, 8, False, 0, 0),
-            (16, 24, False, 0, 0),
-            # Mixed: one dim in padding table and other is multiple of 8
-            (540, 960, False, 4, 0),
-            (1080, 1280, False, 8, 0),
-            (800, 1476, False, 0, 4),
-            # Scalar case
-            (1, 1, False, 0, 0),
+        class PaddingTest(NamedTuple):
+            """Namedtuple for a padding test"""
+
+            lr: Tuple[int, int]
+            expected_lr_padding: Tuple[int, int]
+            hr: Tuple[int, int]
+            expected_hr_padding: Tuple[int, int]
+
+        padding_tests = [
+            PaddingTest(
+                lr=(128, 128),
+                expected_lr_padding=(0, 0),
+                hr=(256, 256),
+                expected_hr_padding=(0, 0),
+            ),
+            PaddingTest(
+                lr=(540, 960),
+                expected_lr_padding=(4, 0),
+                hr=(1080, 1920),
+                expected_hr_padding=(8, 0),
+            ),
+            PaddingTest(
+                lr=(256, 256),
+                expected_lr_padding=(0, 0),
+                hr=(512, 512),
+                expected_hr_padding=(0, 0),
+            ),
+            PaddingTest(
+                lr=(540, 738),
+                expected_lr_padding=(4, 6),
+                hr=(1080, 1476),
+                expected_hr_padding=(8, 12),
+            ),
+            PaddingTest(
+                lr=(830, 1476),
+                expected_lr_padding=(2, 4),
+                hr=(1660, 2952),
+                expected_hr_padding=(4, 8),
+            ),
+            PaddingTest(
+                lr=(101, 309),
+                expected_lr_padding=(3, 3),
+                hr=(202, 618),
+                expected_hr_padding=(6, 6),
+            ),
         ]
+        for padding_test in padding_tests:
+            # Create new FeedbackModel
+            feedback_model = create_model(self.params, self.device)
+            self.assertIsInstance(feedback_model, FeedbackModel)
 
-        for height, width, is_unpad, exp_h, exp_w in valid_cases:
-            with self.subTest(height=height, width=width, is_unpad=is_unpad):
-                pad_h, pad_w = self.model._get_pad_sz(height, width, is_unpad=is_unpad)
+            # Create dataset
+            sample_input_data = self._data_creator_helper(
+                *padding_test.lr, *padding_test.hr
+            )
+            # 4 dims for the padding input tensors
+            sample_input_data = {k: v[0] for k, v in sample_input_data.items()}
 
-                self.assertEqual(pad_h.item(), exp_h)
-                self.assertEqual(pad_w.item(), exp_w)
+            # Manually create padding policy as we are not running the FeedbackModel forward pass
+            padding_policy = feedback_model.get_ng_model().create_padding_policy(
+                sample_input_data
+            )
+            feedback_model.get_ng_model().padding_policy = padding_policy
 
-        # (height, width) that should raise
-        error_cases = [
-            (101, 1476),  # bad height, width in padding table
-            (540, 999),  # bad width, height in padding table
-            (101, 101),  # both bad
-            (550, 540),  # bad height, width is in padding table
-            (7, 8),  # bad height, width ok (multiple of 8)
-            (8, 7),  # bad width, height ok (multiple of 8)
-            (7, 7),  # both bad
-            (1, 7),  # scalar height, bad width (only (1,1) is allowed as scalar)
-            (830, 999),  # height in padding table, bad width
-            (999, 1476),  # bad height, Padding table width
-            (539, 1476),  # bad height, width ok (multiple of 8)
-            (540, 1475),  # height ok (multiple of 8), bad width
-            (539, 999),  # both bad
-            (1079, 1476),  # bad 1080, width ok (multiple of 8)
-            (1080, 1475),  # height in padding table, bad width
-            (830, 1475),  # height in padding table, bad width
-            (1661, 1476),  # invalid height, width ok (multiple of 8)
-            (900, 901),  # both bad
-        ]
+            # Check padding policy padding calculations are correct
+            self.assertEqual(padding_policy.hr, padding_test.hr)
+            self.assertEqual(padding_policy.lr, padding_test.lr)
 
-        for height, width in error_cases:
-            with self.subTest(height=height, width=width):
-                with self.assertRaises(ValueError):
-                    self.model._get_pad_sz(height, width, is_unpad=False)
+            self.assertEqual(
+                padding_policy.lr_padding, padding_test.expected_lr_padding
+            )
+            self.assertEqual(
+                padding_policy.hr_padding, padding_test.expected_hr_padding
+            )
 
-    def test_pad_sz_unpad(self):
-        """Test unpad correctly unpads"""
-        self.assertIsInstance(self.model, FeedbackModel)
+            feedback_model.padding_policy = padding_policy
 
-        # (padded_height, padded_width, expected_pad_h, expected_pad_w)
-        unpad_cases = [
-            (1088, 1480, 8, 4),
-            (544, 2960, 4, 8),
-            (832, 1480, 2, 4),
-            (544, 960, 4, 0),
-            # No padding as originally multiples of 8
-            (800, 1280, 0, 0),
-            (16, 24, 0, 0),
-        ]
+            padded_tensors = []
 
-        for height, width, exp_h, exp_w in unpad_cases:
-            with self.subTest(height=height, width=width, is_unpad=True):
-                pad_h, pad_w = self.model._get_pad_sz(height, width, is_unpad=True)
-                self.assertEqual(pad_h.item(), exp_h)
-                self.assertEqual(pad_w.item(), exp_w)
+            # Iterate over input tensors and test padding
+            for tensor in sample_input_data.values():
+                height, width = tensor.shape[2], tensor.shape[3]
+                pad_h, pad_w = feedback_model._get_pad_sz(height, width, is_unpad=False)
+                pad_h, pad_w = pad_h.item(), pad_w.item()
+
+                match (height, width):
+                    case padding_test.lr:
+                        self.assertEqual(
+                            (pad_h, pad_w), padding_test.expected_lr_padding
+                        )
+                    case padding_test.hr:
+                        self.assertEqual(
+                            (pad_h, pad_w), padding_test.expected_hr_padding
+                        )
+                    case (1, 1):
+                        self.assertEqual((pad_h, pad_w), (0, 0))
+                    case _:
+                        raise ValueError("Unexpected height/width")
+
+                padded_tensors.append(
+                    torch.nn.functional.pad(
+                        tensor, (0, pad_w, 0, pad_h), mode="reflect"
+                    )
+                )
+
+            # Iterate over padded_tensors and test unpadding
+            for tensor in padded_tensors:
+                height, width = tensor.shape[2], tensor.shape[3]
+                pad_h, pad_w = feedback_model._get_pad_sz(height, width, is_unpad=True)
+                pad_h, pad_w = pad_h.item(), pad_w.item()
+
+                # Unpad and check if we match expectations
+                height -= pad_h
+                width -= pad_w
+
+                match (height, width):
+                    case padding_test.lr:
+                        self.assertEqual(
+                            (pad_h, pad_w), padding_test.expected_lr_padding
+                        )
+                    case padding_test.hr:
+                        self.assertEqual(
+                            (pad_h, pad_w), padding_test.expected_hr_padding
+                        )
+                    case (1, 1):
+                        self.assertEqual((pad_h, pad_w), (0, 0))
+                    case _:
+                        raise ValueError(f"Unexpected height/width {height=} {width=}")

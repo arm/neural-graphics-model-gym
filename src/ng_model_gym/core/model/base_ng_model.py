@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -49,7 +49,7 @@ class BaseNGModel(nn.Module, ABC):
 
     Optionally:
         * Implement `define_dynamic_export_model_input` if wanting to export a dynamic model
-        * For recurrent models, override `init_history_buffers`
+        * For recurrent models, override `init_history_buffers` and `create_padding_policy`
         * To include extra metadata during export, override `get_additional_constants`
 
 
@@ -289,3 +289,8 @@ class BaseNGModel(nn.Module, ABC):
     def get_additional_constants(self):
         """Override this method to include extra metadata during model export"""
         return {}
+
+    def create_padding_policy(self, tensor_data: TensorData):
+        """Override this method to create a padding policy for recurrent models"""
+        # pylint: disable=unused-argument
+        return None
