@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import json
@@ -137,14 +137,17 @@ class NGModelEvaluator:
         self.prepare_datasets()
         create_directory(self.out_dir)
         if self.export_png_dir:
-            create_directory(self.export_png_dir)
+            logger.warning(
+                "Exporting .png frames is selected, this may slow down evaluation."
+            )
+            create_directory(self.export_png_dir / "predicted")
+            create_directory(self.export_png_dir / "ground_truth")
         self.model.eval()
         if isinstance(self.model, FeedbackModel):
             self.model.reset_history_buffers()
 
     def _test_end(self):
         """Called after whole dataset has been evaluated."""
-        logger.debug("Model Evaluator: Waiting for async threads to finish")
         metric_string = self._get_results_string()
         logger.info("-------------- Evaluation Complete --------------")
         logger.info(metric_string)
@@ -165,7 +168,12 @@ class NGModelEvaluator:
                     metric.update(self.y_pred, self.y_true)
         if self.export_png_dir:
             torchvision.utils.save_image(
-                self.y_pred[0], self.export_png_dir / f"frame_{self.idx:04d}_pred.png"
+                self.y_pred[0],
+                self.export_png_dir / "predicted" / f"frame_{self.idx:04d}_pred.png",
+            )
+            torchvision.utils.save_image(
+                self.y_true[0],
+                self.export_png_dir / "ground_truth" / f"frame_{self.idx:04d}_gt.png",
             )
 
     def _save_results_json(self):

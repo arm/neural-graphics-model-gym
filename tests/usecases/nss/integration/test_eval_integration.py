@@ -220,8 +220,14 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
             expected_recpsnr,
             f"recPSNRStreaming should be greater than {expected_recpsnr}",
         )
-        # Ensure png directory is created for exporting
-        exported_png = Path(self.model_out_dir, "png", "frame_0000_pred.png")
+        # Ensure png directory is created for exporting ground truth and predicted images.
+        exported_png = Path(
+            self.model_out_dir, "png", "predicted", "frame_0000_pred.png"
+        )
+        self.assertTrue(exported_png.exists())
+        exported_png = Path(
+            self.model_out_dir, "png", "ground_truth", "frame_0000_gt.png"
+        )
         self.assertTrue(exported_png.exists())
 
         # Test SSIM value.
