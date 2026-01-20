@@ -1,5 +1,5 @@
 <!---
-SPDX-FileCopyrightText: Copyright 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+SPDX-FileCopyrightText: Copyright 2025-2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 SPDX-License-Identifier: Apache-2.0
 --->
 
@@ -31,6 +31,41 @@ Below is an overview on contributing code to Neural Graphics Model Gym.
   # SPDX-License-Identifier: Apache-2.0
   ```
   Note: if an existing file does not conform, please update the license header as part of your contribution.
+
+## Pre-commit checks
+Before making a pull request for any code changes, you must run the following checks:
+
+```bash
+hatch run test:test           # Run all tests
+hatch run test:coverage-check # Create coverage report
+hatch run format              # Format files
+hatch run lint-all            # Lints src and test files
+hatch run bandit-check        # Run security check
+hatch run blocklint           # Run non-inclusive language check
+hatch run copyright           # Run copyright header check
+```
+
+### `pre-commit` module
+
+`pre-commit` is used to run the checks mentioned above when making a new commit.
+
+`pre-commit` will be installed when following the [dev installation](./docs/setup.md#dev-installation) instructions, or it can be manually installed with:
+
+```bash
+pip install pre-commit
+```
+
+To install the pre-commit git hook, run the following command
+
+```bash
+pre-commit install
+```
+
+To check that all the pre-commit checks run successfully, run the following command
+
+```bash
+pre-commit run --all-files
+```
 
 ## Code Reviews
 
