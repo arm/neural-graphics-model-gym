@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import json
 import os
+import platform
 import shutil
 import subprocess
 import tempfile
@@ -50,7 +51,8 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
             self.cfg_json = json.load(f)
 
         # Override default params for the test
-        self.cfg_json["dataset"]["num_workers"] = 1
+        num_workers = 0 if platform.system() == "Windows" else 1
+        self.cfg_json["dataset"]["num_workers"] = num_workers
         self.cfg_json["dataset"]["prefetch_factor"] = 1
         self.cfg_json["train"]["batch_size"] = 4
         self.cfg_json["train"]["fp32"]["number_of_epochs"] = 1

@@ -2,6 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
+import platform
 import tempfile
 
 import numpy as np
@@ -45,6 +46,8 @@ def create_simple_params(
     # own path for these fields.
     temp_dir = tempfile.mkdtemp()
 
+    num_workers = 0 if platform.system() == "Windows" else 4
+
     default_params = {
         "model": {"name": "NSS", "version": "1"},
         "processing": {"shader_accurate": False},
@@ -57,7 +60,7 @@ def create_simple_params(
             "gt_augmentation": True,
             "exposure": 2,
             "tonemapper": "reinhard",
-            "num_workers": 4,
+            "num_workers": num_workers,
             "prefetch_factor": 1,
         },
         "output": {
