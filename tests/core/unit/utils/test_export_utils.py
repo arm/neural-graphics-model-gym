@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
+import platform
 import shutil
 import tempfile
 import unittest
@@ -100,8 +101,10 @@ def make_params(tmp_path):
     """Make mock parameters for testing."""
     p = SimpleNamespace()
 
+    num_workers = 0 if platform.system() == "Windows" else 2
+
     p.dataset = SimpleNamespace(
-        num_workers=2,
+        num_workers=num_workers,
         prefetch_factor=4,
         path=SimpleNamespace(train="train_data", test="test_data"),
     )
