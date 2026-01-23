@@ -87,7 +87,7 @@ def remap_feedback_model_state_dict(state_dict):
         return state_dict
 
     logger.warning(
-        "Loading FeedbackModel state dict with old style naming scheme."
+        "Loading FeedbackModel state dict with deprecated naming scheme."
         f" Modifying state dict from {old_prefix} namespace to {new_prefix}"
     )
 

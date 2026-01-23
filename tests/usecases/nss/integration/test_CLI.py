@@ -133,3 +133,41 @@ class CLIIntegrationTest(BaseIntegrationTest):
                     load_config_file(config1)
 
             self.assertIn("Placeholder", output_buffer.getvalue())
+
+    def test_listing_models(self):
+        """Test listing HF models"""
+        sub_process = subprocess.run(
+            ["ng-model-gym", "list-models"],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(sub_process.returncode, 0, sub_process.stderr)
+
+        self.assertIn("HuggingFace", sub_process.stdout)
+        self.assertIn("neural-super-sampling @ ", sub_process.stdout)
+        self.assertIn(
+            "https://huggingface.co/Arm/neural-super-sampling", sub_process.stdout
+        )
+        self.assertIn("* nss_v0.1.0_fp32.pt", sub_process.stdout)
+
+    def test_downloading_models(self):
+        """Test downloading nss model"""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sub_process = subprocess.run(
+                [
+                    "ng-model-gym",
+                    "download",
+                    "neural-super-sampling/nss_v0.1.0_fp32.pt",
+                    tmpdir,
+                ],
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(sub_process.returncode, 0, sub_process.stderr)
+
+            self.assertIn(
+                "Downloaded neural-super-sampling/nss_v0.1.0_fp32.pt to",
+                sub_process.stdout,
+            )
+
+            self.assertTrue((tmpdir / Path("nss_v0.1.0_fp32.pt")).exists())
