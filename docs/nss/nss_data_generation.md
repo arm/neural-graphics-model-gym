@@ -7,9 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 
 To train the Neural Super Sampling model, you will first need to capture training data from your game engine in the format expected by the model.
 
-The [data capture guide](./nss_data_capture_guide.md) explains how to capture data from your game and how to convert it into the expected format. This guide also contains recommendations regarding dataset size and types of game data that shpuld be captured.
-
-Documentation is provided [here](./nss_dataset_specification.md) that goes into detail for the expected format and specification of the dataset.
+The [data capture guide](./nss_data_capture_guide.md) explains how to capture data from your game and how to convert it into the expected format. This guide also contains recommendations regarding dataset size and types of game data that should be captured.
 
 Once you have captured data from your game engine, and it is in the expected format, then you can use the provided script [here](../../scripts/safetensors_generator/safetensors_writer.py) to convert captured EXR frames to Safetensors.
 

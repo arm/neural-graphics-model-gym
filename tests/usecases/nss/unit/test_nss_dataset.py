@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import random
+import tempfile
 import unittest
+from pathlib import Path
 
 import torch
 from safetensors import safe_open
@@ -13,6 +15,7 @@ from ng_model_gym.core.data import DataLoaderMode, DatasetType
 from ng_model_gym.core.utils.general_utils import create_directory
 from ng_model_gym.usecases.nss.data.dataset import NSSDataset
 from tests.testing_utils import create_simple_params
+from tests.usecases.nss.unit.data.camera_cut_builders import write_camera_cut_fixture
 
 
 class TestNSSDataset(unittest.TestCase):
@@ -29,7 +32,7 @@ class TestNSSDataset(unittest.TestCase):
         """Test loading existing Safetensors file"""
         dataset = NSSDataset(self.params, DataLoaderMode.TRAIN)
         # Check if two Safetensors files have been found
-        self.assertEqual(len(dataset.sequences), 1)
+        self.assertEqual(len(dataset.captures), 1)
         x, y = dataset[0]
 
         # Check outputs exist
@@ -42,7 +45,7 @@ class TestNSSDataset(unittest.TestCase):
         dataset = NSSDataset(self.params, DataLoaderMode.TRAIN)
         # Calculate number of sliding windows
         total_windows = 0
-        for safetensor_file in dataset.sequences:
+        for safetensor_file in dataset.captures:
             with safe_open(safetensor_file, framework="pt") as f:
                 length = int(f.metadata()["Length"])
             total_windows += length - (self.params.dataset.recurrent_samples - 1)
@@ -163,3 +166,122 @@ class TestNSSDataset(unittest.TestCase):
             torch.equal(data["exposure"], expected_exposure),
             "Exposure tensor should be filled with ones.",
         )
+
+    def test_windows_skip_mid_sequence_cuts(self):
+        """Sliding windows stop before mid-span cuts but still start exactly on the cut."""
+        params = create_simple_params()
+        params.dataset.recurrent_samples = 4
+
+        flags = [False, False, False, False, True, False, False, False, False, False]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dataset_dir = write_camera_cut_fixture(Path(tmp_dir) / "train", flags)
+            params.dataset.path.train = Path(dataset_dir)
+            dataset = NSSDataset(params, DataLoaderMode.TRAIN)  # NB: TRAIN mode
+
+            windows = dataset.capture_windows[dataset.captures[0]]
+            # All windows must end before the cut index (4) unless they start exactly at it.
+            for start_idx, stop_idx in windows:
+                if start_idx < 4:
+                    self.assertLessEqual(stop_idx, 4)
+            # Ensure we still generate windows that start on the cut frame itself.
+            self.assertTrue(any(start == 4 for start, _ in windows))
+
+    def test_seq_id_changes_per_segment_in_test_mode(self):
+        """Sequence hashes change at each cut when iterating in TEST mode."""
+        params = create_simple_params()
+        params.dataset.recurrent_samples = 4
+
+        flags = [False, False, False, False, True, False, False, False]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dataset_dir = write_camera_cut_fixture(Path(tmp_dir) / "test", flags)
+            params.dataset.path.test = Path(dataset_dir)
+            dataset = NSSDataset(params, DataLoaderMode.TEST)  # NB: TEST mode
+
+        capture = dataset.captures[0]
+        seen_hashes = []
+        for start_idx, _ in dataset.capture_windows[capture]:
+            seq_id = dataset._get_seq_id(capture, start_idx)[0][0].item()
+            seen_hashes.append((start_idx, seq_id))
+
+        self.assertNotEqual(seen_hashes[0][1], seen_hashes[-1][1])
+        for idx in range(1, len(seen_hashes)):
+            prev_seq = dataset.window_sequence_map[capture][seen_hashes[idx - 1][0]]
+            curr_seq = dataset.window_sequence_map[capture][seen_hashes[idx][0]]
+            if prev_seq == curr_seq:
+                self.assertEqual(seen_hashes[idx - 1][1], seen_hashes[idx][1])
+            else:
+                self.assertNotEqual(seen_hashes[idx - 1][1], seen_hashes[idx][1])
+
+    def test_seq_tensor_resets_when_camera_cut_true(self):
+        """`seq` tensor visible to the model flips only when the camera_cut flag is set."""
+        params = create_simple_params()
+        params.dataset.recurrent_samples = 4
+
+        flags = [False, False, True, False, False]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dataset_dir = write_camera_cut_fixture(Path(tmp_dir) / "test", flags)
+            params.dataset.path.test = Path(dataset_dir)
+            dataset = NSSDataset(params, DataLoaderMode.TEST)  # NB: TEST mode
+
+            seq_values = []
+            for idx in range(len(flags)):
+                sample, _ = dataset[idx]
+                seq_values.append(int(sample["seq"].view(-1)[0].item()))
+
+        self.assertGreaterEqual(len(seq_values), 4)
+        self.assertEqual(seq_values[0], seq_values[1])
+        self.assertNotEqual(seq_values[1], seq_values[2])
+        self.assertEqual(seq_values[2], seq_values[3])
+
+    def test_short_camera_cut_segments_are_dropped(self):
+        """Segments shorter than recurrent_samples should not emit any sliding windows."""
+        params = create_simple_params()
+        params.dataset.recurrent_samples = 4
+
+        # 2 valid sequences: frames 0-3 and 7-10 (inclusive)
+        flags = [
+            False,
+            False,
+            False,
+            False,
+            True,
+            False,
+            False,
+            True,
+            False,
+            False,
+            False,
+        ]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dataset_dir = write_camera_cut_fixture(Path(tmp_dir) / "train", flags)
+            params.dataset.path.train = Path(dataset_dir)
+            dataset = NSSDataset(params, DataLoaderMode.TRAIN)  # NB: TRAIN mode
+
+        capture = dataset.captures[0]
+        windows = dataset.capture_windows[capture]
+
+        self.assertEqual(
+            len(windows),
+            2,
+            msg="Expected only two valid sliding windows from the two valid segments.",
+        )
+        self.assertEqual(
+            windows, [(0, 4), (7, 11)], "Unexpected sliding window ranges."
+        )
+
+    def test_legacy_file_without_camera_cut(self):
+        """Test handling of legacy files without camera cut flags."""
+        params = create_simple_params()
+        params.dataset.recurrent_samples = 4
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dataset_dir = write_camera_cut_fixture(
+                Path(tmp_dir) / "train",
+                camera_cut_flags=[False] * 10,
+                include_camera_cut=False,
+            )
+            params.dataset.path.train = Path(dataset_dir)
+            dataset = NSSDataset(params, DataLoaderMode.TRAIN)
+
+            capture = dataset.captures[0]
+            self.assertEqual(dataset.capture_sequences[capture], [(0, 10)])

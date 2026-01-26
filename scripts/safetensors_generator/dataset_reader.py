@@ -357,6 +357,11 @@ class NSSEXRDatasetReader(FeatureIterator):
         out_features["scale"] = torch.tensor(self.scale, dtype=torch.float32).reshape(
             (1, 1)
         )
+        # Camera cuts reset recurrent history; default to False for legacy captures.
+        camera_cut = bool(frame_meta_data.get("CameraCut", False))
+        out_features["camera_cut"] = torch.tensor(camera_cut, dtype=torch.bool).reshape(
+            (1, 1)
+        )
 
         # Exposure is an optional field, so we must ensure it exists before using it
         if "Exposure" in frame_meta_data.keys():
