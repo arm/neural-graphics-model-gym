@@ -27,10 +27,11 @@ SPDX-License-Identifier: Apache-2.0
 6. [Adding custom models, datasets, and usecases](#adding-custom-models-datasets-and-usecases)
 7. [Generating new training data](#generating-new-training-data)
 8. [Troubleshooting](#troubleshooting)
-9. [Contributions](#code-contributions)
+9. [Code contributions](#code-contributions)
 10. [Security](#security)
 11. [License](#license)
 12. [Trademarks and copyrights](#trademarks-and-copyrights)
+
 
 ## Introduction
 
@@ -44,7 +45,9 @@ Currently, we include the following Neural Graphics use cases:
 * Neural Super Sampling (NSS)
   * NSS allows for high-fidelity, real-time graphics in game engines. By feeding low-resolution frames, along with spatial and motion information, into a neural network we are able to construct high-resolution frames that suffer no loss in quality.
 
+
 ## Quick Start
+
 ### Prerequisites
 
 To build and run Neural Graphics Model Gym, the following are required:
@@ -58,6 +61,7 @@ To build and run Neural Graphics Model Gym, the following are required:
 * Git LFS
 
 ### Setup
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/arm/neural-graphics-model-gym.git
@@ -70,10 +74,14 @@ pip install .
 For more details including how to install in development mode and how to run using Docker see [setup.md](./docs/setup.md).
 
 ### Usage
-The neural graphics model gym can be used as a command line tool or by importing it as a Python package. Basic usages are shown here and more detailed commands can be found in [usage.md](./docs/usage.md).
 
-#### Command-line usage
-Generate a configuration file:
+Neural Graphics Model Gym can be used either as a command line tool or as a package which may be imported into a Python application.
+
+Basic usage is shown here. More detailed commands can be found in [usage.md](./docs/usage.md).
+
+#### Command line usage
+
+Generate a configuration file (`config.json`):
 ```bash
 ng-model-gym init
 ```
@@ -116,7 +124,6 @@ The second way to use Neural Graphics Model Gym is to import it as a Python pack
 
 The following snippet shows how to use the package to generate a config, perform training, evaluation and exporting the model.
 
-
 ```python
 import ng_model_gym as ngmg
 
@@ -153,7 +160,9 @@ Jupyter® notebook tutorials on how to use the package, including:
 
 can be found in the [neural-graphics-model-gym-examples](https://github.com/arm/neural-graphics-model-gym-examples) repository.
 
+
 ## Monitoring and profiling
+
 The following tools have been set up to track models during training and to capture performance profiles:
 * [TensorBoard](https://www.tensorflow.org/tensorboard)
 * Trace profiler
@@ -161,7 +170,9 @@ The following tools have been set up to track models during training and to capt
 
 Their usage is demonstrated in [monitoring-and-profiling.md](./docs/monitoring-and-profiling.md).
 
+
 ## Logging
+
 By default, logging is enabled and set to INFO mode, which will print helpful information during execution.
 All logs will be written to an `output.log` file located within the output directory specified in the configuration file.
 The logging mode is customizable by using flags with the `ng-model-gym` CLI command. See the options below for examples.
@@ -197,26 +208,34 @@ A collection of unit and integration tests are provided to ensure the functional
 
 Testing can be run using Hatch commands. First [install Hatch and create a dev environment](./docs/setup.md#dev-installation). This will install all the dependencies for Neural Graphics Model Gym, plus the additional dependencies required for testing. The list of testing commands can be found [here](./docs/testing.md).
 
+
 ## Adding custom models, datasets, and usecases
 
-Neural Graphics Model Gym supports adding your own custom models and datasets, enabling you to use them across all workflows. Detailed documentation on how to implement this can be found in [custom-models-and-datasets.md](./docs/adding-custom-models-and-datasets.md#adding-custom-models-and-datasets).
+Neural Graphics Model Gym supports adding custom models and datasets, enabling their use across all workflows. Detailed documentation on how to implement this can be found in [custom-models-and-datasets.md](./docs/adding-custom-models-and-datasets.md#adding-custom-models-and-datasets).
 
-We also support defining new custom use cases to group related models, datasets, configurations, and any additional required code together. See [adding custom usecases](./docs/adding-custom-models-and-datasets.md#adding-custom-use-cases) to see the implementation guide.
+We also support defining custom use cases to group together related models, datasets, configurations, and any additional required code. See [adding custom usecases](./docs/adding-custom-models-and-datasets.md#adding-custom-use-cases) to see the implementation guide.
+
 
 ## Generating new training data
+
 To train the Neural Super Sampling model, you will first need to capture training data from your game engine in the format expected by the model. Information regarding the types of data to capture and how to convert your captured frames can be found [here](./docs/nss/nss_data_generation.md).
 
+
 ## Troubleshooting
+
 A list of common known issues and their workarounds can be found at [troubleshooting.md](./docs/troubleshooting.md )
 
+
 ## Code contributions
-The neural graphics model gym welcomes contributions. For more details on contributing to this project please see the [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+The Neural Graphics Model Gym project welcomes contributions. For more details on contributing to the project, please see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 
 ## Security
 
-Arm takes security issues seriously, please see [SECURITY.md](SECURITY.md) for more details.
+Arm takes security issues seriously: please see [SECURITY.md](SECURITY.md) for more details.
 
-After following [editable installation with Hatch](./docs/setup.md#dev-installation), you can run the checker for security vulnerabilities with the following command:
+After creating an [editable installation using Hatch](./docs/setup.md#dev-installation), you can run the security vulnerabilities checker with the following command:
 ```bash
 hatch run bandit-check
 ```
@@ -225,10 +244,11 @@ hatch run bandit-check
 
 Neural Graphics Model Gym is licensed under [Apache License 2.0](LICENSE.md).
 
+
 ## Trademarks and copyrights
 
 * Linux® is the registered trademark of Linus Torvalds in the U.S. and elsewhere.
-* Python® is a registered trademark of the PSF.
+* Python® is a registered trademark of the Python Software Foundation.
 * Ubuntu® is a registered trademark of Canonical.
 * Docker and the Docker logo are trademarks or registered trademarks of Docker, Inc. in the United States and/or other countries. Docker, Inc. and other parties may also have trademark rights in other terms used herein.
 * NVIDIA and the NVIDIA logo are trademarks and/or registered trademarks of NVIDIA Corporation in the U.S. and other countries.
