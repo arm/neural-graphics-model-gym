@@ -281,8 +281,8 @@ def do_export(
     create_directory(params.output.dir)
     create_directory(params.output.export.vgf_output_dir)
 
-    model_path = Path(model_path)
     model_path = _check_download_required(model_path)
+    model_path = Path(model_path)
 
     if not model_path.is_file():
         raise FileNotFoundError(f"Could not find model at {model_path}")

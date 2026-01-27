@@ -95,15 +95,18 @@ ng-model-gym -c <path/to/config/file> export --model-path=<path/to/model.pt> --e
 The `--config-path` (or `-c`) flag is **required** when running the `train`, `qat`, `evaluate`, or `export` commands.
 These commands will fail if a valid config file path is not provided.
 
-If you would like to view and download the available pretrained model, use the following commands:
+If you would like to view and download the available pre-trained models, use the following commands:
 
 ```bash
+# List downloadable models hosted on the configured repositories
 ng-model-gym list-models
 
+# Download a specific model to a directory of your choice
 # ng-model-gym download <repo_name>/<file_name> <destination>
 ng-model-gym download neural-super-sampling/nss_v0.1.0_fp32.pt ./myfolder
-
 ```
+
+The remote string identifier (e.g. `@neural-super-sampling/nss_v0.1.0_fp32.pt`) can also be used directly to automatically fetch and use models when running certain CLI commands. See the commands in [usage.md](./docs/usage.md) for more details.
 
 The complete list of CLI commands can be seen by running `ng-model-gym --help` and more detailed information about the commands can be found in [usage.md](./docs/usage.md).
 

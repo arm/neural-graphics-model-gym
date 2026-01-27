@@ -64,13 +64,22 @@ To perform training without evaluation, run:
 ng-model-gym -c <path/to/config/file> train --no-evaluate
 ```
 
-To fine-tune from an existing checkpoint, pass the weights path directly:
+To fine-tune from an existing local checkpoint, pass the weights path directly:
 
 ```bash
 ng-model-gym -c <path/to/config/file> train --finetune path/to/pretrained_weights.pt
 ```
 
+To fine-tune from an existing remote checkpoint, pass the string identifier to fetch the remote model:
+```bash
+ng-model-gym -c <path/to/config/file> train --finetune @<repo_name>/<filename>
+
+# e.g.
+ng-model-gym -c <path/to/config/file> train --finetune @neural-super-sampling/nss_v0.1.0_fp32.pt
+```
+
 To resume training from an existing checkpoint file or a directory containing checkpoints, run:
+
 ```bash
 ng-model-gym -c <path/to/config/file> train --resume path/to/checkpoint.pt
 ng-model-gym -c <path/to/config/file> train --resume path/to/checkpoint_dir/
@@ -87,10 +96,18 @@ ng-model-gym train --help
 #### Evaluation
 > **The --config-path flag is required when running this command.**
 
-To perform evaluation of a trained model, run:
+To perform evaluation of a local trained model, run:
 
 ```bash
 ng-model-gym -c <path/to/config/file> evaluate --model-path=<path/to/model.pt> --model-type=<fp32|qat_int8>
+```
+
+To perform evaluation of a remote trained model, run:
+```bash
+ng-model-gym -c <path/to/config/file> evaluate --model-path=@<repo_name>/<filename> --model-type=<fp32|qat_int8>
+
+# e.g.
+ng-model-gym -c <path/to/config/file> evaluate --model-path=@neural-super-sampling/nss_v0.1.0_fp32.pt --model-type=fp32
 ```
 
 Ensure you select the correct `--model-type` to match the format of your saved model.
@@ -112,10 +129,19 @@ To perform QAT without evaluation, run:
 ng-model-gym -c <path/to/config/file> qat --no-evaluate
 ```
 
-To load a set of previously trained model weights and perform finetuning, run:
+To load a local set of previously trained model weights and perform fine-tuning, run:
 
 ```bash
-ng-model-gym -c <path/to/config/file> qat --finetune
+ng-model-gym -c <path/to/config/file> qat --finetune path/to/pretrained_weights.pt
+```
+
+To load a remote set of previously trained model weights and perform fine-tuning, run:
+
+```bash
+ng-model-gym -c <path/to/config/file> qat --finetune @<repo_name>/<filename>
+
+# e.g.
+ng-model-gym -c <path/to/config/file> qat --finetune @neural-super-sampling/nss_v0.1.0_fp32.pt
 ```
 
 To resume QAT from the latest saved checkpoint specified in your configuration file, run:
@@ -137,10 +163,19 @@ ng-model-gym qat --help
 
 Neural Graphics Model Gym uses ExecuTorch with the Arm backend to export models to a VGF file.
 
-To export a trained model to a VGF file, run:
+To export a local trained model to a VGF file, run:
 
 ```bash
 ng-model-gym -c <path/to/config/file> export --model-path=<path/to/model.pt> --export-type=<fp32|qat_int8|ptq_int8>
+```
+
+To export a remote trained model to a VGF file, run:
+
+```bash
+ng-model-gym -c <path/to/config/file> export --model-path=@<repo_name>/<filename> --export-type=<fp32|qat_int8|ptq_int8>
+
+# e.g.
+ng-model-gym -c <path/to/config/file> export --model-path=@neural-super-sampling/nss_v0.1.0_fp32.pt --export-type=fp32
 ```
 
 Ensure you select an export-type of fp32, qat_int8, or ptq_int8 with `--export-type`. Only QAT trained models can be exported to qat_int8.

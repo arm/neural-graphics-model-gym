@@ -179,7 +179,7 @@ def train_cli(
         ),
     ] = None,
     finetune: Annotated[
-        Optional[Path],
+        Optional[str],
         typer.Option(
             "--finetune",
             "-f",
@@ -233,11 +233,12 @@ def qat_cli(
         ),
     ] = None,
     finetune: Annotated[
-        Optional[Path],
+        Optional[str],
         typer.Option(
             "--finetune",
             "-f",
-            help="Path to pre-trained model weights (.pt) to fine-tune from",
+            help="Path to local pre-trained model weights (.pt) or remote model"
+            " identifier @<repo_name>/<file_name> to fine-tune from",
         ),
     ] = None,
     evaluate: Annotated[
@@ -274,7 +275,7 @@ def qat_cli(
 @app.command(name="evaluate")
 def eval_cli(
     model_path: Annotated[
-        Path,
+        str,
         typer.Option(
             help="Path to local model .pt file or remote model identifier @<repo_name>/<file_name> "
             "to evaluate",
@@ -300,7 +301,7 @@ def eval_cli(
 @app.command(name="export")
 def export_cli(
     model_path: Annotated[
-        Path,
+        str,
         typer.Option(
             help="Path to model .pt file or remote model identifier @<repo_name>/<file_name> "
             "for VGF file export",

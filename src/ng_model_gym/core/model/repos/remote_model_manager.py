@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: <text>Copyright 2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-import string
 from pathlib import Path
 from typing import Dict, List
 
@@ -18,23 +17,35 @@ MODEL_SERVERS = [HuggingfaceModelServer()]
 def parse_model_identifier(model_identifier: str) -> tuple[str, str]:
     """Return repo and filename from [@]<repo_name>/<filename> identifier"""
     model_identifier = model_identifier.strip()
-    if model_identifier.startswith("@"):
-        model_identifier = model_identifier[len("@") :]
+    parsed_model_identifier = model_identifier
 
-    if model_identifier.startswith(string.punctuation):
+    # Strip leading '@'
+    if parsed_model_identifier.startswith("@"):
+        parsed_model_identifier = parsed_model_identifier[len("@") :]
+
+        if not parsed_model_identifier[0].isalnum():
+            raise ValueError(
+                f"Symbol not allowed for model identifier after '@' -> '{model_identifier}'"
+            )
+
+    elif not parsed_model_identifier[0].isalnum():
         raise ValueError(
-            "Symbols not allowed for model identifier unless it starts with '@'"
+            "Symbols not allowed for start of model identifier other than '@' "
+            f"-> '{model_identifier}'"
         )
 
-    if "/" not in model_identifier:
+    if "/" not in parsed_model_identifier:
         raise ValueError(
-            f"Model identifier must be <repo_name>/<filename>, not {model_identifier}"
+            "Model identifier must be <repo_name>/<filename> or "
+            f"@<repo_name>/<filename>, not '{model_identifier}'"
         )
 
-    repo_name, file_name = model_identifier.split("/", 1)
+    repo_name, file_name = parsed_model_identifier.split("/", 1)
+
     if not repo_name or not file_name:
         raise ValueError(
-            f"Model identifier must be <repo_name>/<filename>, not {model_identifier}"
+            "Model identifier must be <repo_name>/<filename> or "
+            f"@<repo_name>/<filename>, not '{model_identifier}'"
         )
 
     return repo_name, file_name
@@ -62,7 +73,8 @@ def download_pretrained_model(model_name: str, destination: Path | None = None) 
 
     Args:
         model_name: model identifier in the form <repo_name>/<filename>.
-            Also supports @<repo_name>/<filename> identifier for clarity over a file path.
+            Also supports @<repo_name>/<filename> identifier
+            for clarity over a file path.
         destination: directory save path for the downloaded file. If None, uses a cache dir
 
     Returns:
