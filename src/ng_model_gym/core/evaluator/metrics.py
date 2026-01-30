@@ -1,15 +1,18 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+from functools import cache
 
+import pyiqa
 import torch
 from torchmetrics import Metric
 from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.image.ssim import StructuralSimilarityIndexMeasure
 
 from ng_model_gym.core.utils.config_model import ConfigModel
+from ng_model_gym.core.utils.general_utils import suspend_tqdm_bar
 
 logger = logging.getLogger(__name__)
 
@@ -81,30 +84,55 @@ def calculate_recpsnr(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tenso
     return recpsnr
 
 
+def _reshape_5d_to_4d(tensor: torch.Tensor) -> torch.Tensor:
+    """Reshapes a 5D tensor, taken to be (N,T,C,H,W), to a 4D tensor, taken to
+    be (N,C,H,W). Returns the reshaped tensor. If a 5D tensor is not passed,
+    the original tensor is returned unchanged.
+    - tensor: Tensor to reshape
+    """
+    if tensor.dim() != 5:
+        return tensor
+
+    (N, T, C, H, W) = tensor.shape
+    return tensor.view(N * T, C, H, W)
+
+
 def calculate_ssim(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     """Calculate structural similarity index measure between predictions and targets.
      It is expected that the inputs to this are 2 tensors of 5 dimensions or 4 dimensions:
     - preds: Predictions from the model of shape (N,T,C,H,W) or (N,C,H,W)
     - target: Ground truth values of shape (N,T,C,H,W) or (N,C,H,W)
     """
-    if preds.dim() == 5 or targets.dim() == 5:
-        (
-            N,
-            T,
-            C,
-            H,
-            W,
-        ) = preds.shape  # will be 5D during training and evaluation, reshape to 4D
-        preds = preds.view(N * T, C, H, W)
-        targets = targets.view(N * T, C, H, W)
-
-    # If 4D already, do nothing
+    preds = _reshape_5d_to_4d(preds)
+    targets = _reshape_5d_to_4d(targets)
 
     ssim = StructuralSimilarityIndexMeasure(
         data_range=1.0, kernel_size=11, sigma=1.5, gaussian_kernel=True
     ).to(preds.device)
 
     return ssim(preds, targets)
+
+
+@cache
+def _get_stlpips_metric(device):
+    """Gets the STLPIPS metric for a given device"""
+    with suspend_tqdm_bar():
+        return pyiqa.create_metric("stlpips-vgg", device=device)
+
+
+def calculate_stlpips(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+    """Calculate shift-tolerant learned perceptual image patch similarity
+    (STLPIPS) index between predictions and targets.
+     It is expected that the inputs to this are 2 tensors of 5 dimensions or 4 dimensions:
+    - preds: Predictions from the model of shape (N,T,C,H,W) or (N,C,H,W)
+    - target: Ground truth values of shape (N,T,C,H,W) or (N,C,H,W)
+    """
+
+    preds = _reshape_5d_to_4d(preds)
+    targets = _reshape_5d_to_4d(targets)
+
+    metric = _get_stlpips_metric(preds.device)
+    return metric(preds, targets).mean()
 
 
 # pylint: disable=no-member
@@ -264,6 +292,42 @@ class Ssim(Metric):
     def compute(self) -> torch.Tensor:
         """Calculate SSIM"""
         return self.total_ssim / self.total_steps
+
+
+class Stlpips(Metric):
+    """STLPIPS metric
+
+    As input to forward and update the metric accepts the following input
+
+    - preds: Predictions from the model of shape (N,T,C,H,W) or (N,C,H,W)
+    - target: Ground truth values of shape (N,T,C,H,W) or (N,C,H,W)
+    """
+
+    is_differentiable = False
+    full_state_update = True
+    is_streaming = False
+
+    def __str__(self):
+        return "STLPIPS"
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.add_state("total_stlpips", default=torch.tensor(0.0))
+        self.add_state("total_steps", default=torch.tensor(0))
+
+    def update(self, preds: torch.Tensor, targets: torch.Tensor) -> None:
+        """Update state variables."""
+        if preds.shape != targets.shape:
+            raise ValueError("preds and targets must have the same shape")
+
+        stlpips = calculate_stlpips(preds, targets)
+
+        self.total_stlpips += stlpips
+        self.total_steps += 1
+
+    def compute(self) -> torch.Tensor:
+        """Calculate STLPIPS"""
+        return self.total_stlpips / self.total_steps
 
 
 class TPsnrStreaming(Metric):
@@ -429,6 +493,7 @@ _METRIC_FACTORY: dict[str, type[Metric]] = {
     "SSIM": Ssim,
     "tPSNRStreaming": TPsnrStreaming,
     "RecPSNRStreaming": RecPsnrStreaming,
+    "STLPIPS": Stlpips,
 }
 
 

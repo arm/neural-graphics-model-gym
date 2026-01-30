@@ -9,6 +9,7 @@ from .metrics import (
     RecPsnr,
     RecPsnrStreaming,
     Ssim,
+    Stlpips,
     TPsnr,
     TPsnrStreaming,
 )

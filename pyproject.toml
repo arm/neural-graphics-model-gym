@@ -58,6 +58,7 @@ dependencies = [
     "tqdm==4.66.0",
     "typer==0.15.4",
     "ai-ml-sdk-model-converter==0.7.0",
+    "pyiqa==0.1.14.1",
 ]
 
 [project.optional-dependencies]
