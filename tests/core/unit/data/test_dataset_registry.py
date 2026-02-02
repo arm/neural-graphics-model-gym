@@ -4,9 +4,9 @@
 import unittest
 from unittest.mock import patch
 
-from ng_model_gym.core.data import dataset_registry
-from ng_model_gym.core.data.dataset_registry import (
+from ng_model_gym.core.data import (
     _validate_dataset,
+    dataset_registry,
     get_dataset_key,
     register_dataset,
 )

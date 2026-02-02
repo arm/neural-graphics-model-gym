@@ -9,7 +9,7 @@ import torch
 from safetensors import safe_open
 from safetensors.torch import save_file
 
-from ng_model_gym.core.data.utils import DataLoaderMode, DatasetType
+from ng_model_gym.core.data import DataLoaderMode, DatasetType
 from ng_model_gym.core.utils.general_utils import create_directory
 from ng_model_gym.usecases.nss.data.dataset import NSSDataset
 from tests.testing_utils import create_simple_params

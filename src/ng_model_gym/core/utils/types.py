@@ -79,3 +79,14 @@ class ModelType(str, Enum):
     """Enum of model file extensions."""
 
     PT = ".pt"
+
+
+class ToneMapperMode(str, Enum):
+    """Supported modes for tone mapping."""
+
+    REINHARD = "reinhard"
+    KARIS = "karis"
+    LOG = "log"
+    LOG10 = "log10"
+    LOG_NORM = "log_norm"
+    ACES = "aces"

@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from ng_model_gym.core.model.layers.dense_warp import DenseWarp
+from ng_model_gym.core.model import DenseWarp
 
 
 class TestDenseWarp(unittest.TestCase):

@@ -16,11 +16,11 @@ from pydantic import (
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_core import PydanticCustomError
 
-from ng_model_gym.core.data.utils import ToneMapperMode
 from ng_model_gym.core.utils.types import (
     LearningRateScheduler,
     LossFn,
     OptimizerType,
+    ToneMapperMode,
     TrainEvalMode,
 )
 

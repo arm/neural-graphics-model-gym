@@ -7,9 +7,13 @@ from unittest.mock import patch
 
 from torch.utils.data import Dataset
 
-from ng_model_gym.core.data.dataloader import get_dataset, get_dataset_from_config
-from ng_model_gym.core.data.dataset_registry import get_dataset_key, register_dataset
-from ng_model_gym.core.data.utils import DataLoaderMode
+from ng_model_gym.core.data import (
+    DataLoaderMode,
+    get_dataset,
+    get_dataset_from_config,
+    get_dataset_key,
+    register_dataset,
+)
 from tests.testing_utils import create_simple_params
 
 

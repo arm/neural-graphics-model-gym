@@ -6,7 +6,7 @@ import unittest
 import torch
 from torch import nn
 
-from ng_model_gym.core.model.base_ng_model import BaseNGModel
+from ng_model_gym.core.model import BaseNGModel
 from tests.testing_utils import create_simple_params
 
 # pylint: disable=missing-function-docstring

@@ -8,8 +8,7 @@ from typing import Any, Tuple
 import torch
 from torch import nn
 
-from ng_model_gym.core.model.base_ng_model import BaseNGModel
-from ng_model_gym.core.model.model_tracer import model_tracer
+from ng_model_gym.core.model import BaseNGModel, model_tracer
 from tests.testing_utils import create_simple_params
 
 # pylint: disable=unsubscriptable-object

@@ -5,9 +5,7 @@ from typing import NamedTuple, Tuple
 
 import torch
 
-from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
-from ng_model_gym.core.model.model_factory import create_model
-from ng_model_gym.core.model.recurrent_model import FeedbackModel
+from ng_model_gym.core.model import BaseNGModelWrapper, create_model, FeedbackModel
 from ng_model_gym.core.utils.types import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
 from tests.base_gpu_test import BaseGPUMemoryTest
