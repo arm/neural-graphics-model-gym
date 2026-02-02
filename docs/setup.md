@@ -95,14 +95,14 @@ A Dockerfile to help build and run Neural Graphics Model Gym is [provided](../Do
 Run the following command to build the Docker image:
 
 ```bash
-docker build . -t ng-model-gym-image -f Dockerfile
+docker build . -t neural-graphics-model-gym:latest -f Dockerfile
 ```
 
 ### Run the Docker container
 
 To run the container, specify the shared memory size and access to all GPUs using the following command:
 ```bash
-docker run -it --shm-size=2gb --gpus all ng-model-gym-image
+docker run -it --shm-size=2gb --gpus all neural-graphics-model-gym:latest
 ```
 
 You can then run any of the commands in the next sections from within your Docker container.
