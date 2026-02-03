@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 FROM nvidia/cuda:12.8.0-devel-ubuntu22.04
@@ -11,21 +11,16 @@ LABEL author="Arm Limited"
 # Install dependencies
 RUN apt-get update && \
     apt-get install -y \
-    make \
     git \
     git-lfs \
     locales \
-    vim \
     python3.10 \
     python3-pip \
     python3.10-dev \
     python3.10-venv \
-    build-essential \
     ninja-build \
     curl \
     wget \
-    dpkg \
-    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Set locale for Docker container
@@ -37,9 +32,9 @@ ENV LC_ALL=en_GB.UTF-8
 # Link python to python3
 RUN ln -sf /usr/bin/python3 /usr/bin/python
 
-ENV NG_MODEL_GYM_DIR="/home/ng-model-gym"
+ENV NG_MODEL_GYM_DIR="/home/neural-graphics-model-gym"
 
-# Change working directory to ng-model-gym folder
+# Change working directory to neural-graphics-model-gym folder
 WORKDIR ${NG_MODEL_GYM_DIR}
 
 # Copy Neural Graphics Model Gym folder to container, excluding files from .dockerignore.
