@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import torch
 
-from ng_model_gym.core.data.utils import DataLoaderMode
+from ng_model_gym.core.data import DataLoaderMode
 from ng_model_gym.usecases.nss.data.dataset import NSSDataset
 
 

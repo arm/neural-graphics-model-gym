@@ -12,8 +12,8 @@ from torch.profiler import schedule
 import ng_model_gym.core.utils.patch.torchao_patch  # pylint: disable=unused-import # isort: split
 import ng_model_gym.core.utils.patch.executorch_patch  # pylint: disable=unused-import # isort: split
 from ng_model_gym import download_pretrained_model
-from ng_model_gym.core.evaluator.evaluator import NGModelEvaluator
-from ng_model_gym.core.trainer.trainer import Trainer
+from ng_model_gym.core.evaluator import NGModelEvaluator
+from ng_model_gym.core.trainer import Trainer
 from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
 from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.general_utils import create_directory
@@ -34,8 +34,8 @@ logger = logging.getLogger(__name__)
 def _ensure_registries_populated():
     """Import all use case models and datasets to trigger registration."""
     # pylint: disable=import-outside-toplevel
-    from ng_model_gym.core.data.dataset_registry import DATASET_REGISTRY
-    from ng_model_gym.core.model.model_registry import MODEL_REGISTRY
+    from ng_model_gym.core.data import DATASET_REGISTRY
+    from ng_model_gym.core.model import MODEL_REGISTRY
     from ng_model_gym.usecases import import_usecase_files
 
     # pylint: enable=import-outside-toplevel

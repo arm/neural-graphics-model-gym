@@ -332,7 +332,7 @@ class NSSModel(BaseNGModel):
 
         if len(tensor_resolutions) != 2:
             raise ValueError(
-                f"Expected the presence of hr and lr tensors but found {tensor_resolutions} tensors"
+                f"Expected the presence of high resolution and low resolution tensors but found {tensor_resolutions} tensors"  # pylint: disable=line-too-long
             )
 
         # Calculate area to figure out lr and hr values

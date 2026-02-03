@@ -35,7 +35,7 @@ if TYPE_CHECKING:
         download_pretrained_model,
         list_pretrained_models,
     )
-    from ng_model_gym.core.utils.config_utils import (
+    from ng_model_gym.core.utils import (
         generate_config_file,
         load_config_file,
         print_config_options,

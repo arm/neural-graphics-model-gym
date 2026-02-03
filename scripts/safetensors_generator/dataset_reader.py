@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -12,8 +12,8 @@ import numpy as np
 import safetensors
 import torch
 
-from ng_model_gym.core.data.utils import tonemap_inverse
-from ng_model_gym.core.model.graphics_utils import swizzle
+from ng_model_gym.core.data import tonemap_inverse
+from ng_model_gym.core.model import swizzle
 from ng_model_gym.core.utils.exr_utils import read_exr_torch
 from scripts.safetensors_generator.fsr2_methods import depth_to_view_space_params
 

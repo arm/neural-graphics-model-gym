@@ -224,7 +224,7 @@ copyright               = [ "python -c \"print('\\nRunning copyright header chec
 
 # Format
 format                  = [ "python -c \"print('\\nFormatting files with black, isort and autoflake\\n')\"",
-                            "python -m autoflake --remove-unused-variables --remove-all-unused-imports --recursive --in-place .",
+                            "python -m autoflake --remove-unused-variables --remove-all-unused-imports --ignore-init-module-imports --recursive --in-place .",
                             "python -m isort .",
                             "python -m black src/ scripts/ tests/" ]
 
@@ -236,7 +236,7 @@ lint-all                =   "python -m scripts.utils.run_pylint"
 # Download test data
 test-download = "python tests/fetch_huggingface.py"
 
-# Hatch envionmment for testing across all supported Python versions
+# Hatch environmment for testing across all supported Python versions
 [tool.hatch.envs.test-matrix]
 template = "test"
 matrix-name-format = "py{value}"

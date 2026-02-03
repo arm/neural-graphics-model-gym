@@ -7,12 +7,12 @@ from unittest.mock import patch
 
 import torch
 
-from ng_model_gym.core.model.model_factory import (
+from ng_model_gym.core.model import (
     create_model,
     get_model_from_config,
     get_model_key,
+    register_model,
 )
-from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.utils.types import TrainEvalMode
 from tests.testing_utils import create_simple_params
 

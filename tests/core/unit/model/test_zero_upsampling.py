@@ -5,7 +5,7 @@ import unittest
 
 import torch
 
-from ng_model_gym.core.model.layers.resampling import ZeroUpsample
+from ng_model_gym.core.model import ZeroUpsample
 
 
 class TestZeroUpsample(unittest.TestCase):

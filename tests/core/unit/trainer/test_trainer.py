@@ -12,9 +12,9 @@ from unittest.mock import Mock
 import torch
 from torch import nn, optim
 
-from ng_model_gym.core.loss.losses import LossV1
-from ng_model_gym.core.optimizers.lars_adam import LARS
-from ng_model_gym.core.trainer.trainer import get_loss_fn, get_optimizer_type, Trainer
+from ng_model_gym.core.loss import LossV1
+from ng_model_gym.core.optimizers import LARS
+from ng_model_gym.core.trainer import get_loss_fn, get_optimizer_type, Trainer
 from ng_model_gym.core.utils.types import LossFn, OptimizerType, TrainEvalMode
 from tests.testing_utils import create_simple_params
 

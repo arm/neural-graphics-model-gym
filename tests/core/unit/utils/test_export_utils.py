@@ -14,9 +14,7 @@ from unittest.mock import DEFAULT, patch
 import torch
 from torch import nn
 
-from ng_model_gym.core.model.base_ng_model import BaseNGModel
-from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
-from ng_model_gym.core.model.model_factory import get_model_key
+from ng_model_gym.core.model import BaseNGModel, BaseNGModelWrapper, get_model_key
 from ng_model_gym.core.utils.export_utils import (
     DataLoaderMode,
     executorch_vgf_export,

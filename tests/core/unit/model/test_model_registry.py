@@ -5,10 +5,10 @@ import unittest
 from abc import ABC, abstractmethod
 from unittest.mock import patch
 
-from ng_model_gym.core.model import model_registry
-from ng_model_gym.core.model.model_registry import (
+from ng_model_gym.core.model import (
     _validate_model,
     get_model_key,
+    model_registry,
     register_model,
 )
 from ng_model_gym.core.utils.registry import Registry

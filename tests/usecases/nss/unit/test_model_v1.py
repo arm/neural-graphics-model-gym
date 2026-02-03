@@ -4,9 +4,8 @@
 
 import torch
 
-from ng_model_gym.core.data.utils import ToneMapperMode
-from ng_model_gym.core.model.model_factory import create_model
-from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.core.model import create_model
+from ng_model_gym.core.utils.types import ToneMapperMode, TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params

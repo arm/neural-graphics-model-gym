@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -6,6 +6,8 @@ from enum import Enum
 from typing import Dict, List, Union
 
 import torch
+
+from ng_model_gym.core.utils.types import ToneMapperMode
 
 logger = logging.getLogger(__name__)
 
@@ -27,17 +29,6 @@ class DatasetType(str, Enum):
     H5 = ".h5"
     PT = ".pt"
     TFRECORD = ".tfrecord"
-
-
-class ToneMapperMode(str, Enum):
-    """Supported modes for tone mapping."""
-
-    REINHARD = "reinhard"
-    KARIS = "karis"
-    LOG = "log"
-    LOG10 = "log10"
-    LOG_NORM = "log_norm"
-    ACES = "aces"
 
 
 def tonemap_forward(
