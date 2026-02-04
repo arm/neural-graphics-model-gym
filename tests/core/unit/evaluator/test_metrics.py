@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
 
+import pyiqa
 import torch
 from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.image.ssim import StructuralSimilarityIndexMeasure
@@ -13,6 +14,7 @@ from ng_model_gym.core.evaluator import (
     RecPsnr,
     RecPsnrStreaming,
     Ssim,
+    Stlpips,
     TPsnr,
     TPsnrStreaming,
 )
@@ -135,6 +137,47 @@ class TestMetrics(unittest.TestCase):
         # Assert ssim >= 0.0 and <= 1.0
         self.assertGreaterEqual(result.item(), 0.0)
         self.assertLessEqual(result.item(), 1.0)
+
+    def test_stlpips_5d(self):
+        """Test STLPIPS from pyiqa for 5D input"""
+        # batch_size, seq_length, number_of_channels, h, w
+        preds, target = generate_mock_data((10, 5, 3, 256, 256))
+
+        stlpips = Stlpips()
+        stlpips.update(preds, target)
+        result = stlpips.compute()
+
+        self.assertIsInstance(result, torch.Tensor)
+        # Assert that the returned Tensor is a scalar
+        self.assertEqual(result.shape, ())
+
+        # Reshape from 5 channels to 4
+        N, T, C, H, W = preds.shape
+        preds_4d = preds.view(N * T, C, H, W)
+        target_4d = target.view(N * T, C, H, W)
+
+        pyiqa_metric = pyiqa.create_metric("stlpips-vgg", device=preds_4d.device)
+        pyiqa_result = pyiqa_metric(preds_4d, target_4d).mean()
+
+        self.assertAlmostEqual(pyiqa_result.numpy(), result.numpy())
+
+    def test_stlpips_4d(self):
+        """Test STLPIPS from pyiqa for 4D input"""
+        # batch_size, number_of_channels, h, w
+        preds, target = generate_mock_data((10, 3, 256, 256))
+
+        stlpips = Stlpips()
+        stlpips.update(preds, target)
+        result = stlpips.compute()
+
+        self.assertIsInstance(result, torch.Tensor)
+        # Assert that the returned Tensor is a scalar
+        self.assertEqual(result.shape, ())
+
+        pyiqa_metric = pyiqa.create_metric("stlpips-vgg", device=preds.device)
+        pyiqa_result = pyiqa_metric(preds, target).mean()
+
+        self.assertAlmostEqual(pyiqa_result.numpy(), result.numpy())
 
     def test_get_metrics(self):
         """Test that get_metrics returns all our expected metrics."""
