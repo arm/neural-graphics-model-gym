@@ -83,7 +83,7 @@ To build and install a Python wheel of the project using Hatch:
 First follow the instructions to create an [editable installation](#dev-installation), then run:
 
 ```bash
-hatch build-wheel
+hatch build
 pip install dist/ng_model_gym-{version}-py3-none-any.whl
 ```
 
@@ -123,7 +123,7 @@ To quickly try out the repository without preparing your own data, first follow 
 
 ```bash
 # Download pretrained model weights and datasets from Hugging Face
-hatch run test-download
+hatch run test:download
 ```
 
 * Example datasets will be placed under `tests/usecases/nss/datasets/`.

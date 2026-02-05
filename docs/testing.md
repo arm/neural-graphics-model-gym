@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
 
 The tests depend on pretrained weights and datasets from Hugging Face. To automatically download the required files, run the following command:
 ```bash
-hatch run test-download
+hatch run test:download
 ```
 
 **To run tests:**
