@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -41,6 +41,7 @@ class FusedMovingAvgObsFakeQuantizeFix(FusedMovingAvgObsFakeQuantize):
 
     @torch.jit.export
     def calculate_qparams(self) -> tuple[torch.Tensor, torch.Tensor]:
+        """Getter for scale and zero points."""
         return self.scale, self.zero_point
 
 

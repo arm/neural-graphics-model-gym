@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -73,7 +73,7 @@ def validate_nss_downloads(datasets_dir):
 
     except AssertionError as e:
         raise type(e)(
-            f"{e}\n\nRun 'hatch run test-download' to fetch test assets."
+            f"{e}\n\nRun 'hatch run test:download' to fetch test assets."
         ) from e
 
 
@@ -104,7 +104,7 @@ def create_mini_safetensor_dataset(original_dataset_path: Path):
 
     except FileNotFoundError as e:
         raise type(e)(
-            f"{e}\n\nRun 'hatch run test-download' to fetch test assets."
+            f"{e}\n\nRun 'hatch run test:download' to fetch test assets."
         ) from e
 
 

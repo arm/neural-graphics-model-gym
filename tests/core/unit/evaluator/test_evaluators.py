@@ -97,7 +97,7 @@ class TestNGModelEvaluator(unittest.TestCase):
             pred = torch.rand((1, 1, 3, 256, 256))
             target = torch.rand((1, 1, 3, 256, 256))
             if metric.is_streaming:
-                metric.update(pred, target, seq_id=1)
+                metric.update(pred, target, seq_id=1)  # pylint: disable=E1123
             else:
                 metric.update(pred, target)
 

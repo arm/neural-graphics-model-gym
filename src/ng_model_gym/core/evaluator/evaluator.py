@@ -163,7 +163,9 @@ class NGModelEvaluator:
             for metric in self.metrics:
                 if metric.is_streaming:
                     # Streaming metrics need to know when we start a new sequence.
-                    metric.update(self.y_pred, self.y_true, seq_id=self.x_in["seq"])
+                    metric.update(  # pylint: disable=E1123
+                        self.y_pred, self.y_true, seq_id=self.x_in["seq"]
+                    )
                 else:
                     metric.update(self.y_pred, self.y_true)
         if self.export_png_dir:

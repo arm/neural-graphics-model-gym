@@ -36,13 +36,13 @@ Below is an overview on contributing code to Neural Graphics Model Gym.
 Before making a pull request for any code changes, you must run the following checks:
 
 ```bash
-hatch run test:test           # Run all tests
-hatch run test:coverage-check # Create coverage report
-hatch run format              # Format files
-hatch run lint-all            # Lints src and test files
-hatch run bandit-check        # Run security check
-hatch run blocklint           # Run non-inclusive language check
-hatch run copyright           # Run copyright header check
+hatch run test:test                          # Run all tests
+hatch run test:coverage-check                # Create coverage report
+hatch run static-analyis:format              # Format files
+hatch run static-analyis:lint-all            # Lints src and test files
+hatch run static-analyis:bandit-check        # Run security check
+hatch run static-analyis:blocklint           # Run non-inclusive language check
+hatch run static-analyis:copyright           # Run copyright header check
 ```
 
 ### `pre-commit` module

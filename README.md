@@ -237,7 +237,7 @@ Arm takes security issues seriously: please see [SECURITY.md](SECURITY.md) for m
 
 After creating an [editable installation using Hatch](./docs/setup.md#dev-installation), you can run the security vulnerabilities checker with the following command:
 ```bash
-hatch run bandit-check
+hatch run static-analysis:bandit-check
 ```
 
 ## License

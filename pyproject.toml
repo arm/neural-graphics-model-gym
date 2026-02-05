@@ -62,21 +62,24 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = [
+static-analysis = [
     "autoflake==2.3.1",
     "bandit==1.7.6",
     "black==23.12.1",
     "blocklint==0.2.4",
+    "isort==5.13.2",
+    "pylint==3.0.1",
+    "reuse==3.0.1",
+]
+dev = [
     "coverage==7.3.2",
     "expecttest==0.3.0",
     "hatch==1.16.2",
-    "isort==5.13.2",
     "jsonref==1.1.0",
     "pre-commit==3.6.0",
     "pytest==8.4.2",
     "pytest-cov==5.0.0",
-    "pylint==3.0.1",
-    "reuse==3.0.1",
+    "ng-model-gym[static-analysis]",
 ]
 
 [project.urls]
@@ -168,10 +171,13 @@ disable = [
 [tool.hatch.envs.default]
 features = ["dev"]
 dev-mode = true
+installer = "uv"
+
+[tool.uv]
+prerelease = "allow"
 
 [tool.hatch.envs.test]
-features = ["dev"]
-dev-mode = true
+template = "default"
 
 [tool.hatch.envs.test.env-vars]
 DEFAULT_USECASE="nss"
@@ -179,6 +185,9 @@ PYTHONUTF8 = "1"
 PYTHONIOENCODING = "utf-8"
 
 [tool.hatch.envs.test.scripts]
+# Download test data
+download = "python tests/fetch_huggingface.py"
+
 # Test
 unit = "python -m pytest tests/core/unit tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit tests/scripts"
 integration = "python -m pytest tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"
@@ -210,12 +219,13 @@ coverage-check = [
 ]
 
 [tool.hatch.envs.default.scripts]
-# Build
-build-wheel             = "hatch build"
-
-# Clean
 clean                   = "python -m scripts.utils.clean"
 
+[tool.hatch.envs.static-analysis]
+skip-install = true
+features = ["static-analysis"]
+
+[tool.hatch.envs.static-analysis.scripts]
 # Security and compliance checks
 bandit-check            = [ "python -c \"print('\\nRunning security checks\\n')\"",
                             "python -m bandit --configfile=pyproject.toml -r -f=html -o=report.html ." ]
@@ -234,8 +244,6 @@ lint                    =   "python -m scripts.utils.run_pylint --src"
 lint-test               =   "python -m scripts.utils.run_pylint --test --disable=invalid-name"
 lint-all                =   "python -m scripts.utils.run_pylint"
 
-# Download test data
-test-download = "python tests/fetch_huggingface.py"
 
 # Hatch environmment for testing across all supported Python versions
 [tool.hatch.envs.test-matrix]
