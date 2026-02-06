@@ -21,6 +21,8 @@ RUN apt-get update && \
     ninja-build \
     curl \
     wget \
+    libgl1 \
+    libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set locale for Docker container
