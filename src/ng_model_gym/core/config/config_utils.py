@@ -2,21 +2,23 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 import json
 import logging
 import re
 import shutil
 import sys
+from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
-from typing import List, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 from pydantic import ValidationError
 from rich import print_json
 from rich.console import Console
 from rich.table import Column, Table
 
-from ng_model_gym.core.utils.config_model import (
+from ng_model_gym.core.config.config_model import (
     CONFIG_SCHEMA_VERSION,
     ConfigModel,
     OutputDirModel,
@@ -24,14 +26,73 @@ from ng_model_gym.core.utils.config_model import (
 from ng_model_gym.core.utils.json_reader import read_json_file
 from ng_model_gym.core.utils.logging import setup_logging
 
-DEFAULT_PATH = "ng_model_gym.usecases.nss.configs"
+logger = logging.getLogger(__name__)
+
+USECASES_ROOT = "ng_model_gym.usecases"
+GLOBAL_SCHEMA_PATH = "ng_model_gym.core.config"
 
 
-def generate_config_file(save_dir: Union[str, Path, None] = None) -> Tuple[Path, Path]:
+@dataclass(frozen=True)
+class TemplateInfo:
+    """Metadata for a config template"""
+
+    model_name: str
+    json_data: dict
+    source: Path
+
+
+def _discover_config_templates() -> Dict[str, List[TemplateInfo]]:
+    """Discover config templates under usecases and core config."""
+    templates: Dict[str, List[TemplateInfo]] = {}
+
+    for root in (USECASES_ROOT, GLOBAL_SCHEMA_PATH):
+        search_directory = files(root)
+        for json_file in search_directory.rglob("*.json"):
+            try:
+                data = json.loads(json_file.read_text(encoding="utf-8"))
+            except (FileNotFoundError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+                logger.debug(f"Skipping unreadable JSON template {json_file}: {exc}")
+                continue
+
+            # Identifies a file is an ng-model-gym config
+            if "config_schema_version" not in data:
+                continue
+
+            model_name = data.get("model", {}).get("name")
+            if not model_name:
+                logger.debug(f"Skipping config without a model.name entry: {json_file}")
+                continue
+
+            if data.get("model").get("model_source") == "custom":
+                model_name = "custom"
+
+            model_key = str(model_name).strip().lower()
+
+            info = TemplateInfo(
+                model_name=str(model_name),
+                json_data=data,
+                source=json_file,
+            )
+            templates.setdefault(model_key, []).append(info)
+
+    return templates
+
+
+def list_config_templates() -> List[str]:
+    """Return available config template model names."""
+    templates = _discover_config_templates()
+    display_names = {key: infos[0].model_name for key, infos in templates.items()}
+    return sorted(display_names.values(), key=str.lower)
+
+
+def generate_config_file(
+    selected_config_template: str, save_dir: Union[str, Path, None] = None
+) -> Tuple[Path, Path]:
     """
     Generate a JSON configuration template and its schema file. This is used to configure training.
 
     Args:
+        selected_config_template (str): Name of the selected config template to generate.
         save_dir (Union[str, Path, None]): Directory to save config and schema. If None,
          uses current directory.
 
@@ -39,7 +100,7 @@ def generate_config_file(save_dir: Union[str, Path, None] = None) -> Tuple[Path,
         Tuple[Path, Path]: Paths to the generated configuration JSON and schema JSON files.
 
     Example:
-        >>> config_output_path, schema_path = generate_config_file(Path('./output'))
+        >>> config_output_path, schema_path = generate_config_file("nss", Path("./output"))
     """
 
     if save_dir:
@@ -49,47 +110,38 @@ def generate_config_file(save_dir: Union[str, Path, None] = None) -> Tuple[Path,
     else:
         output_dir = Path(".")
 
-    placeholders = {
-        "dataset.path.train": "<PATH/TO/TRAIN_DATA_DIR>",
-        "dataset.path.validation": "<PATH/TO/VALIDATION_DATA_DIR>",
-        "dataset.path.test": "<PATH/TO/TEST_DATA_DIR>",
-        "train.fp32.checkpoints.dir": "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>",
-        "train.qat.checkpoints.dir": "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>",
-    }
+    if not selected_config_template or not str(selected_config_template).strip():
+        raise ValueError("selected_config_template must be a non-empty string.")
 
-    # Load internal default config
-    default_config_path = files(DEFAULT_PATH) / "default.json"
-    default_config: dict = read_json_file(default_config_path)
+    found_config_templates: dict[str, list[TemplateInfo]] = _discover_config_templates()
 
-    for json_loc, placeholder_text in placeholders.items():
-        dict_key_path: List[str] = json_loc.split(".")
-        config_section = default_config
+    selected_config_template = str(selected_config_template).strip().lower()
+    matching = found_config_templates.get(selected_config_template, [])
+    if not matching:
+        available = list_config_templates()
+        raise FileNotFoundError(
+            "No config template found for "
+            f"'{selected_config_template}'. Available templates: {', '.join(available)}"
+        )
+    if len(matching) > 1:
+        sources = ", ".join(str(info.source) for info in matching)
+        raise ValueError(
+            f"Multiple config templates found for '{selected_config_template}'. Sources: {sources}"
+        )
 
-        # Iterate over dict keys e.g dict_key_path = ["dataset", "path", "train"]
-        for dict_key in dict_key_path[:-1]:
-            # Check the json path provided in placeholders is valid
-            if dict_key not in config_section or not isinstance(
-                config_section[dict_key], dict
-            ):
-                raise KeyError(
-                    f"Invalid config path {json_loc} to replace with a placeholder"
-                )
-            # Access sub dict e.g config_section["dataset"]
-            config_section = config_section[dict_key]
+    default_config: dict = copy.deepcopy(matching[0].json_data)
 
-        final_key = dict_key_path[-1]
-        if final_key not in config_section:
-            raise KeyError(
-                f"Invalid config path {json_loc} to replace with a placeholder"
-            )
-
-        config_section[final_key] = placeholder_text
-
-    file_name = "config"
+    model_name = default_config.get("model", {}).get("name") or selected_config_template
+    file_name = model_name.lower()
+    if (
+        selected_config_template == "custom"
+        and matching[0].source.name == "custom_template.json"
+    ):
+        file_name = "custom_template"
     suffix = ".json"
     config_output_path = output_dir / f"{file_name}{suffix}"
 
-    # If a file already exists "config.json", create config_1.json etc
+    # If a file already exists, create <name>_1.json etc
     if config_output_path.exists():
         count = 1
         file_path = output_dir / f"{file_name}_{count}{suffix}"
@@ -103,7 +155,7 @@ def generate_config_file(save_dir: Union[str, Path, None] = None) -> Tuple[Path,
         json.dump(default_config, f, indent=4)
 
     # Copy schema_config.json as well
-    schema_config_path = files(DEFAULT_PATH) / "schema_config.json"
+    schema_config_path = files(GLOBAL_SCHEMA_PATH) / "schema_config.json"
     shutil.copy(src=schema_config_path, dst=output_dir)
 
     schema_path = output_dir / "schema_config.json"
@@ -246,12 +298,10 @@ def validate_schema_version(user_config: dict) -> None:
 def print_config_options() -> None:
     """
     Print the JSON configuration schema, listing each parameter with its type and description
-
     Example:
         >>> print_config_options()
     """
-    schema_config_path = files(DEFAULT_PATH) / "schema_config.json"
+    schema_config_path = files(GLOBAL_SCHEMA_PATH) / "schema_config.json"
     with schema_config_path.open("r", encoding="utf-8") as fp:
         data = json.load(fp)
-
     print_json(json.dumps(data))

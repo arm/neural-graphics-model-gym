@@ -19,16 +19,22 @@ ng-model-gym --help
 
 #### Configuration file
 
-Neural Graphics Model Gym is configured using a JSON file, which contains all necessary parameters such as hyperparameters and paths to datasets.
+Neural Graphics Model Gym is configured using a JSON file, containing all the necessary model parameters and paths to datasets.
+
+To list the available configuration templates, run:
+```bash
+ng-model-gym init --list
+```
+Running `ng-model-gym init` with no arguments also lists templates.
 
 To generate a configuration file, run:
 ```bash
-ng-model-gym init
+ng-model-gym init <model-template> [save_dir]
 ```
 
-This command creates two files in your working directory:
+This command creates two files in the selected output directory (or your working directory if path is omitted):
 
-- `config.json`
+- `<model-name>.json`
     - Template populated with default values. Some entries have placeholder values (e.g. "<...>"). Make sure to replace those with your own settings. Dataset paths are expected to be folders containing datasets, not individual files.
 
 - `schema_config.json`
@@ -37,7 +43,7 @@ This command creates two files in your working directory:
 Use your custom configuration when invoking CLI commands by providing its path with the `--config-path` or `-c` flag as shown below:
 
 ```bash
-ng-model-gym --config-path=<path/to/config.json> train
+ng-model-gym --config-path=<path/to/model_config.json> train
 ```
 
 The `--config-path` (or `-c`) flag is **required** when running the `train`, `qat`, `evaluate`, or `export` commands.
@@ -193,7 +199,7 @@ import ng_model_gym as ngmg
 
 # Generate config file in specified directory using the API or CLI
 # Note: The config file must be filled in before use
-ngmg.generate_config_file("/save/dir")
+ngmg.generate_config_file("nss", "/save/dir")
 ```
 
 ```python

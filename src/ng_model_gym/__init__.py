@@ -65,11 +65,11 @@ else:
 
             return download_pretrained_model
         if attr == "load_config_file":
-            from ng_model_gym.core.utils.config_utils import load_config_file
+            from ng_model_gym.core.config.config_utils import load_config_file
 
             return load_config_file
         if attr == "print_config_options":
-            from ng_model_gym.core.utils.config_utils import print_config_options
+            from ng_model_gym.core.config.config_utils import print_config_options
 
             return print_config_options
         if attr == "logging_config":
@@ -77,7 +77,7 @@ else:
 
             return logging_config
         if attr == "generate_config_file":
-            from ng_model_gym.core.utils.config_utils import generate_config_file
+            from ng_model_gym.core.config.config_utils import generate_config_file
 
             return generate_config_file
 

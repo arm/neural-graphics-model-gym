@@ -7,12 +7,12 @@ from typing import Any, Tuple
 
 import torch
 
+from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.data.utils import DataLoaderMode
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
-from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.types import ModelType, TrainEvalMode
 
 logger = logging.getLogger(__name__)

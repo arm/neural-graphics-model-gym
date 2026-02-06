@@ -42,33 +42,67 @@ cli_state = CLIState()
 
 @app.command(name="init")
 def generate_config(
-    out_dir: Annotated[
-        Optional[Path],
-        typer.Option(
-            help="Output directory to place config file template & schema",
-            show_default=str(Path.cwd()),
+    usecase: Annotated[
+        Optional[str],
+        typer.Argument(
+            help="Usecase to generate a config for",
+            show_default=False,
         ),
-    ] = None
+    ] = None,
+    save_dir: Annotated[
+        Optional[Path],
+        typer.Argument(
+            help="Output directory to place json config file template & schema",
+            file_okay=False,
+            dir_okay=True,
+            resolve_path=True,
+        ),
+    ] = None,
+    list_only: Annotated[
+        bool,
+        typer.Option("--list", help="List available config templates and exit"),
+    ] = False,
 ):
-    """Generate configuration file & schema"""
+    """Generate model configuration file & schema"""
 
     console = Console()
-    with console.status("[bold green]Generating config…", spinner="dots") as _:
-        from ng_model_gym.core.utils.config_utils import generate_config_file
 
-    config_output_path, schema_path = generate_config_file(out_dir)
+    from ng_model_gym.core.config.config_utils import (
+        generate_config_file,
+        list_config_templates,
+    )
+
+    if list_only or usecase is None:
+        available_model_settings = list_config_templates()
+        console.print("\n[bold]Available model configuration templates:[/bold]")
+        for info in available_model_settings:
+            console.print(f"  - {info}")
+        console.print(
+            "\nRun [bold]ng-model-gym init <model-template> [out_dir][/bold] to "
+            "generate a json config template."
+        )
+        return
+
+    try:
+        config_output_path, schema_path = generate_config_file(usecase, save_dir)
+    except (FileNotFoundError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        console.print("\n[bold]Available config templates:[/bold]")
+        for info in list_config_templates():
+            console.print(f"  - {info}")
+        raise typer.Exit(code=1) from exc
 
     console.print(
         f"""
-    [bold magenta]Config[/bold magenta] file written to [bold bright_green]{config_output_path}[/bold bright_green]
-    [bold magenta]Schema[/bold magenta] file copied to [bold bright_green]{schema_path}[/bold bright_green]
+[bold magenta]Config[/bold magenta] file written to [bold bright_green]{config_output_path}[/bold bright_green]
+[bold magenta]Schema[/bold magenta] file copied to [bold bright_green]{schema_path}[/bold bright_green]
 
-    [bold red]→[/bold red] Open the config file now and fill in the <…> placeholders.
-    [bold red]→[/bold red] Refer to [bold bright_green]schema_config.json[/bold bright_green] for a complete description of available configuration fields.
-    [bold red]→[/bold red] Use the [bold bright_cyan]--config-path[/bold bright_cyan] or [bold bright_cyan]-c[/bold bright_cyan] option to pass your config file when running commands.
+[bold red]→[/bold red] Open the config file now and fill in the <…> placeholders.
+[bold red]→[/bold red] Refer to [bold bright_green]schema_config.json[/bold bright_green] for a complete description of available configuration fields.
+[bold red]→[/bold red] Use the [bold bright_cyan]--config-path[/bold bright_cyan] or [bold bright_cyan]-c[/bold bright_cyan] option to pass your config file when running commands.
 
-    [dim]Run [bold]ng-model-gym --help[/bold] to explore all CLI options.[/dim]
-    """
+[dim]Run [bold]ng-model-gym --help[/bold] to explore all CLI options.[/dim]
+"""
     )
 
 
@@ -392,12 +426,7 @@ def cli_root(
         return
 
     # Skip this function if --help flag is passed to a command
-    if (
-        "--help" in sys.argv
-        or "config-options" in sys.argv
-        or "init" in sys.argv
-        or "--out_dir" in sys.argv
-    ):
+    if "--help" in sys.argv or "config-options" in sys.argv or "init" in sys.argv:
         return
 
     # IMPORTANT - add commands requiring config to this list
@@ -414,7 +443,7 @@ def cli_root(
     console = Console()
 
     with console.status("[bold green] Loading modules...", spinner="dots") as _:
-        from ng_model_gym.core.utils.config_utils import load_config_file
+        from ng_model_gym.core.config.config_utils import load_config_file
         from ng_model_gym.core.utils.general_utils import fix_randomness
         from ng_model_gym.core.utils.logging import log_machine_info, logging_config
 

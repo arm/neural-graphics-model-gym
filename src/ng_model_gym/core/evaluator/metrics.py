@@ -11,7 +11,7 @@ from torchmetrics import Metric
 from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.image.ssim import StructuralSimilarityIndexMeasure
 
-from ng_model_gym.core.utils.config_model import ConfigModel
+from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.utils.general_utils import suspend_tqdm_bar
 
 logger = logging.getLogger(__name__)
@@ -540,7 +540,10 @@ def get_metrics(
 
     For evaluation/test, we use the streaming versions of temporal metrics.
     """
-    use_streaming = is_test and params.dataset.recurrent_samples is not None
+
+    # TODO - Hardcoded NSS specific parameter (recurrent_samples) requires removal
+    recurrent_samples = getattr(params.model, "recurrent_samples", None)
+    use_streaming = is_test and recurrent_samples is not None
     metrics_from_config = _metrics_from_config(params, use_streaming)
     metrics = (
         metrics_from_config if metrics_from_config else _default_metrics(use_streaming)

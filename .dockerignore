@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 *.egg-info
@@ -24,4 +24,5 @@ checkpoints/*
 .cache/*
 config.json
 schema_config.json
-!src/ng_model_gym/usecases/nss/configs/schema_config.json
+# Keep the schema config file in source control
+!src/ng_model_gym/core/config/schema_config.json

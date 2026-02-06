@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List
 
 from ng_model_gym.core.utils.checkpoint_utils import latest_checkpoint_in_dir
-from ng_model_gym.core.utils.general_utils import create_directory
+from ng_model_gym.core.utils.directory_utils import create_directory
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import clear_loggers
 
@@ -41,7 +41,7 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         self.finetune_weights = "tests/usecases/nss/weights/nss_v0.1.0_fp32.pt"
         self.tensorboard_dir = Path(self.test_dir, "tensorboard-logs")
         create_directory(self.tensorboard_dir)
-        config_path = files("ng_model_gym.usecases.nss.configs") / "default.json"
+        config_path = files("ng_model_gym.usecases.nss.configs") / "nss_template.json"
         with open(config_path, encoding="utf-8") as f:
             self.cfg_json = json.load(f)
 
@@ -61,6 +61,7 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         # integration-test dataset
         self.cfg_json["dataset"]["path"]["train"] = self.train_data_dir
         self.cfg_json["dataset"]["path"]["test"] = self.test_data_dir
+        self.cfg_json["dataset"]["path"]["validation"] = ""
         self.cfg_json["output"][
             "export_frame_png"
         ] = False  # Speed up integration tests
@@ -136,7 +137,7 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         # Override default params for the test
         cfg_json["train"]["batch_size"] = 4
         cfg_json["train"]["fp32"]["number_of_epochs"] = 1
-        cfg_json["dataset"]["recurrent_samples"] = 2
+        cfg_json["model"]["recurrent_samples"] = 2
         cfg_json["dataset"]["path"]["train"] = "tests/usecases/nss/datasets/train"
         cfg_json["dataset"]["path"]["test"] = "tests/usecases/nss/datasets/test"
 
@@ -198,7 +199,7 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         # Override default params for the test
         cfg_json["train"]["batch_size"] = 4
         cfg_json["train"]["qat"]["number_of_epochs"] = 1
-        cfg_json["dataset"]["recurrent_samples"] = 4
+        cfg_json["model"]["recurrent_samples"] = 4
 
         with open(self.test_cfg_path, "w", encoding="utf-8") as f:
             json.dump(cfg_json, f)

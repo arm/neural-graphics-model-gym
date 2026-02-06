@@ -42,7 +42,7 @@ class TestNSS(BaseGPUMemoryTest):
         params.model_train_eval_mode = TrainEvalMode.FP32
         params.dataset.gt_augmentation = True
         params.train.batch_size = 2
-        params.dataset.recurrent_samples = 4
+        params.model.recurrent_samples = 4
         self.device = torch.device("cuda")
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
@@ -50,7 +50,7 @@ class TestNSS(BaseGPUMemoryTest):
         if not isinstance(self.model, BaseNGModel):
             raise TypeError("Model is not a BaseNGModel")
         self.batch = params.train.batch_size
-        self.recurrence = params.dataset.recurrent_samples
+        self.recurrence = params.model.recurrent_samples
         self.data = self._data_creator_helper(128, 128, 256, 256)
         self.params = params
 

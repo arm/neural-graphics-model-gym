@@ -26,12 +26,12 @@ from torchao.quantization.pt2e.quantizer import (
     QuantizationSpec,
 )
 
+from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.quantization.observers import (
     enable_all_observers,
     freeze_all_observers,
     FusedMovingAvgObsFakeQuantizeFix,
 )
-from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.tensor_types import TensorData
 from ng_model_gym.core.utils.types import ExportSpec
 
@@ -56,7 +56,7 @@ class BaseNGModel(nn.Module, ABC):
     Example::
 
         from torch import nn
-        from ng_model_gym.core.utils.config_model import ConfigModel
+        from ng_model_gym.core.config.config_model import ConfigModel
 
         class ExampleNGModel(BaseNGModel):
             def __init__(self, params: ConfigModel):

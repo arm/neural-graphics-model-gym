@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -9,10 +9,9 @@ from pathlib import Path
 
 import GPUtil
 import psutil
-import torch
 
-from ng_model_gym.core.utils.config_model import ConfigModel
-from ng_model_gym.core.utils.general_utils import create_directory
+from ng_model_gym.core.config.config_model import ConfigModel
+from ng_model_gym.core.utils.directory_utils import create_directory
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +50,9 @@ def logging_config(
 
 def log_gpu_torch():
     """Log information about GPU used in training."""
+
+    # pylint: disable=import-outside-toplevel
+    import torch
 
     if torch.cuda.is_available():
         num_gpus = torch.cuda.device_count()

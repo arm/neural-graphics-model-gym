@@ -4,8 +4,6 @@
 import logging
 import random
 from contextlib import contextmanager
-from pathlib import Path
-from typing import Union
 
 import click
 import numpy as np
@@ -13,16 +11,6 @@ import torch
 from tqdm.asyncio import tqdm
 
 logger = logging.getLogger(__name__)
-
-
-def create_directory(dir_path: Union[str, Path]):
-    """Create directory if it doesn't already exist."""
-    try:
-        Path(dir_path).mkdir(parents=True, exist_ok=True)
-        logger.debug(f"Directory at {dir_path} already exists or has been created.")
-    except (FileExistsError, PermissionError, ValueError) as e:
-        logger.error(e)
-        raise
 
 
 def fix_randomness(seed, use_deterministic_cuda=False):

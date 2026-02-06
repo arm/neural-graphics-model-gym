@@ -81,9 +81,15 @@ Basic usage is shown here. More detailed commands can be found in [usage.md](./d
 
 #### Command line usage
 
-Generate a configuration file (`config.json`):
+List the available model configuration files:
 ```bash
-ng-model-gym init
+ng-model-gym init --list
+```
+Running `ng-model-gym init` with no arguments also lists model configuration files.
+
+Generate a JSON configuration file for a model. If no directory path is provided, files are saved to current directory.
+```bash
+ng-model-gym init <model-template> [save_dir]
 ```
 This file contains configuration options for the different usage modes (training, evaluation, and exporting) and paths to local datasets. Some entries have placeholder values (e.g. "<...>"). Make sure to replace those with your own settings.
 
@@ -133,7 +139,7 @@ import ng_model_gym as ngmg
 
 # Generate config file in specified directory using the API or CLI
 # Note: The config file must be filled in before use
-ngmg.generate_config_file("/save/dir")
+ngmg.generate_config_file("nss", "/save/dir")
 ```
 
 ```python

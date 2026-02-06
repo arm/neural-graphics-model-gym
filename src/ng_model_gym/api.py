@@ -12,11 +12,11 @@ from torch.profiler import schedule
 import ng_model_gym.core.utils.patch.torchao_patch  # pylint: disable=unused-import # isort: split
 import ng_model_gym.core.utils.patch.executorch_patch  # pylint: disable=unused-import # isort: split
 from ng_model_gym import download_pretrained_model
+from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.evaluator import NGModelEvaluator
 from ng_model_gym.core.trainer import Trainer
 from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
-from ng_model_gym.core.utils.config_model import ConfigModel
-from ng_model_gym.core.utils.general_utils import create_directory
+from ng_model_gym.core.utils.directory_utils import create_directory
 from ng_model_gym.core.utils.gpu_log_decorator import gpu_log_decorator
 from ng_model_gym.core.utils.logging import log_gpu_torch
 from ng_model_gym.core.utils.memory_log_decorator import memory_log_decorator

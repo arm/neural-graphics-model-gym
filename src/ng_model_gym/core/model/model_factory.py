@@ -6,9 +6,9 @@ from typing import Type
 
 import torch
 
+from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.model_registry import get_model_key, MODEL_REGISTRY
-from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.types import TrainEvalMode
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,14 @@ def get_model_from_config(params: ConfigModel) -> Type[BaseNGModel]:
 
     model_key = get_model_key(model_name, model_version)
 
-    return MODEL_REGISTRY.get(model_key)
+    model = MODEL_REGISTRY.get(model_key)
+
+    if model is None:
+        raise KeyError(
+            "Custom model not found in registry. See custom model docs for more information. "
+        )
+
+    return model
 
 
 def create_model(params: ConfigModel, device: torch.device) -> BaseNGModel:

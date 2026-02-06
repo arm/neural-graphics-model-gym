@@ -33,5 +33,5 @@ checkpoints/*
 config*.json
 schema_config.json
 
-# We do want to keep the default config file in source control
-!src/ng_model_gym/usecases/nss/configs/schema_config.json
+# Keep the schema config file in source control
+!src/ng_model_gym/core/config/schema_config.json

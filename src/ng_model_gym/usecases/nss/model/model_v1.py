@@ -8,6 +8,7 @@ from typing import Tuple
 import torch
 from torch import nn, Tensor
 
+from ng_model_gym.core.config.config_model import ConfigModel, NSSModelSettings
 from ng_model_gym.core.data.utils import tonemap_forward
 from ng_model_gym.core.history_buffer import HistoryBuffer
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
@@ -16,7 +17,6 @@ from ng_model_gym.core.model.graphics_utils import (
     generate_lr_to_hr_lut,
 )
 from ng_model_gym.core.model.model_registry import register_model
-from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.core.utils.tensor_types import TensorData
 from ng_model_gym.core.utils.types import HistoryBufferResetFunction
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
@@ -44,6 +44,11 @@ class NSSModel(BaseNGModel):
         """Set up the model."""
         super().__init__(params)
 
+        if not isinstance(self.params.model, NSSModelSettings):
+            raise TypeError(
+                "model section in parameter is not of type NSSModelSettings"
+            )
+
         self.feedback_ch = 4
 
         self.shader_accurate = self.params.processing.shader_accurate
@@ -52,7 +57,7 @@ class NSSModel(BaseNGModel):
 
         self.autoencoder = AutoEncoderV1(feedback_ch=self.feedback_ch, batch_norm=True)
 
-        self.scale = self.params.train.scale
+        self.scale = self.params.model.scale
 
         self.dm_scale_on_no_motion = nn.Parameter(
             torch.tensor([0.5]), requires_grad=True
@@ -63,7 +68,7 @@ class NSSModel(BaseNGModel):
 
         self.padding_policy: NSSPaddingPolicy | None = None
 
-        self.recurrent_samples = params.dataset.recurrent_samples
+        self.recurrent_samples = params.model.recurrent_samples
         self.unpad = True
         self.history_buffers = self.init_history_buffers()
         self.device = torch.device("cuda")
@@ -466,7 +471,7 @@ class NSSModel(BaseNGModel):
         lr_res = Resolution(height=lr_h, width=lr_w)
         hr_res = Resolution(height=hr_h, width=hr_w)
 
-        scale = int(self.params.train.scale)
+        scale = int(self.params.model.scale)
         multiple = 8
         return NSSPaddingPolicy(lr_res, hr_res, multiple, scale)
 

@@ -10,8 +10,8 @@ from pathlib import Path
 
 import numpy as np
 
-from ng_model_gym.core.utils.config_model import ConfigModel
-from ng_model_gym.core.utils.general_utils import create_directory
+from ng_model_gym.core.config.config_model import ConfigModel
+from ng_model_gym.core.utils.directory_utils import create_directory
 
 
 def clear_loggers() -> None:
@@ -59,14 +59,19 @@ def create_simple_params(
     num_workers = 0 if platform.system() == "Windows" else 4
 
     default_params = {
-        "model": {"name": "NSS", "version": "1"},
+        "model": {
+            "name": "nss",
+            "model_source": "prebuilt",
+            "version": "1",
+            "scale": 2.0,
+            "recurrent_samples": 16,
+        },
         "processing": {"shader_accurate": False},
         "dataset": {
             "name": "NSS",
             "version": "1",
             "path": {"train": dataset, "validation": dataset, "test": dataset},
             "health_check": True,
-            "recurrent_samples": 16,
             "gt_augmentation": True,
             "exposure": 2,
             "tonemapper": "reinhard",
@@ -84,7 +89,6 @@ def create_simple_params(
         },
         "train": {
             "batch_size": 8,
-            "scale": 2.0,
             "seed": 123456,
             "perform_validate": False,
             "loss_fn": "loss_v1",
