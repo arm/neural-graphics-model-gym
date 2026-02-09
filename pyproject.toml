@@ -31,33 +31,34 @@ dependencies = [
     "huggingface-hub==0.34.3",
     "lpips==0.1.4",
     "memory-profiler==0.61.0",
-    "numpy==2.0.0",
-    "openexr==3.3.3",
-    "pillow==10.2.0",
-    "psutil==5.9.8",
-    "pydantic==2.10.4",
-    "requests==2.32.3",
+    "numpy==2.2.6",
+    "openexr==3.4.4",
+    "pillow==12.1.0",
+    "psutil==7.2.1",
+    "pydantic==2.12.5",
+    "requests==2.32.5",
     "rich==13.9.3",
-    "safetensors==0.5.3",
-    "slangtorch==1.3.11",
-    "tensorboard==2.17.1",
+    "safetensors==0.7.0",
+    "setuptools==80.10.2",
+    "slangtorch==1.3.18",
+    "tensorboard==2.20.0",
     "torcheval==0.0.7",
-    "torchmetrics==1.7.0",
-    "torch==2.9.0 ; platform_system == 'Linux'" ,
-    "torch @ https://download.pytorch.org/whl/cu128/torch-2.9.0%2Bcu128-cp310-cp310-win_amd64.whl ; python_version=='3.10' and platform_system == 'Windows'",
-    "torch @ https://download.pytorch.org/whl/cu128/torch-2.9.0%2Bcu128-cp311-cp311-win_amd64.whl ; python_version=='3.11' and platform_system == 'Windows'",
-    "torch @ https://download.pytorch.org/whl/cu128/torch-2.9.0%2Bcu128-cp312-cp312-win_amd64.whl ; python_version=='3.12' and platform_system == 'Windows'",
-    "torchvision==0.24.0; platform_system == 'Linux'",
-    "torchvision @ https://download.pytorch.org/whl/cu128/torchvision-0.24.0%2Bcu128-cp310-cp310-win_amd64.whl ; python_version=='3.10' and platform_system == 'Windows'",
-    "torchvision @ https://download.pytorch.org/whl/cu128/torchvision-0.24.0%2Bcu128-cp311-cp311-win_amd64.whl ; python_version=='3.11' and platform_system == 'Windows'",
-    "torchvision @ https://download.pytorch.org/whl/cu128/torchvision-0.24.0%2Bcu128-cp312-cp312-win_amd64.whl ; python_version=='3.12' and platform_system == 'Windows'",
-    "executorch==1.0.0",
-    "tosa_serialization_lib @ git+https://git.gitlab.arm.com/tosa/tosa-serialization.git@6454bc0f",
-    "ml-dtypes==0.5.1",
-    "torchao==0.14.0",
-    "tqdm==4.66.0",
+    "torchmetrics==1.8.2",
+    "torch==2.10.0 ; platform_system == 'Linux'" ,
+    "torch @ https://download.pytorch.org/whl/cu128/torch-2.10.0%2Bcu128-cp310-cp310-win_amd64.whl ; python_version=='3.10' and platform_system == 'Windows'",
+    "torch @ https://download.pytorch.org/whl/cu128/torch-2.10.0%2Bcu128-cp311-cp311-win_amd64.whl ; python_version=='3.11' and platform_system == 'Windows'",
+    "torch @ https://download.pytorch.org/whl/cu128/torch-2.10.0%2Bcu128-cp312-cp312-win_amd64.whl ; python_version=='3.12' and platform_system == 'Windows'",
+    "torchvision==0.25.0; platform_system == 'Linux'",
+    "torchvision @ https://download.pytorch.org/whl/cu128/torchvision-0.25.0%2Bcu128-cp310-cp310-win_amd64.whl ; python_version=='3.10' and platform_system == 'Windows'",
+    "torchvision @ https://download.pytorch.org/whl/cu128/torchvision-0.25.0%2Bcu128-cp311-cp311-win_amd64.whl ; python_version=='3.11' and platform_system == 'Windows'",
+    "torchvision @ https://download.pytorch.org/whl/cu128/torchvision-0.25.0%2Bcu128-cp312-cp312-win_amd64.whl ; python_version=='3.12' and platform_system == 'Windows'",
+    "executorch==1.1.0",
+    "tosa_serialization_lib @ git+https://git.gitlab.arm.com/tosa/tosa-tools.git@8468d041c50c6d806f3c1c18c66d7ef641e46580#subdirectory=serialization",
+    "ml-dtypes==0.5.4",
+    "torchao==0.15.0",
+    "tqdm==4.67.1",
     "typer==0.15.4",
-    "ai-ml-sdk-model-converter==0.7.0",
+    "ai-ml-sdk-model-converter==0.8.0",
     "pyiqa==0.1.14.1",
 ]
 
@@ -116,7 +117,6 @@ include = [
 [project.scripts]
 # Name of variable is the name of the CLI program
 ng-model-gym = "ng_model_gym.cli:main"
-model-converter  = "ng_model_gym.bin.model_converter_launcher:main"
 
 [tool.isort]
 profile = "black"
@@ -125,9 +125,19 @@ known_first_party = ["ng_model_gym", "tests"]
 force_sort_within_sections = false
 order_by_type = false
 lines_between_types = 0
+skip = ["venv", "venv-default", "venv-test"]
 
 [tool.autoflake]
-exclude = ["./venv", "./build", "./checkpoints", "./data", "./dist", "./output"]
+exclude = [
+    "./venv",
+    "./venv-default",
+    "./venv-test",
+    "./build",
+    "./checkpoints",
+    "./data",
+    "./dist",
+    "./output",
+]
 
 [tool.bandit]
 exclude_dirs = [
@@ -138,6 +148,8 @@ exclude_dirs = [
     "data",
     "directory_env",
     "venv",
+    "venv-default",
+    "venv-test",
 ]
 
 [tool.bandit.assert_used]
@@ -172,12 +184,14 @@ disable = [
 features = ["dev"]
 dev-mode = true
 installer = "uv"
+path = "venv-default"
 
 [tool.uv]
 prerelease = "allow"
 
 [tool.hatch.envs.test]
 template = "default"
+path = "venv-test"
 
 [tool.hatch.envs.test.env-vars]
 DEFAULT_USECASE="nss"

@@ -23,7 +23,11 @@ class TestExecuTorchIntegration(unittest.TestCase):
     def setUpClass(cls):
         """Run only once before executing tests."""
         cls.startTimeTotal = time.time()
-        cls.test_dir = tempfile.mkdtemp()
+        repo_root = Path(__file__).resolve().parents[3]
+        output_root = repo_root / "output"
+        output_root.mkdir(parents=True, exist_ok=True)
+        # ExecuTorch skips tosa/vgf output under system temp dir
+        cls.test_dir = tempfile.mkdtemp(prefix="tmp-test", dir=output_root)
         cls.tosa_out_dir = Path(cls.test_dir) / "tosa"
 
     @classmethod

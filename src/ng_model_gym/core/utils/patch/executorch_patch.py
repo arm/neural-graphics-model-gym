@@ -1,4 +1,4 @@
-# Copyright 2025 Arm Limited and/or its affiliates.
+# Copyright 2025-2026 Arm Limited and/or its affiliates.
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSES/LicenseRef-BSD-ExecuTorch.txt file in the top-level directory.
@@ -15,6 +15,8 @@ import shutil
 import subprocess  # nosec B404
 import tempfile
 from typing import List
+
+from executorch.backends.arm.vgf.model_converter import require_model_converter_binary
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +37,7 @@ def vgf_compile(
         vgf_path = tosa_path + ".vgf"
 
         conversion_command = [
-            "model-converter",
+            require_model_converter_binary(),
             *compile_flags,
             "-i",
             tosa_path,

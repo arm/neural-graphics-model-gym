@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+import tempfile
 from pathlib import Path
 
 from ng_model_gym.api import do_evaluate, do_export, do_training
@@ -65,18 +66,23 @@ class ApiIntegrationTest(BaseIntegrationTest):
         """do_export should not modify the config and produce output files."""
         # Train a model to generate a checkpoint to read from in export
         do_training(self.config, TrainEvalMode.FP32, ProfilerType.DISABLED)
-        # Set an export directory under BaseIntegrationTest's test_dir
-        export_dir = Path(self.test_dir) / "export" / "vgf"
-        model_file = Path("tests/usecases/nss/weights/nss_v0.1.0_fp32.pt")
-        self.config.output.export.vgf_output_dir = export_dir
+        # Set an export directory under the project output folder
+        repo_root = Path(__file__).resolve().parents[4]
+        output_root = repo_root / "output"
 
-        before = self.config.model_dump()
-        do_export(self.config, model_file, export_type=ExportType.FP32)
-        after = self.config.model_dump()
+        with tempfile.TemporaryDirectory(dir=output_root) as tmp_dir:
+            export_dir = Path(tmp_dir) / "export" / "vgf"
+            model_file = Path("tests/usecases/nss/weights/nss_v0.1.0_fp32.pt")
+            self.config.output.export.vgf_output_dir = export_dir
 
-        self.assertEqual(before, after, "do_export mutated the config!")
-        # verify at least one file was created in export_dir
-        files = list(export_dir.rglob("*"))
-        self.assertTrue(
-            any(f.is_file() for f in files), "do_export did not produce any files"
-        )
+            before = self.config.model_dump()
+            do_export(self.config, model_file, export_type=ExportType.FP32)
+            after = self.config.model_dump()
+
+            self.assertEqual(before, after, "do_export mutated the config!")
+            # verify at least one file was created in export_dir
+            files = list(export_dir.rglob("*"))
+            self.assertTrue(
+                any(f.is_file() for f in files),
+                "do_export did not produce any files",
+            )
