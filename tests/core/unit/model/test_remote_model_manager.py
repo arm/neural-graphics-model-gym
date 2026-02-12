@@ -9,7 +9,7 @@ from pathlib import Path
 
 from huggingface_hub.errors import RepositoryNotFoundError
 
-from ng_model_gym.core.model.repos.remote_model_manager import (
+from ng_model_gym.core.repos.remote_model_manager import (
     download_pretrained_model,
     list_pretrained_models,
     parse_model_identifier,

@@ -35,8 +35,4 @@ from .model_registry import (
 )
 from .model_tracer import model_tracer
 from .recurrent_model import FeedbackModel
-from .repos.remote_model_manager import (
-    download_pretrained_model,
-    list_pretrained_models,
-)
 from .shaders.slang_utils import load_slang_module

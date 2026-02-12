@@ -9,7 +9,7 @@ from typing import List
 from huggingface_hub import hf_hub_download, HfApi
 from huggingface_hub.errors import RepositoryNotFoundError
 
-from ng_model_gym.core.model.repos.base_model_server import (
+from ng_model_gym.core.repos.base_model_server import (
     BaseModelServer,
     ModelMetadata,
     ModelRepository,

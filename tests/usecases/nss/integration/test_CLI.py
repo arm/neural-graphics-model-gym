@@ -43,14 +43,17 @@ class CLIIntegrationTest(BaseIntegrationTest):
     def test_cli_invocation_time(self):
         """CLI help interactions launch should be  less than <1 second"""
         cli_commands = [
-            ["ng-model-gym", "--help"],
-            ["ng-model-gym", "train", "--help"],
-            ["ng-model-gym", "--version"],
-            ["ng-model-gym", "qat", "--help"],
+            (["ng-model-gym", "--help"], 1.0),
+            (["ng-model-gym", "train", "--help"], 1.0),
+            (["ng-model-gym", "--version"], 1.0),
+            (["ng-model-gym", "qat", "--help"], 1.0),
+            (["ng-model-gym", "list-models", "--help"], 1.0),
+            (["ng-model-gym", "list-models"], 1.75),
+            (["ng-model-gym", "download", "--help"], 1.0),
         ]
 
-        for cmd in cli_commands:
-            with self.subTest(cmd=" ".join(cmd)):
+        for cmd, max_time in cli_commands:
+            with self.subTest(cmd=" ".join(cmd), max_time=max_time):
                 start = time.perf_counter()
                 sub_proc = subprocess.run(
                     cmd,
@@ -65,7 +68,9 @@ class CLIIntegrationTest(BaseIntegrationTest):
                 )
 
                 self.assertLess(
-                    elapsed, 1.0, f"{cmd!r} took {elapsed:.2f}s (must be < 1s)"
+                    elapsed,
+                    max_time,
+                    f"{cmd!r} took {elapsed:.2f}s (must be < {max_time:.1f}s)",
                 )
 
     def test_init_config_file(self):
