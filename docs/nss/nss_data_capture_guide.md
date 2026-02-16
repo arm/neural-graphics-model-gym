@@ -1,5 +1,5 @@
 <!---
-SPDX-FileCopyrightText: Copyright 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+SPDX-FileCopyrightText: Copyright 2025-2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 SPDX-License-Identifier: Apache-2.0
 --->
 
@@ -12,6 +12,7 @@ SPDX-License-Identifier: Apache-2.0
 2. [Data Capture Steps](#data-capture-steps)
 3. [Recommendations](#recommendations)
     * [Sequences](#sequences)
+    * [Annotating Camera Cuts](#annotating-camera-cuts)
     * [Dataset Size](#dataset-size)
     * [Types of Content to Capture](#types-of-content-to-capture)
     * [Check Data Licensing](#check-data-licensing)
@@ -39,7 +40,7 @@ Locate the point in your engine's rendering pipeline before most post-processing
 2. To create the low-resolution (SrcResolution) input frames, pass the color, motion vector, and depth buffers into one or more shaders which decimate and jitter them.
 3. To generate the high-quality (TargetResolution) ground-truth frames, downsample the color as recommended in the [Data Capture Theory](#data-capture-theory) section of this document.
 4. Save these textures to disk in the layout as defined in the [Dataset Specification](nss_dataset_specification.md). You do not need to continue the rendering pipeline after this step.
-5. After you render the required number of frames, write a JSON file with required metadata. You can see an [example](../../tests/datasets/test_exr/0002.json) in the Neural Graphics Model Gym.
+5. After you render the required number of frames, write a JSON file with required metadata. You can see an [example](../../tests/datasets/test_exr/0002.json) in the Neural Graphics Model Gym. If your capturing method used Camera Cuts (or large rotations/translations during a capture sequence), please ensure every frame includes a `CameraCut` boolean so the tooling can split captures into cut-free sequences (see [Annotating Camera Cuts](#annotating-camera-cuts)).
 6. Optionally, to capture frames of a pre-authored sequence, use **Replay** functionality in your game engine to simplify the capture process and make it repeatable.
 
 ## Recommendations
@@ -50,7 +51,17 @@ You must train NSS in a recurrent manner. The training input consists of a seque
 
 To generate the sequences of t_train frames, you must capture frame sequences from your game. The length of these captured sequences are labelled as t_captured, where t_captured > t_train. Once collections of longer sequences have been captured, then the code within the model-gym handles the generation of batches of data of length t_train for the training process.
 
-We recommend capturing many short sequences of frames rather than a few long ones. This approach simplifies dataset curation and increases training set diversity. We typically set t_captured to approximately 100.
+We recommend capturing many short sequences of frames from different scenes rather than a few long ones from a single scene. This approach simplifies dataset curation and increases training set diversity - which should help when training NSS. We typically set t_captured to approximately 100
+
+### Annotating Camera Cuts
+Camera cuts reset the NSS temporal history. If your method of data capture involves camera cuts in a single capture, you must:
+
+- Set `CameraCut=true` for the first frame of each capture, and for the first frame following any teleport, hard cut, or other discontinuity that invalidates history buffers.
+- Keep `CameraCut=false` for frames that continue the same continuous motion.
+- Regenerate JSON metadata when retrofitting legacy captures; if `CameraCut` is missing the Model Gym assumes the entire capture is one long sequence.
+
+The EXR→Safetensors writer copies this metadata into a `camera_cut` tensor, and the NSS dataset loader refuses to emit recurrent windows that cross a flagged frame, dropping sequences which are shorter than `recurrent_samples`.
+
 ### Dataset Size
 In general, larger datasets improve machine learning model performance.
 

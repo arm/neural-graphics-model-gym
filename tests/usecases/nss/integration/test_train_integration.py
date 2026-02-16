@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from tests.usecases.nss.integration.base_integration import BaseIntegrationTest
+from tests.usecases.nss.unit.data.camera_cut_builders import write_camera_cut_fixture
 
 
 # pylint: disable=duplicate-code
@@ -220,6 +221,45 @@ class TrainingIntegrationTest(BaseIntegrationTest):
 
         self.assertEqual(sub_proc.returncode, 0)
         self.assertIn("Validation:", sub_proc.stdout + sub_proc.stderr)
+
+    def test_training_with_camera_cut_dataset(self):
+        """Smoke test: training CLI accepts safetensors that include camera cuts."""
+        # Ensure every camera-cut segment spans at least `recurrent_samples` frames
+        # so the dataset yields valid sliding windows for training.
+        flags = [False, False, False, False, True, False, False, False, False]
+        dataset_dir = write_camera_cut_fixture(
+            Path(self.test_dir) / "camcut_dataset", flags
+        )
+        cfg_path = Path(self.test_dir, "camera_cut_train.json")
+
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        for split in ("train", "validation", "test"):
+            cfg_json["dataset"]["path"][split] = str(dataset_dir)
+        cfg_json["dataset"]["recurrent_samples"] = 4
+        cfg_json["train"]["batch_size"] = 1
+        cfg_json["train"]["fp32"]["number_of_epochs"] = 1
+
+        with open(cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
+
+        sub_proc = subprocess.run(
+            [
+                "ng-model-gym",
+                f"--config-path={cfg_path}",
+                "train",
+                "--no-evaluate",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(
+            sub_proc.returncode,
+            0,
+            msg=f"Camera-cut training failed: {sub_proc.stderr}",
+        )
 
     def test_train_with_validation_missing_dataset(self):
         """Test train with validation raises error if missing dataset path"""

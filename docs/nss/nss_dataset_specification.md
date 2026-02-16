@@ -1,5 +1,5 @@
 <!---
-SPDX-FileCopyrightText: Copyright 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+SPDX-FileCopyrightText: Copyright 2025-2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 SPDX-License-Identifier: Apache-2.0
 --->
 
@@ -8,8 +8,9 @@ SPDX-License-Identifier: Apache-2.0
 ## Table of Contents
 
 1. [Introduction](#introduction)
-2. [Dataset contents](#dataset-contents)
-3. [Capture layout](#capture-layout)
+2. [Terminology](#terminology)
+3. [Dataset contents](#dataset-contents)
+4. [Capture layout](#capture-layout)
     * [Images](#images)
     * [Metadata](#metadata)
       * [Per-sequence](#per-sequence)
@@ -19,6 +20,12 @@ SPDX-License-Identifier: Apache-2.0
 
 This document describes the specification for data that needs to be captured from your game engine of choice to train Neural Super Sampling (NSS).
 Python [scripts](../../scripts/safetensors_generator/safetensors_writer.py) included within this repository expect your engine captured data to be in the format described by this document.
+
+## Terminology
+
+- **Sequence** – a contiguous range of frames within a capture that contains no camera cuts.
+- **Capture** – a chronological recording of frames exported from the engine. A single capture may include multiple camera cuts.
+- **Dataset** – a collection of captures grouped for training or evaluation.
 
 ## Dataset contents
 
@@ -129,3 +136,4 @@ Metadata is split up into two parts "per sequence," which reflects global inform
 |`Jitter` | `dict` | The frame's raw jitter offset in pixels. e.g., `{"X": 0.25, "Y": 0.67}`. | Mandatory |
 |`NormalizedPerRatioJitter` | `list` | List containing per-upscaling ratio normalized jitter offsets (i.e. NormalizedPerRatioJitter [x2_index] would be the jitter offset used for decimating the textures in the x2 scenario). Normalized jitter values are the `Jitter {-0.5, 0.5}` divided by the SrcRes (i.e 960x540) | Mandatory |
 |`Exposure` | `float` | Exposure value used in the frame for color correction. | Optional |
+|`CameraCut` | `bool` | `true` when the current frame is the first frame after a camera cut, otherwise `false`. | Optional |

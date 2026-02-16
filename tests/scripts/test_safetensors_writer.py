@@ -11,13 +11,18 @@ from pathlib import Path
 
 import numpy as np
 import torch
+from safetensors import safe_open
 
+from ng_model_gym.core.data.utils import DataLoaderMode
 from ng_model_gym.core.utils.exr_utils import read_exr_torch
+from ng_model_gym.usecases.nss.data.dataset import NSSDataset
 from scripts.safetensors_generator.dataset_reader import (
     generic_safetensors_reader,
     NSSEXRDatasetReader,
 )
 from scripts.safetensors_generator.safetensors_writer import generic_safetensors_writer
+from tests.testing_utils import create_simple_params
+from tests.usecases.nss.unit.data.camera_cut_builders import compute_expected_segments
 
 
 class TestSafetensorsWriter(unittest.TestCase):
@@ -59,6 +64,30 @@ class TestSafetensorsWriter(unittest.TestCase):
         # Remove cropped safetensors
         if self.crop_output_root.exists():
             shutil.rmtree(self.crop_output_root)
+
+    def _clone_args(self):
+        return argparse.Namespace(**vars(self.args))
+
+    def _apply_camera_cut_metadata(
+        self, dataset_root: Path, camera_cut_flags, *, seq_path: Path | None = None
+    ):
+        seq_path = seq_path or self.seq_path
+        json_path = dataset_root / f"{seq_path}.json"
+        with open(json_path, "r", encoding="utf-8") as src_file:
+            metadata = json.load(src_file)
+        frames = metadata.get("Frames", [])
+        if len(frames) < len(camera_cut_flags):
+            raise AssertionError("CameraCut flags exceed available metadata frames")
+        for idx, frame in enumerate(frames):
+            flag = bool(camera_cut_flags[idx]) if idx < len(camera_cut_flags) else False
+            frame["CameraCut"] = flag
+        with open(json_path, "w", encoding="utf-8") as dst_file:
+            json.dump(metadata, dst_file, indent=2)
+
+    @staticmethod
+    def _writer_output_root(args: argparse.Namespace) -> Path:
+        """Mirror SafetensorsWriter dst layout."""
+        return Path(args.dst) / Path(args.src).name
 
     def test_compare_saved_tensors(self):
         """Test tensor values, dtype and shape are preserved."""
@@ -243,3 +272,124 @@ class TestSafetensorsWriter(unittest.TestCase):
                 torch.allclose(written["depth"], expected_depth, atol=1e-6),
                 msg="Depth tensor was not inverted for ReverseZ dataset.",
             )
+
+    def test_camera_cut_tensor_persisted(self):
+        """Writer copies CameraCut flags from JSON into the uncropped safetensor tensor."""
+        flags = [True, False, False, False, False, True]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            dst = Path(tmp_dir) / "dst"
+            shutil.copytree(self.args.src, src)
+            args = self._clone_args()
+            args.src = src
+            args.dst = dst
+            self._apply_camera_cut_metadata(src, flags)
+
+            generic_safetensors_writer(args)
+
+            output_root = self._writer_output_root(args)
+            output_path = output_root / f"{self.seq_path}.safetensors"
+            with safe_open(output_path, framework="pt") as written:
+                self.assertIn("camera_cut", list(written.keys()))
+                tensor = written.get_tensor("camera_cut").view(-1)
+                self.assertEqual(tensor.dtype, torch.bool)
+                self.assertGreaterEqual(tensor.shape[0], 1)
+                self.assertLessEqual(tensor.shape[0], len(flags))
+                expected = flags[: tensor.shape[0]]
+                self.assertEqual(tensor.tolist(), expected)
+
+    def test_camera_cut_tensor_persisted_in_crops(self):
+        """Cropper propagates per-frame camera_cut flags even when multiple frames exist."""
+        seq_path = self.seq_path
+        source_root = self.args.src
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            dst = Path(tmp_dir) / "dst"
+            shutil.copytree(source_root, src)
+            camcut_metadata = src / f"{seq_path}_camcut.json"
+            seq_metadata = src / f"{seq_path}.json"
+            self.assertTrue(
+                camcut_metadata.exists(),
+                msg=f"{camcut_metadata} missing camera-cut metadata fixture.",
+            )
+            shutil.copyfile(camcut_metadata, seq_metadata)
+
+            with open(seq_metadata, encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+            frames = metadata.get("Frames", [])
+            self.assertGreater(
+                len(frames),
+                0,
+                msg="Camera-cut fixtures do not have any frame metadata.",
+            )
+            expected_flags = [bool(frame.get("CameraCut", False)) for frame in frames]
+
+            args = self._clone_args()
+            args.src = src
+            args.dst = dst
+
+            generic_safetensors_writer(args)
+
+            output_root = self._writer_output_root(args)
+
+            crop_args = self._clone_args()
+            crop_args.src = output_root
+            crop_args.dst = args.dst
+            crop_args.reader = "cropper"
+            crop_args.extension = "safetensors"
+            crop_args.crop_size = 256
+
+            generic_safetensors_writer(crop_args)
+
+            crop_root = self._writer_output_root(crop_args)
+            seq_crop_root = crop_root / seq_path
+            seen_flags: dict[int, bool] = {}
+            for crop_dir in sorted(seq_crop_root.iterdir()):
+                safepath = crop_dir / f"{seq_path}.safetensors"
+                if not safepath.exists():
+                    continue
+                with safe_open(safepath, framework="pt") as cropped:
+                    frame_idx = int(cropped.get_tensor("img").view(-1)[0])
+                    if frame_idx in seen_flags:
+                        continue
+                    seen_flags[frame_idx] = bool(
+                        cropped.get_tensor("camera_cut").view(-1)[0]
+                    )
+                if len(seen_flags) >= len(expected_flags):
+                    break
+
+            self.assertGreaterEqual(len(seen_flags), 1)
+            self.assertLessEqual(len(seen_flags), len(expected_flags))
+            ordered_indices = sorted(seen_flags.keys())
+            self.assertEqual(ordered_indices, list(range(len(ordered_indices))))
+            ordered = [seen_flags[idx] for idx in ordered_indices]
+            expected = expected_flags[: len(ordered)]
+            self.assertEqual(ordered, expected)
+
+    def test_nss_dataset_respects_writer_camera_cut(self):
+        """Dataset instantiated on writer output obeys the injected camera-cut boundaries."""
+        flags = [True]
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            dst = Path(tmp_dir) / "dst"
+            shutil.copytree(self.args.src, src)
+            args = self._clone_args()
+            args.src = src
+            args.dst = dst
+            self._apply_camera_cut_metadata(src, flags)
+
+            generic_safetensors_writer(args)
+
+            output_root = self._writer_output_root(args)
+
+            params = create_simple_params(dataset=str(output_root))
+            params.dataset.path.train = output_root
+            params.dataset.recurrent_samples = 1
+            dataset = NSSDataset(params, DataLoaderMode.TRAIN)
+
+            capture = dataset.captures[0]
+            expected_segments = compute_expected_segments(
+                flags, params.dataset.recurrent_samples
+            )
+            self.assertEqual(dataset.capture_sequences[capture], expected_segments)
+            self.assertEqual(dataset.capture_windows[capture], [(0, 1)])

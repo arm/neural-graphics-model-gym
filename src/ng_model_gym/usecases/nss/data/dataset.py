@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -71,12 +71,14 @@ class NSSDataset(Dataset):
             ]
 
         # Safetensor loading
-        self.sequences = sorted(set(self.data_path.rglob(f"*{self.extension.value}")))
-        self.sequence_data = self._generate_frame_indexes(
-            self.sequences, self.recurrent_samples
-        )
+        self.captures = sorted(set(self.data_path.rglob(f"*{self.extension.value}")))
+        (
+            self.capture_windows,
+            self.window_sequence_map,
+            self.capture_sequences,
+        ) = self._generate_frame_indexes(self.captures, self.recurrent_samples)
         self.frame_indexes = [
-            (k, *indices) for k, v in self.sequence_data.items() for indices in v
+            (k, *indices) for k, v in self.capture_windows.items() for indices in v
         ]
 
         # Augmentations disabled for test and validation, otherwise use config
@@ -93,22 +95,55 @@ class NSSDataset(Dataset):
                 f"Potential causes: Empty dataset directory or incorrect file extension used."
             )
 
-        # Generate a Hash-map for sequences, unique integer for each sequence / recurrent
-        # window, to inform the model on when to flush and reset history buffers
-        to_hash = lambda x: torch.tensor(hash(x)).view(1, 1)
+        # Generate hash-maps keyed by sequence-aware identifiers so the model knows when
+        # to flush history buffers. Training keeps the existing per-window salt to force
+        # resets even when augmentation shuffles windows; evaluation hashes only by sequence.
+        to_hash = lambda x: torch.tensor(hash(x), dtype=torch.int64).view(1, 1)
         if self.loader_mode != DataLoaderMode.TEST:
-            # Hash per sequence and per starting frame of recurrent window
-            # Guarantees a reset after each window
+            # Training: combine the sequence hash with the window start index so buffers
+            # reset for every sampled window, even though the underlying sequence ID is preserved.
             self.hashes = {
-                k: [to_hash(str(k) + str(b)) for (b, _) in v]
-                for k, v in self.sequence_data.items()
+                k: {
+                    start_idx: to_hash(
+                        (
+                            self._sequence_hash_value(
+                                k, self.window_sequence_map[k][start_idx]
+                            ),
+                            start_idx,
+                        )
+                    )
+                    for (start_idx, _) in v
+                }
+                for k, v in self.capture_windows.items()
             }
-            all_hashes = [h for hash_list in self.hashes.values() for h in hash_list]
+            all_hashes = [
+                h for hash_dict in self.hashes.values() for h in hash_dict.values()
+            ]
         else:
-            # Hash only needed per sequence
-            self.hashes = {k: to_hash(k) for k in self.sequence_data.keys()}
-            all_hashes = list(self.hashes.values())
-        assert len(all_hashes) == len(set(all_hashes)), "Duplicate hashes found!"
+            # Eval/Test: use only the sequence hash so history persists within a sequence
+            # but resets exactly at camera cuts.
+            self.hashes = {
+                k: {
+                    start_idx: to_hash(
+                        self._sequence_hash_value(
+                            k, self.window_sequence_map[k][start_idx]
+                        )
+                    )
+                    for (start_idx, _) in v
+                }
+                for k, v in self.capture_windows.items()
+            }
+            all_hashes = [
+                h for hash_dict in self.hashes.values() for h in hash_dict.values()
+            ]
+
+        # Validate no duplicate hashes in training data
+        if self.loader_mode != DataLoaderMode.TEST:
+            hash_values = [int(h.item()) for h in all_hashes]
+            if len(hash_values) != len(set(hash_values)):
+                msg = "Duplicate sequence hashes found in training data"
+                logger.error(msg)
+                raise ValueError(msg)
 
         # Only used for test, store data
         self.existing_seq_path = None
@@ -122,13 +157,13 @@ class NSSDataset(Dataset):
             raise StopIteration
 
         # Extract dataset and sliding window indices
-        seq_path, start_idx, stop_idx = self.frame_indexes[idx]
+        capture_path, start_idx, stop_idx = self.frame_indexes[idx]
 
         # Load data from Safetensors file
-        data_frame = self._load_data(seq_path, start=start_idx, stop=stop_idx)
+        data_frame = self._load_data(capture_path, start=start_idx, stop=stop_idx)
 
         # Append the unique sequence identifier
-        data_frame["seq"] = self._get_seq_id(seq_path, start_idx)
+        data_frame["seq"] = self._get_seq_id(capture_path, start_idx)
 
         # Process the data to apply tonemapping, augmentations, etc.
         x, y = process_nss_data(
@@ -242,32 +277,80 @@ class NSSDataset(Dataset):
         ), "Jitter failed to pass all warping tests"
 
     def _generate_frame_indexes(
-        self, sequences: List[Path], n_frames: int
-    ) -> Dict[str, Tuple[int, int]]:
-        """Generate sliding window frame index ranges for each sequence."""
-        frame_indexes = {}
-        for seq in sequences:
-            with safetensors.safe_open(seq, framework="pt") as f:
+        self, captures: List[Path], n_frames: int
+    ) -> Tuple[
+        Dict[Path, List[Tuple[int, int]]],
+        Dict[Path, Dict[int, int]],
+        Dict[Path, List[Tuple[int, int]]],
+    ]:
+        """Generate sliding windows plus sequence metadata for each safetensor capture."""
+        capture_windows: Dict[Path, List[Tuple[int, int]]] = {}
+        window_sequence_map: Dict[Path, Dict[int, int]] = {}
+        capture_sequences: Dict[Path, List[Tuple[int, int]]] = {}
+        for capture in captures:
+            with safetensors.safe_open(capture, framework="pt") as f:
                 metadata = f.metadata()
                 seq_length = int(metadata["Length"])
-                frame_indexes[seq] = [
-                    (n, n + n_frames) for n in range(seq_length - (n_frames - 1))
-                ]
-        return frame_indexes
+                camera_cut_sequences = self._compute_sequences(
+                    capture, f, seq_length, n_frames
+                )
+                capture_sequences[capture] = camera_cut_sequences
+                capture_windows[capture] = []
+                window_sequence_map[capture] = {}
+                for seq_idx, (seq_start, seq_end) in enumerate(camera_cut_sequences):
+                    max_start = seq_end - (n_frames - 1)
+                    for start in range(seq_start, max_start):
+                        stop = start + n_frames
+                        capture_windows[capture].append((start, stop))
+                        window_sequence_map[capture][start] = seq_idx
+        return capture_windows, window_sequence_map, capture_sequences
 
-    def _get_seq_id(self, seq_path: Path, start_idx: int) -> torch.Tensor:
-        if self.loader_mode != DataLoaderMode.TEST:
-            return self.hashes[seq_path][start_idx].expand(self.recurrent_samples, -1)
-        return self.hashes[seq_path].expand(self.recurrent_samples, -1)
+    def _compute_sequences(
+        self, capture_path: Path, safetensor_file, seq_length: int, n_frames: int
+    ) -> List[Tuple[int, int]]:
+        """Return contiguous sequences without mid-sequence camera cuts."""
+        if "camera_cut" not in safetensor_file.keys():
+            # Legacy safetensors lack camera cut metadata; treat the entire capture as a
+            # single sequence.
+            return [(0, seq_length)]
+        camera_cut_slice = safetensor_file.get_slice("camera_cut")
+        camera_cut_tensor = torch.tensor(camera_cut_slice[:], dtype=torch.bool)
+        flags = camera_cut_tensor.view(camera_cut_tensor.shape[0], -1)[:, 0]
+        sequences: List[Tuple[int, int]] = []
+        start = 0
+        for idx in range(seq_length):
+            if idx == start:
+                continue
+            if bool(flags[idx]):
+                if idx - start >= n_frames:
+                    sequences.append((start, idx))
+                start = idx
+        if seq_length - start >= n_frames:
+            sequences.append((start, seq_length))
+        if not sequences:
+            # If we saw camera_cut metadata but never found a long-enough sequence, the capture
+            # must be entirely shorter than recurrent_samples between cuts. Log and skip it.
+            logger.error(
+                f"Capture {capture_path} has no sequences satisfying recurrent_samples={n_frames}",
+            )
+        return sequences
+
+    @staticmethod
+    def _sequence_hash_value(capture_path: Path, sequence_idx: int) -> int:
+        return hash((str(capture_path), sequence_idx))
+
+    def _get_seq_id(self, capture_path: Path, start_idx: int) -> torch.Tensor:
+        hash_tensor = self.hashes[capture_path][start_idx]
+        return hash_tensor.expand(self.recurrent_samples, -1)
 
     def _load_data(
-        self, seq_path: Path, start: int, stop: int
+        self, capture_path: Path, start: int, stop: int
     ) -> Dict[str, torch.Tensor]:
         """Lazily open Safetensors file, only load data we need based on `self.features_to_read`
         and extract recurrent window between start:stop indexes.
         """
         data_frame = {}
-        with safetensors.safe_open(seq_path, framework="pt", device="cpu") as f:
+        with safetensors.safe_open(capture_path, framework="pt", device="cpu") as f:
             for k in f.keys():
                 if k in self.features_to_read:
                     data_frame[k] = f.get_slice(k)[start:stop]
