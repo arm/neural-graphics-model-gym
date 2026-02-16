@@ -294,3 +294,30 @@ class BaseNGModel(nn.Module, ABC):
         """Override this method to create a padding policy for recurrent models"""
         # pylint: disable=unused-argument
         return None
+
+    # pylint: disable=duplicate-code
+    def on_train_epoch_start(self) -> None:
+        """Hook called at the start of each training epoch"""
+        return None
+
+    def on_train_epoch_end(self) -> None:
+        """Hook called at the end of each training epoch"""
+        return None
+
+    def on_train_batch_end(self) -> None:
+        """Hook called at the end of each training batch"""
+        return None
+
+    def on_train_end(self) -> None:
+        """Hook called after training completes"""
+        return None
+
+    def on_validation_start(self) -> None:
+        """Hook called at the start of validation"""
+        return None
+
+    def on_validation_end(self) -> None:
+        """Hook called at the end of validation"""
+        return None
+
+    # pylint: enable=duplicate-code

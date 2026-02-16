@@ -126,6 +126,26 @@ class FeedbackModel(BaseNGModelWrapper):
         for _, buffer in self.history_buffers.items():
             buffer.detach()
 
+    def on_train_epoch_start(self) -> None:
+        """Reset history buffers at the start of each epoch"""
+        self.reset_history_buffers()
+
+    def on_train_batch_end(self) -> None:
+        """Detach history buffers after each training batch"""
+        self.detach_buffers()
+
+    def on_train_end(self) -> None:
+        """Reset history buffers after training completes"""
+        self.reset_history_buffers()
+
+    def on_validation_start(self) -> None:
+        """Reset history buffers at the start of validation"""
+        self.reset_history_buffers()
+
+    def on_validation_end(self) -> None:
+        """Reset history buffers at the end of validation"""
+        self.reset_history_buffers()
+
     def _get_pad_sz(
         self, height: int, width: int, is_unpad: bool = False
     ) -> Tuple[Tensor, Tensor]:

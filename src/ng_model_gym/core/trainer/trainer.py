@@ -22,7 +22,6 @@ from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
-from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from ng_model_gym.core.optimizers.adam_w import adam_w_torch
 from ng_model_gym.core.optimizers.lars_adam import lars_adam_torch
 from ng_model_gym.core.schedulers.lr_scheduler import CosineAnnealingWithWarmupLR
@@ -82,8 +81,6 @@ class Trainer:
             raise ValueError(
                 "Model must be an instance of BaseNGModel or BaseNGModelWrapper"
             )
-
-        self.is_feedback = isinstance(self.model, FeedbackModel)
 
         logger.info(f"Model architecture: {self.model}")
         total_params = sum(p.numel() for p in self.model.parameters())
@@ -277,8 +274,7 @@ class Trainer:
 
         for epoch in range(self.starting_epoch, total_epochs + 1):
             self.model.train()
-            if self.is_feedback:
-                self.model.reset_history_buffers()
+            self.model.on_train_epoch_start()
 
             running_epoch_loss = 0.0
             total_batches = len(self.train_dataloader)
@@ -308,9 +304,6 @@ class Trainer:
 
                 loss.backward()
                 self.optimizer.step()
-
-                if self.is_feedback:
-                    self.model.detach_buffers()
 
                 if self.lr_schedule:
                     self.lr_schedule.step()
@@ -342,6 +335,7 @@ class Trainer:
                 self._tensorboard_update(
                     tb_values, iteration + (epoch - 1) * total_batches
                 )
+                self.model.on_train_batch_end()
 
             for metric in self.metrics:
                 metric.reset()
@@ -353,14 +347,13 @@ class Trainer:
             # Save after every epoch
             self._save_checkpoint(epoch)
 
-        if self.is_feedback:
-            self.model.reset_history_buffers()
+            self.model.on_train_epoch_end()
+
+        self.model.on_train_end()
 
     def validate(self, epoch):
         """Start validation loop."""
         total_epochs = self.training_mode_params.number_of_epochs
-        if self.is_feedback:
-            self.model.reset_history_buffers()
 
         val_pbar = tqdm(
             enumerate(self.val_dataloader, 0),
@@ -370,6 +363,7 @@ class Trainer:
         )
 
         self.model.eval()
+        self.model.on_validation_start()
         running_val_loss = 0.0
 
         for iteration, (inputs_dataset, ground_truth_data) in val_pbar:
@@ -409,8 +403,7 @@ class Trainer:
         for metric in self.metrics:
             metric.reset()
 
-        if self.is_feedback:
-            self.model.reset_history_buffers()
+        self.model.on_validation_end()
 
     def _save_checkpoint(self, current_epoch):
         """Save checkpoint if end or configured save frequency epoch"""
