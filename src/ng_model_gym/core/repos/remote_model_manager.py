@@ -6,10 +6,8 @@ from typing import Dict, List
 
 from huggingface_hub.errors import RepositoryNotFoundError
 
-from ng_model_gym.core.model.repos.base_model_server import ModelRepository
-from ng_model_gym.core.model.repos.huggingface_model_server import (
-    HuggingfaceModelServer,
-)
+from ng_model_gym.core.repos.base_model_server import ModelRepository
+from ng_model_gym.core.repos.huggingface_model_server import HuggingfaceModelServer
 
 MODEL_SERVERS = [HuggingfaceModelServer()]
 

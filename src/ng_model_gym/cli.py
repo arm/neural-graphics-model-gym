@@ -75,7 +75,7 @@ def generate_config(
 @app.command(name="list-models")
 def list_models_cli():
     """List pretrained models available from configured repositories."""
-    from ng_model_gym.core.model import list_pretrained_models
+    from ng_model_gym import list_pretrained_models
 
     console = Console()
     try:
@@ -142,7 +142,7 @@ def download_cli(
     ],
 ):
     """Download pretrained model checkpoint from configured repositories"""
-    from ng_model_gym.core.model import download_pretrained_model
+    from ng_model_gym import download_pretrained_model
 
     console = Console()
     try:

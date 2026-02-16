@@ -31,7 +31,7 @@ if TYPE_CHECKING:
         ProfilerType,
         TrainEvalMode,
     )
-    from ng_model_gym.core.model.repos.remote_model_manager import (
+    from ng_model_gym.core.repos import (
         download_pretrained_model,
         list_pretrained_models,
     )
@@ -57,15 +57,11 @@ else:
 
             return do_export
         if attr == "list_pretrained_models":
-            from ng_model_gym.core.model.repos.remote_model_manager import (
-                list_pretrained_models,
-            )
+            from ng_model_gym.core.repos import list_pretrained_models
 
             return list_pretrained_models
         if attr == "download_pretrained_model":
-            from ng_model_gym.core.model.repos.remote_model_manager import (
-                download_pretrained_model,
-            )
+            from ng_model_gym.core.repos import download_pretrained_model
 
             return download_pretrained_model
         if attr == "load_config_file":
