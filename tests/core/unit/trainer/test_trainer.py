@@ -18,7 +18,7 @@ from ng_model_gym.core.trainer import get_loss_fn, get_optimizer_type, Trainer
 from ng_model_gym.core.utils.types import LossFn, OptimizerType, TrainEvalMode
 from tests.testing_utils import create_simple_params
 
-# pylint: disable=abstract-method, unsubscriptable-object
+# pylint: disable=abstract-method, duplicate-code, unsubscriptable-object
 
 
 class TinyModel(nn.Module):
@@ -34,6 +34,30 @@ class TinyModel(nn.Module):
     def forward(self, _):
         """Forward pass returns a dict containing a mock"""
         return {"output": torch.zeros(1, 1)}
+
+    def on_train_epoch_start(self) -> None:
+        """hook for trainer tests"""
+        return None
+
+    def on_train_epoch_end(self) -> None:
+        """hook for trainer tests"""
+        return None
+
+    def on_train_batch_end(self) -> None:
+        """hook for trainer tests"""
+        return None
+
+    def on_train_end(self) -> None:
+        """hook for trainer tests"""
+        return None
+
+    def on_validation_start(self) -> None:
+        """hook for trainer tests"""
+        return None
+
+    def on_validation_end(self) -> None:
+        """hook for trainer tests"""
+        return None
 
 
 class TestTrainerMethods(unittest.TestCase):
@@ -123,6 +147,47 @@ class TestTrainerMethods(unittest.TestCase):
 
         called_epochs = [c.args[0] for c in self.mock_trainer.validate.call_args_list]
         self.assertEqual(called_epochs, [1, 2, 5, 9])
+
+    def test_lifecycle_hooks(self):
+        """Test trainer lifecycle hooks are called"""
+        trainer = self.mock_trainer
+        trainer.model.on_train_epoch_start = Mock()
+        trainer.model.on_train_batch_end = Mock()
+        trainer.model.on_train_epoch_end = Mock()
+        trainer.model.on_train_end = Mock()
+        trainer.model.on_validation_start = Mock()
+        trainer.model.on_validation_end = Mock()
+
+        trainer.training_mode_params.number_of_epochs = 2
+        trainer.starting_epoch = 1
+
+        trainer.params = Mock()
+        trainer.params.train.perform_validate = True
+        trainer.params.train.validate_frequency = 1
+
+        mock_input = torch.zeros((1, 1))
+        mock_ground_truth = torch.zeros((1, 1))
+        trainer.train_dataloader = [
+            ({"x": mock_input}, mock_ground_truth) for _ in range(3)
+        ]
+        trainer.val_dataloader = [
+            ({"x": mock_input}, mock_ground_truth) for _ in range(2)
+        ]
+
+        # Get the actual validate functions from Trainer
+        # pylint: disable=no-value-for-parameter, assignment-from-no-return
+        trainer._should_validate = Trainer._should_validate.__get__(trainer, Trainer)
+        trainer.validate = Trainer.validate.__get__(trainer, Trainer)
+        # pylint: enable=no-value-for-parameter, assignment-from-no-return
+
+        Trainer.train(trainer)
+
+        self.assertEqual(trainer.model.on_train_epoch_start.call_count, 2)
+        self.assertEqual(trainer.model.on_train_batch_end.call_count, 6)
+        self.assertEqual(trainer.model.on_train_epoch_end.call_count, 2)
+        self.assertEqual(trainer.model.on_train_end.call_count, 1)
+        self.assertEqual(trainer.model.on_validation_start.call_count, 2)
+        self.assertEqual(trainer.model.on_validation_end.call_count, 2)
 
     def test_save_checkpoint_overwrites_best_ckpt_correctly(self):
         """Test that best checkpoint is overwritten only when loss improves"""
