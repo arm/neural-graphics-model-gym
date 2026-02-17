@@ -11,7 +11,7 @@ import torch
 
 from ng_model_gym.core.data import DataLoaderMode
 from ng_model_gym.core.evaluator.evaluator import NGModelEvaluator
-from ng_model_gym.core.model import FeedbackModel
+from ng_model_gym.usecases.nss.model.model_v1 import NSSModel
 from tests.testing_utils import create_simple_params
 
 
@@ -36,7 +36,7 @@ class TestNGModelEvaluator(unittest.TestCase):
         self.params.dataset.path.validation = val_data_dir
         self.params.dataset.path.test = test_data_dir
 
-        self.model = Mock(spec=FeedbackModel)
+        self.model = Mock(spec=NSSModel)
         self.model.device = torch.device("cpu")
 
     def tearDown(self):

@@ -297,7 +297,7 @@ class BaseNGModel(nn.Module, ABC):
 
     # pylint: disable=duplicate-code
     def on_train_epoch_start(self) -> None:
-        """Hook called at the start of each training epoch"""
+        """Hook called at the start of each training epoch and start of qat tracer"""
         return None
 
     def on_train_epoch_end(self) -> None:
@@ -309,7 +309,7 @@ class BaseNGModel(nn.Module, ABC):
         return None
 
     def on_train_end(self) -> None:
-        """Hook called after training completes"""
+        """Hook called after training tracer completes and at the end of qat tracer"""
         return None
 
     def on_validation_start(self) -> None:
@@ -318,6 +318,10 @@ class BaseNGModel(nn.Module, ABC):
 
     def on_validation_end(self) -> None:
         """Hook called at the end of validation"""
+        return None
+
+    def on_evaluation_start(self) -> None:
+        """Hook called at the start of evaluation"""
         return None
 
     # pylint: enable=duplicate-code

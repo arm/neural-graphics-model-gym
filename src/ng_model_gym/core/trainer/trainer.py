@@ -19,7 +19,6 @@ from ng_model_gym.core.data.utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.loss.losses import LossV1
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
-from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.optimizers.adam_w import adam_w_torch
@@ -77,10 +76,8 @@ class Trainer:
         self.starting_epoch = 1
         self.model: nn.Module = create_model(self.params, self.device).to(self.device)
 
-        if not isinstance(self.model, (BaseNGModel, BaseNGModelWrapper)):
-            raise ValueError(
-                "Model must be an instance of BaseNGModel or BaseNGModelWrapper"
-            )
+        if not isinstance(self.model, BaseNGModel):
+            raise ValueError("Model must be an instance of BaseNGModel")
 
         logger.info(f"Model architecture: {self.model}")
         total_params = sum(p.numel() for p in self.model.parameters())
@@ -116,9 +113,6 @@ class Trainer:
         """Quantize modules if not already quantized"""
 
         ng_model = self.model
-
-        if isinstance(self.model, BaseNGModelWrapper):
-            ng_model = self.model.get_ng_model()
 
         if ng_model.is_qat_model and not ng_model.is_network_quantized:
             input_data = next(iter(self.train_dataloader))[0]

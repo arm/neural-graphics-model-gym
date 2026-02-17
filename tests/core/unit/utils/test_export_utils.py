@@ -14,7 +14,7 @@ from unittest.mock import DEFAULT, patch
 import torch
 from torch import nn
 
-from ng_model_gym.core.model import BaseNGModel, BaseNGModelWrapper, get_model_key
+from ng_model_gym.core.model import BaseNGModel, get_model_key
 from ng_model_gym.core.utils.export_utils import (
     DataLoaderMode,
     executorch_vgf_export,
@@ -62,32 +62,6 @@ class MockNSS(BaseNGModel):
         return {"foo": "bar"}
 
 
-class MockFeedbackModel(BaseNGModelWrapper):
-    """Mock class for Feedback model."""
-
-    def __init__(self, params):
-        super().__init__()
-        self.ng_model = MockNSS(params)
-
-    def get_ng_model(self) -> BaseNGModel:
-        return self.ng_model
-
-    def set_ng_model(self, ng_model: BaseNGModel) -> None:
-        self.ng_model = ng_model
-
-    def get_model_input_for_tracing(self, x):
-        """Mock method to return model input for tracing."""
-        return x
-
-    def get_neural_network(self):
-        """Mock get_neural_network"""
-        return self.ng_model.get_neural_network()
-
-    def set_neural_network(self, neural_network):
-        """Mock set_neural_network"""
-        self.ng_model = neural_network
-
-
 # pylint: disable-next=unused-argument
 def fake_dl(params, num_workers, prefetch_factor, loader_mode, trace_mode):
     """A mock one‐batch dataloader factory"""
@@ -128,7 +102,7 @@ class TestExportUtils(unittest.TestCase):
         self.params = make_params(self.tmp_path)
         self.load_ckpt_patch = patch(
             "ng_model_gym.core.utils.export_utils.load_checkpoint",
-            new=lambda *a, **k: MockFeedbackModel(self.params),
+            new=lambda *a, **k: MockNSS(self.params),
         )
         self.load_ckpt_patch.start()
 

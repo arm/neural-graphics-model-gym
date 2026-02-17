@@ -11,12 +11,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import List
 
-import torch
-
-from ng_model_gym.core.utils.checkpoint_utils import (
-    latest_checkpoint_in_dir,
-    replace_prefix_in_state_dict,
-)
+from ng_model_gym.core.utils.checkpoint_utils import latest_checkpoint_in_dir
 from ng_model_gym.core.utils.general_utils import create_directory
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import clear_loggers
@@ -132,52 +127,6 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         with self.subTest("TensorBoard logs"):
             files_exist = any(self.tensorboard_dir.iterdir())
             self.assertTrue(files_exist, "TensorBoard logs not found.")
-
-    def run_and_compare_to_golden(self, mode, golden_weight_file):
-        """Compare output weight with known golden weight"""
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        # Override default params for the test
-        cfg_json["train"]["batch_size"] = 4
-        cfg_json["train"]["fp32"]["number_of_epochs"] = 1
-
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(cfg_json, f)
-
-        sub_proc = subprocess.run(
-            [
-                "ng-model-gym",
-                f"--config-path={self.test_cfg_path}",
-                mode,
-                "--no-evaluate",
-            ]
-        )
-        self.assertEqual(sub_proc.returncode, 0)
-
-        trained_checkpoint = latest_checkpoint_in_dir(Path(self.checkpoint_dir))
-
-        golden_model_state_dict = torch.load(
-            Path("tests", "nss", "integration", golden_weight_file),
-            weights_only=True,
-            map_location="cpu",
-        )["model_state_dict"]
-        trained_model_state_dict = torch.load(
-            trained_checkpoint, weights_only=True, map_location="cpu"
-        )["model_state_dict"]
-
-        replace_prefix_in_state_dict(
-            golden_model_state_dict, old_prefix="nss_model", new_prefix="ng_model"
-        )
-
-        # Compare epoch 2 weights with golden weights
-        for golden_params, trained_params in zip(
-            golden_model_state_dict.values(), trained_model_state_dict.values()
-        ):
-            self.assertTrue(
-                torch.allclose(golden_params, trained_params, rtol=1e-04, atol=1e-02),
-                "Model output differs from golden weight",
-            )
 
     def run_model_profiler(self, mode):
         """Test JSON trace is generated with profiler=trace flag"""

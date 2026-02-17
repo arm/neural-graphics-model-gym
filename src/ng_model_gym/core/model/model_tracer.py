@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 from typing import Any, Tuple
@@ -8,14 +8,10 @@ from torch import nn
 from torch.utils._pytree import tree_map
 
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
-from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
-from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from ng_model_gym.core.utils.tensor_types import TensorData
 
 
-def model_tracer(
-    ng_model: BaseNGModel | BaseNGModelWrapper, input_data: TensorData
-) -> Tuple[Any, ...]:
+def model_tracer(ng_model: BaseNGModel, input_data: TensorData) -> Tuple[Any, ...]:
     """Trace PyTorch module to capture forward pass tensors"""
 
     # Move input data to GPU
@@ -23,17 +19,13 @@ def model_tracer(
     # tree_map is an internal torch util to traverse containers with tensors
     input_data = tree_map(to_gpu, input_data)
 
-    if isinstance(ng_model, BaseNGModelWrapper):
-        target_module_to_trace = ng_model.get_ng_model().get_neural_network()
-
-    elif isinstance(ng_model, BaseNGModel):
+    if isinstance(ng_model, BaseNGModel):
         target_module_to_trace = ng_model.get_neural_network()
 
     else:
         raise ValueError("ng_model is not a valid type")
 
-    if isinstance(ng_model, FeedbackModel):
-        ng_model.reset_history_buffers()
+    ng_model.on_train_epoch_start()
     captured = None
 
     class _StopForward(Exception):
@@ -67,8 +59,7 @@ def model_tracer(
     finally:
         hook.remove()
 
-    if isinstance(ng_model, FeedbackModel):
-        ng_model.reset_history_buffers()
+    ng_model.on_train_end()
 
     match captured:
         case None | (None,):

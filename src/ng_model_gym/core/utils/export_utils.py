@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-FileCopyrightText: Copyright 2025 NXP
 #
@@ -36,7 +36,6 @@ from torchao.quantization.pt2e.quantize_pt2e import convert_pt2e, prepare_pt2e
 
 from ng_model_gym.core.data.dataloader import DataLoaderMode, get_dataloader
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
-from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model_factory import get_model_key
 from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
@@ -358,10 +357,7 @@ def executorch_vgf_export(
     model_forward_input = tree_map(to_cpu, model_forward_input)
     model_forward_input = tree_map(to_channels_last, model_forward_input)
 
-    if isinstance(model, BaseNGModelWrapper):
-        model = model.get_ng_model()
-
-    elif not isinstance(model, BaseNGModel):
+    if not isinstance(model, BaseNGModel):
         raise ValueError(f"model type: {type(model)} , is not valid")
 
     model_key = get_model_key(params.model.name, params.model.version)

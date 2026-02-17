@@ -5,15 +5,15 @@ from typing import NamedTuple, Tuple
 
 import torch
 
-from ng_model_gym.core.model import BaseNGModelWrapper, create_model, FeedbackModel
+from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.types import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
 
 
-class TestFeedbackModelNSS(BaseGPUMemoryTest):
-    """Tests for FeedbackModel class using NSS"""
+class TestNSS(BaseGPUMemoryTest):
+    """Tests for the NSS model"""
 
     def _data_creator_helper(self, lr_h, lr_w, hr_h, hr_w):
         data = {
@@ -36,7 +36,7 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
         return tensor_dict
 
     def setUp(self):
-        """Setup feedback model."""
+        """Setup NSS model."""
         super().setUp()
         params = create_simple_params(dataset="")
         params.model_train_eval_mode = TrainEvalMode.FP32
@@ -47,15 +47,15 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
         self.model = create_model(params, self.device)
-        if not isinstance(self.model, BaseNGModelWrapper):
-            raise TypeError("Model is not a BaseNGModelWrapper")
+        if not isinstance(self.model, BaseNGModel):
+            raise TypeError("Model is not a BaseNGModel")
         self.batch = params.train.batch_size
         self.recurrence = params.dataset.recurrent_samples
         self.data = self._data_creator_helper(128, 128, 256, 256)
         self.params = params
 
-    def test_shape_feedback_model_forward_pass(self):
-        """Test feedback model training shape"""
+    def test_shape_nss_model_forward_pass(self):
+        """Test nss model training shape"""
         with torch.no_grad():
             self.model.train()
             model_out = self.model(self.data)
@@ -76,17 +76,17 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
             model_out["depth_dilated"].shape, (self.batch, self.recurrence, 1, 128, 128)
         )
 
-    def test_golden_feedback_model_forward(self):
-        """Test feedback model training"""
+    def test_golden_nss_model_forward(self):
+        """Test nss model training"""
 
-        feedback_input_golden = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/feedback_input_golden.pt",
+        nss_input_golden = torch.load(
+            "tests/usecases/nss/unit/data/nss_v1_golden_values/nss_input_golden.pt",
             map_location=self.device,
             weights_only=True,
         )
 
-        feedback_output_golden = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/feedback_output_golden.pt",
+        nss_output_golden = torch.load(
+            "tests/usecases/nss/unit/data/nss_v1_golden_values/nss_output_golden.pt",
             map_location=self.device,
             weights_only=True,
         )["outputs"]
@@ -95,15 +95,15 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
 
         autoencoder_with_golden_state = AutoEncoderV1()
         autoencoder_with_golden_state.load_state_dict(
-            feedback_input_golden["autoencoder_state"]
+            nss_input_golden["autoencoder_state"]
         )
         autoencoder_with_golden_state.to(self.device)
-        self.model.ng_model.set_neural_network(autoencoder_with_golden_state)
+        self.model.set_neural_network(autoencoder_with_golden_state)
 
-        model_out = self.model(feedback_input_golden["feedback_input"])
+        model_out = self.model(nss_input_golden["feedback_input"])
 
         tolerance = 1e-3
-        expected_output_linear = feedback_output_golden["output_linear"]
+        expected_output_linear = nss_output_golden["output_linear"]
         torch.testing.assert_close(
             model_out["output_linear"],
             expected_output_linear,
@@ -111,19 +111,19 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
             atol=tolerance,
         )
 
-        expected_output = feedback_output_golden["output"]
+        expected_output = nss_output_golden["output"]
         self.assertTrue(
             torch.allclose(
                 model_out["output"], expected_output, rtol=tolerance, atol=tolerance
             )
         )
 
-        expected_feedback = feedback_output_golden["feedback"]
+        expected_feedback = nss_output_golden["feedback"]
         torch.testing.assert_close(
             model_out["feedback"], expected_feedback, rtol=tolerance, atol=tolerance
         )
 
-        expected_derivative = feedback_output_golden["derivative"]
+        expected_derivative = nss_output_golden["derivative"]
         torch.testing.assert_close(
             model_out["derivative"],
             expected_derivative,
@@ -131,7 +131,7 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
             atol=tolerance,
         )
 
-        expected_depth_dilated = feedback_output_golden["depth_dilated"]
+        expected_depth_dilated = nss_output_golden["depth_dilated"]
         torch.testing.assert_close(
             model_out["depth_dilated"],
             expected_depth_dilated,
@@ -189,9 +189,8 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
             ),
         ]
         for padding_test in padding_tests:
-            # Create new FeedbackModel
-            feedback_model = create_model(self.params, self.device)
-            self.assertIsInstance(feedback_model, FeedbackModel)
+            # Create new nss model
+            nss_model = create_model(self.params, self.device)
 
             # Create dataset
             sample_input_data = self._data_creator_helper(
@@ -200,11 +199,9 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
             # 4 dims for the padding input tensors
             sample_input_data = {k: v[0] for k, v in sample_input_data.items()}
 
-            # Manually create padding policy as we are not running the FeedbackModel forward pass
-            padding_policy = feedback_model.get_ng_model().create_padding_policy(
-                sample_input_data
-            )
-            feedback_model.get_ng_model().padding_policy = padding_policy
+            # Manually create padding policy as we are not running the NSSModel forward pass
+            padding_policy = nss_model.create_padding_policy(sample_input_data)
+            nss_model.padding_policy = padding_policy
 
             # Check padding policy padding calculations are correct
             self.assertEqual(padding_policy.hr, padding_test.hr)
@@ -217,14 +214,14 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
                 padding_policy.hr_padding, padding_test.expected_hr_padding
             )
 
-            feedback_model.padding_policy = padding_policy
+            nss_model.padding_policy = padding_policy
 
             padded_tensors = []
 
             # Iterate over input tensors and test padding
             for tensor in sample_input_data.values():
                 height, width = tensor.shape[2], tensor.shape[3]
-                pad_h, pad_w = feedback_model._get_pad_sz(height, width, is_unpad=False)
+                pad_h, pad_w = nss_model._get_pad_sz(height, width, is_unpad=False)
                 pad_h, pad_w = pad_h.item(), pad_w.item()
 
                 match (height, width):
@@ -250,7 +247,7 @@ class TestFeedbackModelNSS(BaseGPUMemoryTest):
             # Iterate over padded_tensors and test unpadding
             for tensor in padded_tensors:
                 height, width = tensor.shape[2], tensor.shape[3]
-                pad_h, pad_w = feedback_model._get_pad_sz(height, width, is_unpad=True)
+                pad_h, pad_w = nss_model._get_pad_sz(height, width, is_unpad=True)
                 pad_h, pad_w = pad_h.item(), pad_w.item()
 
                 # Unpad and check if we match expectations

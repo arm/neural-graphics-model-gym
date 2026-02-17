@@ -7,12 +7,7 @@ import time
 import unittest
 from pathlib import Path
 
-import torch
-
-from ng_model_gym.core.utils.checkpoint_utils import (
-    latest_checkpoint_in_dir,
-    replace_prefix_in_state_dict,
-)
+from ng_model_gym.core.utils.checkpoint_utils import latest_checkpoint_in_dir
 
 
 class RestorePretrainedModelFromCheckpoints(unittest.TestCase):
@@ -82,30 +77,3 @@ class RestorePretrainedModelFromCheckpoints(unittest.TestCase):
                 latest_checkpoint_in_dir(Path(temp_dir)),
                 Path(temp_dir, "ckpt-3.pt"),
             )
-
-
-class StateDictPrefixReplacement(unittest.TestCase):
-    """Test replacing the prefix in a model's state dict"""
-
-    class MockNN(torch.nn.Module):
-        """Model with old namespace `nss_model`"""
-
-        def __init__(self):
-            super().__init__()
-            self.nss_model = (torch.nn.Conv2d(1, 2, kernel_size=1),)
-
-        def forward(self, x):
-            """Mock forward pass"""
-            return x
-
-    def test_replace_prefix(self):
-        """Test prefix replacement works correctly"""
-        old_model = self.MockNN()
-        state_dict = old_model.state_dict()
-
-        out_state_dict = replace_prefix_in_state_dict(
-            state_dict, "nss_model", "ng_model"
-        )
-        self.assertIsInstance(out_state_dict, dict)
-
-        self.assertTrue(all(key.startswith("ng_model") for key in state_dict.keys()))
