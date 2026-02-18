@@ -53,7 +53,7 @@ dependencies = [
     "torchvision @ https://download.pytorch.org/whl/cu128/torchvision-0.25.0%2Bcu128-cp311-cp311-win_amd64.whl ; python_version=='3.11' and platform_system == 'Windows'",
     "torchvision @ https://download.pytorch.org/whl/cu128/torchvision-0.25.0%2Bcu128-cp312-cp312-win_amd64.whl ; python_version=='3.12' and platform_system == 'Windows'",
     "executorch==1.1.0",
-    "tosa_serialization_lib @ git+https://git.gitlab.arm.com/tosa/tosa-tools.git@8468d041c50c6d806f3c1c18c66d7ef641e46580#subdirectory=serialization",
+    "tosa_serialization_lib @ git+https://git.gitlab.arm.com/tosa/tosa-tools.git@219aaa882ce23a7278a0dfb3aa2760362151831d#subdirectory=serialization",
     "ml-dtypes==0.5.4",
     "torchao==0.15.0",
     "tqdm==4.67.1",
