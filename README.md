@@ -87,6 +87,10 @@ ng-model-gym init
 ```
 This file contains configuration options for the different usage modes (training, evaluation, and exporting) and paths to local datasets. Some entries have placeholder values (e.g. "<...>"). Make sure to replace those with your own settings.
 
+> **For Windows users:**
+>
+> When editing `config.json`, Windows paths must either use forward slashes (`path/to/location`) or escaped backslashes (`path\\to\\location`). Single backslashes (e.g. `path\to\location`) are invalid JSON and will cause a `JSONDecodeError`.
+
 Use your custom configuration when invoking CLI commands by providing its path with the `--config-path` or `-c` flag as shown below:
 
 ```bash
