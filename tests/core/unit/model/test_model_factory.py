@@ -141,26 +141,6 @@ class TestModelFactory(unittest.TestCase):
         self.assertIsInstance(model, torch.nn.Module)
         self.assertFalse(model.is_qat_model)
 
-    def test_create_non_feedback_model(self):
-        """Test creating a model without recurrent samples doesn't return a feedback model."""
-
-        self.params.model_train_eval_mode = TrainEvalMode.FP32
-        self.params.dataset.recurrent_samples = None
-
-        model = create_model(self.params, self.device)
-
-        self.assertNotEqual(type(model).__name__, "FeedbackModel")
-
-    def test_create_feedback_model(self):
-        """Test creating a feedback model."""
-
-        self.params.model_train_eval_mode = TrainEvalMode.FP32
-        self.params.dataset.recurrent_samples = 4
-
-        model = create_model(self.params, self.device)
-
-        self.assertEqual(type(model).__name__, "FeedbackModel")
-
     def test_create_qat_model(self):
         """Test initialising the model as a QAT model."""
 

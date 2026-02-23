@@ -15,9 +15,7 @@ from tqdm.auto import tqdm
 from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.data.utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.evaluator.metrics import get_metrics
-from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model_factory import BaseNGModel
-from ng_model_gym.core.model.recurrent_model import FeedbackModel
 from ng_model_gym.core.utils.general_utils import create_directory
 
 logger = logging.getLogger(__name__)
@@ -26,7 +24,7 @@ logger = logging.getLogger(__name__)
 class NGModelEvaluator:
     """This class is used to evaluate a model end to end"""
 
-    def __init__(self, model: BaseNGModel | BaseNGModelWrapper, params):
+    def __init__(self, model: BaseNGModel, params):
         self.model = model
         self.params = params
         self.out_dir = self.params.output.dir
@@ -44,11 +42,6 @@ class NGModelEvaluator:
         for metric in self.metrics:
             metric.to(self.model.device)
             self.results[str(metric)] = {}
-
-        if isinstance(model, FeedbackModel):
-            # Set temporary values for parameters to allow evaluation of test set
-            logger.debug("Temporarily setting recurrent_samples to 1")
-            model.recurrent_samples = 1
 
     def prepare_datasets(self):
         """Load test dataset for evaluation"""
@@ -143,8 +136,7 @@ class NGModelEvaluator:
             create_directory(self.export_png_dir / "predicted")
             create_directory(self.export_png_dir / "ground_truth")
         self.model.eval()
-        if isinstance(self.model, FeedbackModel):
-            self.model.reset_history_buffers()
+        self.model.on_evaluation_start()
 
     def _test_end(self):
         """Called after whole dataset has been evaluated."""

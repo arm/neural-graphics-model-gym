@@ -11,10 +11,10 @@ from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
 
 
-class TestNSSModelV1(BaseGPUMemoryTest):
+class TestNSSV1ModelCore(BaseGPUMemoryTest):
     """Tests for NSSModel class"""
 
-    def test_forward_pass_golden_values(self):
+    def test_core_forward_pass_golden_values(self):
         """Test forward pass against known golden values"""
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
@@ -45,7 +45,7 @@ class TestNSSModelV1(BaseGPUMemoryTest):
         nss_model = create_model(params, device)
         nss_model.autoencoder = autoencoder
 
-        model_outputs = nss_model(forward_inputs["inputs"])
+        model_outputs = nss_model.core_forward(forward_inputs["inputs"])
 
         expected_output = forward_outputs["output"]
 

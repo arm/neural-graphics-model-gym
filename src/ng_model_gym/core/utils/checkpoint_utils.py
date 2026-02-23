@@ -10,7 +10,6 @@ import torch
 from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.data.utils import DataLoaderMode
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
-from ng_model_gym.core.model.base_ng_model_wrapper import BaseNGModelWrapper
 from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.utils.config_model import ConfigModel
@@ -19,87 +18,31 @@ from ng_model_gym.core.utils.types import ModelType, TrainEvalMode
 logger = logging.getLogger(__name__)
 
 
-def replace_prefix_in_state_dict(
-    state_dict: dict[str, Any],
-    old_prefix: str,
-    new_prefix: str,
-) -> dict[str, Any]:
-    """
-    Helper method to replace prefix in a state dict. This borrows from
-    `torch.nn.modules.utils.consume_prefix_in_state_dict_if_present`. Statedict modified in place
-    but also returned for convenience
-    """
-
-    if not isinstance(old_prefix, str) or not isinstance(new_prefix, str):
-        raise TypeError("old_prefix and new_prefix must be strings")
-
-    if old_prefix == new_prefix:
-        return state_dict
-
-    old_prefix_with_sep = f"{old_prefix}."
-
-    # Rename parameter/buffer keys
-    keys = list(state_dict.keys())
-    for key in keys:
-        if key == old_prefix:
-            new_key = new_prefix
-        elif key.startswith(old_prefix_with_sep):
-            suffix = key[len(old_prefix_with_sep) :]
-            new_key = f"{new_prefix}.{suffix}"
-        else:
-            continue
-        state_dict[new_key] = state_dict.pop(key)
-
-    metadata = getattr(state_dict, "_metadata", None)
-    if metadata is not None:
-        meta_data_keys = list(metadata.keys())
-        old_base = old_prefix.replace(".", "")
-        new_base = new_prefix.replace(".", "")
-
-        for key in meta_data_keys:
-            if len(key) == 0:
-                continue
-            if key == old_base:
-                metadata[new_base] = metadata.pop(key)
-            elif key.startswith(old_prefix_with_sep):
-                suffix = key[len(old_prefix_with_sep) :]
-                new_key = f"{new_prefix}.{suffix}"
-                metadata[new_key] = metadata.pop(key)
-
-    return state_dict
-
-
 def remap_feedback_model_state_dict(state_dict):
-    """Rename old FeedbackModel prefixes from `nss_model` to `ng_model`."""
-    old_prefix = "nss_model"
-    new_prefix = "ng_model"
+    """Rename legacy FeedbackModel state dictionary by stripping `nss_model` prefix"""
+    old_prefix = "nss_model."
 
-    has_new_prefix = any(
-        key == new_prefix or key.startswith(f"{new_prefix}.")
-        for key in state_dict.keys()
-    )
     has_old_prefix = any(
-        key == old_prefix or key.startswith(f"{old_prefix}.")
+        key == old_prefix or key.startswith(f"{old_prefix}")
         for key in state_dict.keys()
     )
 
-    if not has_old_prefix or has_new_prefix:
+    if not has_old_prefix:
         return state_dict
 
     logger.warning(
-        "Loading FeedbackModel state dict with deprecated naming scheme."
-        f" Modifying state dict from {old_prefix} namespace to {new_prefix}"
+        "Loading model state dict with deprecated naming scheme."
+        f" Modifying state dict to remove the legacy {old_prefix} namespace"
     )
 
-    return replace_prefix_in_state_dict(
-        state_dict,
-        old_prefix=old_prefix,
-        new_prefix=new_prefix,
+    torch.nn.modules.utils.consume_prefix_in_state_dict_if_present(
+        state_dict, old_prefix
     )
+    return state_dict
 
 
 def _prepare_qat_forward_input(
-    model: BaseNGModel | BaseNGModelWrapper,
+    model: BaseNGModel,
     params: ConfigModel,
 ) -> Tuple[Any, ...]:
     """Load a sample from train dataloader to trace model before loading real QAT weights."""
@@ -170,13 +113,11 @@ def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device 
             f"Weight file must have a .pt extension, not: {model_path.suffix}"
         )
 
-    trained_model: BaseNGModelWrapper | BaseNGModel = create_model(params, device)
+    trained_model: BaseNGModel = create_model(params, device)
     ng_model = trained_model
     checkpoint = torch.load(model_path, weights_only=True)
 
-    if isinstance(trained_model, BaseNGModelWrapper):
-        ng_model = trained_model.get_ng_model()
-    elif isinstance(trained_model, BaseNGModel):
+    if isinstance(trained_model, BaseNGModel):
         ng_model = trained_model
     else:
         raise ValueError("trained_model is not a valid type")
