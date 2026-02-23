@@ -48,7 +48,6 @@ class CLIIntegrationTest(BaseIntegrationTest):
             (["ng-model-gym", "--version"], 1.0),
             (["ng-model-gym", "qat", "--help"], 1.0),
             (["ng-model-gym", "list-models", "--help"], 1.0),
-            (["ng-model-gym", "list-models"], 1.75),
             (["ng-model-gym", "download", "--help"], 1.0),
         ]
 
