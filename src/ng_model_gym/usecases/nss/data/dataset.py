@@ -12,12 +12,12 @@ from torch.utils.data import Dataset
 from torcheval.metrics.functional import peak_signal_noise_ratio as psnr
 from tqdm.auto import tqdm
 
+from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.data.dataset_registry import register_dataset
 from ng_model_gym.core.data.utils import DataLoaderMode, DatasetType
 from ng_model_gym.core.model.graphics_utils import fixed_normalize_mvs
 from ng_model_gym.core.model.layers.dense_warp import DenseWarp
 from ng_model_gym.core.model.layers.resampling import DownSampling2D
-from ng_model_gym.core.utils.config_model import ConfigModel
 from ng_model_gym.usecases.nss.data.process_functions import process_nss_data
 
 logger = logging.getLogger(__name__)
@@ -41,11 +41,7 @@ class NSSDataset(Dataset):
         self.extension = extension
         self.config_params = config_params
         self.loader_mode = loader_mode
-        self.recurrent_samples = (
-            int(self.config_params.dataset.recurrent_samples)
-            if loader_mode != DataLoaderMode.TEST
-            else 1
-        )
+        self.recurrent_samples = self._resolve_recurrent_samples()
         self.data_path = getattr(self.config_params.dataset.path, self.loader_mode)
 
         if self.recurrent_samples == 1 and loader_mode != DataLoaderMode.TEST:
@@ -148,6 +144,28 @@ class NSSDataset(Dataset):
         # Only used for test, store data
         self.existing_seq_path = None
         self.data_frame = None
+
+    def _resolve_recurrent_samples(self) -> int:
+        """
+        Validate recurrent_samples for NSS.
+        Test mode uses a single sample. Training/validation requires >= 2
+        """
+        if self.loader_mode == DataLoaderMode.TEST:
+            return 1
+
+        recurrent_samples = getattr(self.config_params.model, "recurrent_samples", None)
+        if recurrent_samples is None:
+            raise ValueError(
+                "NSS dataset requires `model.recurrent_samples` for train/validation."
+            )
+
+        if recurrent_samples < 2:
+            raise ValueError(
+                "NSS dataset requires `model.recurrent_samples >= 2` "
+                "for train/validation."
+            )
+
+        return recurrent_samples
 
     def __len__(self):
         return len(self.frame_indexes)

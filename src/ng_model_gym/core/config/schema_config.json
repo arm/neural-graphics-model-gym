@@ -1,26 +1,78 @@
 {
     "config_schema_version": {
-        "default": "2",
+        "default": "3",
         "description": "Config schema version. Used to check compatibility.",
         "type": "string"
     },
     "model": {
-        "name": {
-            "description": "Model name",
-            "type": "string"
+        "discriminator": {
+            "propertyName": "model_source"
         },
-        "version": {
-            "anyOf": [
-                {
+        "oneOf": [
+            {
+                "discriminator": {
+                    "propertyName": "name"
+                },
+                "oneOf": [
+                    {
+                        "name": {
+                            "const": "nss",
+                            "type": "string"
+                        },
+                        "version": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Model version"
+                        },
+                        "model_source": {
+                            "const": "prebuilt",
+                            "type": "string"
+                        },
+                        "scale": {
+                            "default": 2.0,
+                            "description": "Upscale parameter for the NSS model. Note, for now only 2x is supported in this version",
+                            "maximum": 2.0,
+                            "minimum": 2.0,
+                            "type": "number"
+                        },
+                        "recurrent_samples": {
+                            "description": "Number of recurrent samples",
+                            "exclusiveMinimum": 1,
+                            "type": "integer"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": {
+                    "description": "Model name",
                     "type": "string"
                 },
-                {
-                    "type": "null"
+                "version": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Model version"
+                },
+                "model_source": {
+                    "const": "custom",
+                    "type": "string"
                 }
-            ],
-            "default": null,
-            "description": "Model version"
-        }
+            }
+        ]
     },
     "dataset": {
         "name": {
@@ -118,19 +170,6 @@
             "description": "Run health check on given dataset. health_check() must be implemented in the Dataset.",
             "type": "boolean"
         },
-        "recurrent_samples": {
-            "anyOf": [
-                {
-                    "exclusiveMinimum": 1,
-                    "type": "integer"
-                },
-                {
-                    "type": "null"
-                }
-            ],
-            "default": null,
-            "description": "Number of recurrent samples"
-        },
         "gt_augmentation": {
             "description": "Enable dataset augmentations e.g flips, rotations",
             "type": "boolean"
@@ -220,13 +259,6 @@
             "description": "Number of samples processed together in one pass before updating model weights",
             "minimum": 1,
             "type": "integer"
-        },
-        "scale": {
-            "default": 2.0,
-            "description": "Upscale parameter for the NSS model. Note only 2x for now is supported in this version",
-            "maximum": 2.0,
-            "minimum": 2.0,
-            "type": "number"
         },
         "seed": {
             "description": "Seed for random number generation",

@@ -134,7 +134,7 @@ class TestModelFactory(unittest.TestCase):
         """Test initialising the model from the registered class."""
 
         self.params.model_train_eval_mode = TrainEvalMode.FP32
-        self.params.dataset.recurrent_samples = None
+        self.params.model.recurrent_samples = None
 
         model = create_model(self.params, self.device)
 
@@ -145,7 +145,7 @@ class TestModelFactory(unittest.TestCase):
         """Test initialising the model as a QAT model."""
 
         self.params.model_train_eval_mode = TrainEvalMode.QAT_INT8
-        self.params.dataset.recurrent_samples = None
+        self.params.model.recurrent_samples = None
 
         model = create_model(self.params, self.device)
 

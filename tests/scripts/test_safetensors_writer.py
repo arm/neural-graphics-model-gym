@@ -383,13 +383,12 @@ class TestSafetensorsWriter(unittest.TestCase):
             output_root = self._writer_output_root(args)
 
             params = create_simple_params(dataset=str(output_root))
-            params.dataset.path.train = output_root
-            params.dataset.recurrent_samples = 1
-            dataset = NSSDataset(params, DataLoaderMode.TRAIN)
+            params.dataset.path.test = output_root
+            dataset = NSSDataset(params, DataLoaderMode.TEST)
 
             capture = dataset.captures[0]
             expected_segments = compute_expected_segments(
-                flags, params.dataset.recurrent_samples
+                flags, dataset.recurrent_samples
             )
             self.assertEqual(dataset.capture_sequences[capture], expected_segments)
             self.assertEqual(dataset.capture_windows[capture], [(0, 1)])

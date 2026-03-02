@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+import inspect
 import json
 import logging
 import tempfile
@@ -9,9 +10,11 @@ from contextlib import redirect_stdout
 from importlib.resources import files
 from io import StringIO
 from pathlib import Path
+from typing import Annotated, get_args, get_origin, Union
 
-from ng_model_gym.core.utils.config_utils import load_config_file
-from ng_model_gym.core.utils.general_utils import create_directory
+from ng_model_gym.core.config import config_model
+from ng_model_gym.core.config.config_utils import load_config_file
+from ng_model_gym.core.utils.directory_utils import create_directory
 from scripts.generate_config_schema import generate_schema
 from tests.testing_utils import create_simple_params
 
@@ -183,6 +186,68 @@ class TestConfig(unittest.TestCase):
 
             temp_path.unlink(missing_ok=True)
 
+    def test_custom_models(self):
+        """Test custom model config accepts custom fields"""
+
+        user_config = create_simple_params().model_dump(mode="json")
+        user_config["model"] = {
+            "name": "my_model",
+            "model_source": "custom",
+            "version": "1",
+            "custom_field": 0.1,
+        }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            with tempfile.NamedTemporaryFile(
+                dir=tmp_dir, mode="w+", suffix=".json", delete=False
+            ) as temp_file:
+                json.dump(user_config, temp_file)
+                temp_path = Path(temp_file.name)
+
+            loaded = load_config_file(temp_path)
+
+            self.assertEqual(loaded.model.name, "my_model")
+            self.assertEqual(loaded.model.model_source, "custom")
+            self.assertEqual(loaded.model.custom_field, 0.1)
+
+    def test_model_specific_config_classes_in_union_type(self):
+        """
+        Ensure PrebuiltModelSettingsBase subclasses are added to the prebuilt_models_settings
+        union in config_model.py
+        """
+
+        def unwrap_annotated(type_param):
+            if get_origin(type_param) is Annotated:
+                return get_args(type_param)[0]
+            return type_param
+
+        def get_union_members(type_param):
+            type_param = unwrap_annotated(type_param)
+            if get_origin(type_param) is Union:
+                return set(get_args(type_param))
+            return {type_param}
+
+        union_members = get_union_members(config_model.prebuilt_models_settings)
+
+        subclasses = {
+            obj
+            for obj in config_model.__dict__.values()
+            if inspect.isclass(obj)
+            and issubclass(obj, config_model.PrebuiltModelSettingsBase)
+            and obj is not config_model.PrebuiltModelSettingsBase
+        }
+
+        missing = subclasses - union_members
+        if missing:
+            missing_names = sorted(cls.__name__ for cls in missing)
+            message = (
+                "Missing PrebuiltModelSettingsBase subclasses in "
+                " the union prebuilt_models_settings:\n"
+                + "\n".join(f"- {name}" for name in missing_names)
+                + "\nAdd them to config_model.prebuilt_models_settings union."
+            )
+            self.fail(message)
+
 
 class TestConfigLogging(unittest.TestCase):
     """Test logging output for config validation errors."""
@@ -247,7 +312,7 @@ class TestConfigSchemaGenerator(unittest.TestCase):
 
             # Path to schema_config.json in the repo. Possibly outdated
             current_schema_path = (
-                files("ng_model_gym.usecases.nss.configs") / "schema_config.json"
+                files("ng_model_gym.core.config") / "schema_config.json"
             )
             # Load files to compare contents
             with open(
@@ -264,5 +329,5 @@ class TestConfigSchemaGenerator(unittest.TestCase):
                         current_schema_json,
                         regenerated_schema_json,
                         "The schema_config.json file is outdated,"
-                        " regenerate using the script in /scripts/generate_config_schema.py",
+                        " cd and regenerate using the script in /scripts/generate_config_schema.py",
                     )

@@ -237,7 +237,7 @@ class TrainingIntegrationTest(BaseIntegrationTest):
 
         for split in ("train", "validation", "test"):
             cfg_json["dataset"]["path"][split] = str(dataset_dir)
-        cfg_json["dataset"]["recurrent_samples"] = 4
+        cfg_json["model"]["recurrent_samples"] = 4
         cfg_json["train"]["batch_size"] = 1
         cfg_json["train"]["fp32"]["number_of_epochs"] = 1
 

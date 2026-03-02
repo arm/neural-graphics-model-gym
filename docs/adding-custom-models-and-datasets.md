@@ -4,26 +4,56 @@ SPDX-License-Identifier: Apache-2.0
 --->
 # Adding custom models and datasets
 
-Neural Graphics Model Gym supports adding your own custom models and datasets, enabling you to use them across all workflows.
+Neural Graphics Model Gym supports adding your own custom models and datasets.
 
-When using the [CLI](../README.md#command-line-usage), new models and datasets should be added within the [usecases](../src/ng_model_gym/usecases/) directory. Each new subdirectory must contain an `__init__.py` file, and the model or dataset must be marked with a decorator, as described below, to be discovered.
+There are two common ways to add models and datasets:
 
-If using the Neural Graphics Model Gym [Python package](../README.md#usage-as-a-python-package), new models and datasets can be placed anywhere in your project. They must also be marked with a decorator and the files containing them should be imported into your code in order for them to be registered.
+1. Modify a prebuilt model (for example, NSS) by copying its implementation, registering it under a new name, and using its model config file as a starting point.
+2. Create a new custom model and dataset from scratch, register, and use a custom config file.
 
-#### Registering a custom model
+
+#### Modifying a prebuilt model
+
+If you copy a prebuilt model (such as NSS), modify the class decorator to register it under a new name (for example, `MyNSSModel`). Use the prebuilt model config, set `model.name/model.version` to your new registration, and keep `model_source: "prebuilt"`.
+
+```bash
+ng-model-gym init nss [save_dir]
+```
+
+```json
+{
+  "model": {
+    "name": "nss",
+    "model_source": "prebuilt",
+    "version": "1",
+    "scale": 2.0,
+    "recurrent_samples": 16
+  },
+  "dataset": {
+    "name": "NSS",
+    "version": "1"
+  }
+}
+```
+
+If you are adding a new model or dataset from scratch, use the custom template as described in a [later section](#creating-custom-configuration-files).
+
+#### Registering a new model
 
 To add a new model, mark the model class with the `@register_model()` decorator, giving the name and optional version to register it under. Models must inherit from the [`BaseNGModel`](../src/ng_model_gym/core/model/base_ng_model.py) class, implement any required methods, and their constructors must accept `params` as an argument.
+
 ```python
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.model_registry import register_model
-from ng_model_gym.core.utils.config_model import ConfigModel
+from ng_model_gym.core.config.config_model import ConfigModel
+
 
 @register_model(name="name", version="version")
 class NewModel(BaseNGModel):
-  def __init__(self, params: ConfigModel):
-    super().__init__(params)
+    def __init__(self, params: ConfigModel):
+        super().__init__(params)
 
-  ...
+    ...
 ```
 
 #### Registering a custom dataset
@@ -38,43 +68,20 @@ class NewDataset(Dataset):
   ...
 ```
 
-#### Updating the config to use a custom model or dataset
+#### Model and dataset discovery
 
-To use a custom model or dataset, the configuration file must be updated with the model or dataset name and optional version it was registered with such as:
+Depending on how you interact with ng-model-gym (CLI or API), model and dataset discovery works differently. Registration happens when the module containing the decorated class is imported.
 
-```json
-{
-  "model": {
-    "name": "model_name",
-    "version": "1"
-  },
-  "dataset": {
-    "name": "dataset_name",
-    "version": "1",
-    ...
-  }
-}
-```
+##### Using the CLI
 
-# Adding custom use cases
-
-Neural Graphics Model Gym supports defining new custom use cases to group related models, datasets, configurations, and any additional required code together.
-
-#### Where to add new use cases
-To create a new use case when using the [CLI](../README.md#command-line-usage), add a folder under the existing [usecases](../src/ng_model_gym/usecases/) directory containing an `__init__.py` file.
-
-When using the [Python package](../README.md#usage-as-a-python-package), new use cases can be added anywhere in your project as long as the model and dataset are imported into your code.
-
-The required model implementation and dataset must be added, following [Adding custom models and datasets](#adding-custom-models-and-datasets) above, along with any additional pipeline code. The [nss](../src/ng_model_gym/usecases/nss) use case folder can be used as an example.
-
-The use case logic is executed when its model and dataset are used in the configuration file being provided.
+Models/datasets registered under the `ng_model_gym/usecases` folder are auto-discovered. Outside of this folder, the CLI does not search for registered models/datasets. 
 
 A suggested layout is:
 
 ```
 new_usecase/
   ├── configs/
-  │   └── config.json
+  │   └── my_model_template.json
   ├── data/
   │   ├── __init__.py
   │   └── dataset.py
@@ -86,3 +93,34 @@ new_usecase/
 ```
 
 The [core](../src/ng_model_gym/core/) directory contains all code shared across use cases, including base classes, utilities, trainers, evaluators, loss functions, learning rate schedulers, and optimizers.
+
+
+##### Using the ng-model-gym API
+
+If you interact with the model-gym using the API, registered models/datasets can live anywhere, but you must import their modules in your own code.
+
+#### Creating custom configuration files
+
+To create a configuration file for a custom model, use the CLI `init custom` command:
+
+```bash
+ng-model-gym init custom [save_dir]
+```
+Custom model configs must set `"model_source": "custom"`. This allows for extra JSON fields under the `model` section for use in your registered model code. Update the config with the names of your registered model and dataset.
+
+```json
+{
+  "model": {
+    "name": "registered_model_name",
+    "model_source": "custom",
+    "version": "1",
+    "my_field": "value",
+    "my_field2": "value"
+  },
+  "dataset": {
+    "name": "dataset_name",
+    "version": "1",
+    ...
+  }
+}
+```

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import jsonref
 
-from ng_model_gym.core.utils.config_model import ConfigModel
+from ng_model_gym.core.config.config_model import ConfigModel
 
 sys.path.append("..")
 
@@ -58,7 +58,7 @@ def generate_schema(output_path: Path):
     logger.warning(
         "Make sure that you have: "
         "\n - Bumped CONFIG_SCHEMA_VERSION in config_model.py"
-        "\n - Updated default.json"
+        "\n - Update model config templates"
     )
     with open(output_path, "w", encoding="utf-8") as schema_file:
         # Inline the "refs" keys in the generated JSON schema spec
@@ -77,9 +77,8 @@ if __name__ == "__main__":
             "..",
             "src",
             "ng_model_gym",
-            "usecases",
-            "nss",
-            "configs",
+            "core",
+            "config",
             "schema_config.json",
         )
     )

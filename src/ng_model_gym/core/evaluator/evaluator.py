@@ -16,7 +16,7 @@ from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.data.utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.model.model_factory import BaseNGModel
-from ng_model_gym.core.utils.general_utils import create_directory
+from ng_model_gym.core.utils.directory_utils import create_directory
 
 logger = logging.getLogger(__name__)
 

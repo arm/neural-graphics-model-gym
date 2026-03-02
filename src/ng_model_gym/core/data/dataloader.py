@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -9,9 +9,9 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
+from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.data.dataset_registry import DATASET_REGISTRY, get_dataset_key
 from ng_model_gym.core.data.utils import DataLoaderMode, DatasetType
-from ng_model_gym.core.utils.config_model import ConfigModel
 
 logger = logging.getLogger(__name__)
 
@@ -101,15 +101,6 @@ def get_dataloader(
 
     # Shuffle only when training.
     shuffle = loader_mode == DataLoaderMode.TRAIN
-
-    if (
-        config_params.dataset.recurrent_samples is not None
-        and config_params.dataset.recurrent_samples < 2
-        and loader_mode == DataLoaderMode.TRAIN
-    ):
-        raise ValueError(
-            "If set, number of recurrent samples must be greater than 1 for training."
-        )
 
     g = torch.Generator()
     g.manual_seed(config_params.train.seed)

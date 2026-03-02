@@ -81,9 +81,9 @@ class CLIIntegrationTest(BaseIntegrationTest):
             env["PYTHONUTF8"] = "1"
             env["PYTHONIOENCODING"] = "utf-8"
 
-            # First invocation: should create config.json and schema_config.json
+            # First invocation: should create nss.json and schema_config.json
             sub_process1 = subprocess.run(
-                ["ng-model-gym", "init", "--out-dir", tmpdir],
+                ["ng-model-gym", "init", "nss", tmpdir],
                 capture_output=True,
                 text=True,
                 env=env,
@@ -91,7 +91,7 @@ class CLIIntegrationTest(BaseIntegrationTest):
             self.assertEqual(sub_process1.returncode, 0, sub_process1.stderr)
 
             # Expected files
-            config1 = out_dir / "config.json"
+            config1 = out_dir / "nss.json"
             schema = out_dir / "schema_config.json"
             self.assertTrue(config1.exists())
             self.assertTrue(schema.exists())
@@ -102,14 +102,14 @@ class CLIIntegrationTest(BaseIntegrationTest):
 
             # Call second time, the file name should increment
             sub_process_2 = subprocess.run(
-                ["ng-model-gym", "init", "--out-dir", tmpdir],
+                ["ng-model-gym", "init", "nss", tmpdir],
                 capture_output=True,
                 text=True,
                 env=env,
             )
             self.assertEqual(sub_process_2.returncode, 0, sub_process_2.stderr)
 
-            config2 = out_dir / "config_1.json"
+            config2 = out_dir / "nss_1.json"
             self.assertTrue(config2.exists())
             self.assertTrue(schema.exists())
 
@@ -175,3 +175,21 @@ class CLIIntegrationTest(BaseIntegrationTest):
             )
 
             self.assertTrue((tmpdir / Path("nss_v0.1.0_fp32.pt")).exists())
+
+    def test_listing_config(self):
+        """Test listing config CLI command"""
+
+        sub_process = subprocess.run(
+            [
+                "ng-model-gym",
+                "config-options",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(sub_process.returncode, 0, sub_process.stderr)
+
+        self.assertIn(
+            "config_schema_version",
+            sub_process.stdout,
+        )

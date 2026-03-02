@@ -26,8 +26,7 @@ from ng_model_gym.core.utils.types import (
 )
 
 # pylint: disable=line-too-long
-
-CONFIG_SCHEMA_VERSION = "2"
+CONFIG_SCHEMA_VERSION = "3"
 
 # Pydantic models representing the configuration file structure.
 # For fields which are not core to all model types (e.g. recurrent_samples),
@@ -68,7 +67,7 @@ class PydanticConfigModel(BaseModel):
         return field
 
 
-class Path(PydanticConfigModel):
+class Paths(PydanticConfigModel):
     """Paths to train, test and validation dataset"""
 
     train: Optional[pathlib.Path] = Field(
@@ -90,11 +89,56 @@ class Processing(PydanticConfigModel):
     )
 
 
-class Model(PydanticConfigModel):
+class BaseModelSettings(PydanticConfigModel):
     """Model configuration"""
 
     name: str = Field(description="Model name")
     version: Optional[str] = Field(description="Model version", default=None)
+
+
+class PrebuiltModelSettingsBase(BaseModelSettings):
+    """
+    Our own models we provide should extend this class and fill out the prebuilt_models_settings
+    discriminated union
+    """
+
+    model_source: Literal["prebuilt"]
+
+
+class CustomModelSettings(BaseModelSettings):
+    """
+    If a user specifies the model_source to be custom,
+    allow any json fields into the model section of the config
+    """
+
+    model_source: Literal["custom"]
+    model_config = ConfigDict(extra="allow", revalidate_instances="always")
+
+
+class NSSModelSettings(PrebuiltModelSettingsBase):
+    """NSS model settings"""
+
+    name: Literal["nss"]
+    scale: StrictFloat = Field(
+        2.0,
+        ge=2.0,
+        le=2.0,
+        description="Upscale parameter for the NSS model. Note, for now only 2x is supported in this version",
+    )
+    recurrent_samples: int = Field(gt=1, description="Number of recurrent samples")
+
+
+# DO NOT FORGET TO ADD NEW MODEL SETTINGS HERE
+prebuilt_models_settings = Annotated[
+    Union[NSSModelSettings],
+    Field(discriminator="name"),
+]
+
+
+ModelSettings = Annotated[
+    Union[prebuilt_models_settings, CustomModelSettings],
+    Field(discriminator="model_source"),
+]
 
 
 class Dataset(PydanticConfigModel):
@@ -102,7 +146,7 @@ class Dataset(PydanticConfigModel):
 
     name: str = Field(description="Dataset name")
     version: Optional[str] = Field(description="Dataset version", default=None)
-    path: Path
+    path: Paths
     exposure: Optional[float] = Field(
         ge=0.0, description="Training dataset exposure value", default=None
     )
@@ -111,9 +155,6 @@ class Dataset(PydanticConfigModel):
     )
     health_check: bool = Field(
         description="Run health check on given dataset. health_check() must be implemented in the Dataset."
-    )
-    recurrent_samples: Optional[int] = Field(
-        gt=1, description="Number of recurrent samples", default=None
     )
     gt_augmentation: bool = Field(
         description="Enable dataset augmentations e.g flips, rotations"
@@ -276,12 +317,6 @@ class Train(PydanticConfigModel):
     resume: SkipJsonSchema[Optional[pathlib.Path]] = Field(
         default=None, exclude=True
     )  # Hidden from user
-    scale: StrictFloat = Field(
-        2.0,
-        ge=2.0,
-        le=2.0,
-        description="Upscale parameter for the NSS model. Note only 2x for now is supported in this version",
-    )
     seed: int = Field(ge=0, description="Seed for random number generation")
     finetune: SkipJsonSchema[str | pathlib.Path | None] = Field(
         default=None,
@@ -311,7 +346,7 @@ class ConfigModel(PydanticConfigModel):
         CONFIG_SCHEMA_VERSION,
         description="Config schema version. Used to check compatibility.",
     )
-    model: Model
+    model: ModelSettings
     dataset: Dataset
     output: Output
     train: Train

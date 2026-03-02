@@ -14,6 +14,7 @@ from torch.nn.parameter import Parameter
 from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 
+from ng_model_gym.core.config.config_model import ConfigModel, TrainingConfig
 from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.data.utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.evaluator.metrics import get_metrics
@@ -28,8 +29,7 @@ from ng_model_gym.core.utils.checkpoint_utils import (
     latest_checkpoint_in_dir,
     remap_feedback_model_state_dict,
 )
-from ng_model_gym.core.utils.config_model import ConfigModel, TrainingConfig
-from ng_model_gym.core.utils.general_utils import create_directory
+from ng_model_gym.core.utils.directory_utils import create_directory
 from ng_model_gym.core.utils.types import (
     LearningRateScheduler,
     LossFn,
@@ -508,7 +508,7 @@ def get_loss_fn(params: ConfigModel, device: torch.device):
     loss_name = params.train.loss_fn
 
     if loss_name == LossFn.LOSS_V1:
-        return LossV1(params.dataset.recurrent_samples, device)
+        return LossV1(params.model.recurrent_samples, device)
 
     # Defensive (all enums should be handled above)
     raise ValueError(f"No implementation for loss function {loss_name}")

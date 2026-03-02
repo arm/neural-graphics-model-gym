@@ -1,0 +1,79 @@
+{
+    "config_schema_version": "3",
+    "model": {
+        "name": "<NAME_OF_REGISTERED_MODEL>",
+        "model_source": "custom",
+        "version": "<>",
+        "custom_param": ""
+    },
+    "dataset": {
+        "name": "<DATASET_NAME>",
+        "version": "<DATASET_VERSION>",
+        "path": {
+            "train": "<PATH/TO/TRAIN_DATA_DIR>",
+            "validation": "<PATH/TO/VALIDATION_DATA_DIR>",
+            "test": "<PATH/TO/TEST_DATA_DIR>"
+        },
+        "exposure": "<>",
+        "tonemapper": "<>",
+        "health_check": false,
+        "gt_augmentation": true,
+        "num_workers": 4,
+        "prefetch_factor": 1
+    },
+    "output": {
+        "dir": "<OUTPUT/DIR>",
+        "export_frame_png": false,
+        "tensorboard_output_dir": "<TENSORBOARD/OUTPUT/DIR>",
+        "export": {
+            "dynamic_shape": true,
+            "vgf_output_dir": "<VGF/OUTPUT/DIR>"
+        }
+    },
+    "metrics": [
+        "PSNR",
+        "tPSNR",
+        "RecPSNR",
+        "SSIM"
+    ],
+    "train": {
+        "batch_size": "<>",
+        "seed": 123456,
+        "perform_validate": true,
+        "validate_frequency": 1,
+        "loss_fn": "<LOSS_FUNCTION>",
+        "fp32": {
+            "number_of_epochs": "<>",
+            "checkpoints": {
+                "dir": "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>"
+            },
+            "lr_scheduler": {
+                "type": "<>",
+                "warmup_percentage": "<>",
+                "min_lr": "<>"
+            },
+            "optimizer": {
+                "optimizer_type": "<>",
+                "learning_rate": "<>"
+            }
+        },
+        "qat": {
+            "number_of_epochs": "<>",
+            "checkpoints": {
+                "dir": "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>"
+            },
+            "lr_scheduler": {
+                "type": "<>",
+                "warmup_percentage": "<>",
+                "min_lr": "<>"
+            },
+            "optimizer": {
+                "optimizer_type": "<>",
+                "learning_rate": "<>"
+            }
+        }
+    },
+    "processing": {
+        "shader_accurate": false
+    }
+}

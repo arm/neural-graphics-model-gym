@@ -1,21 +1,23 @@
 {
-    "config_schema_version": "2",
+    "config_schema_version": "3",
     "model": {
-        "name": "NSS",
-        "version": "1"
+        "name": "nss",
+        "model_source": "prebuilt",
+        "version": "1",
+        "scale": 2.0,
+        "recurrent_samples": 16
     },
     "dataset": {
         "name": "NSS",
         "version": "1",
         "path": {
-            "train": null,
-            "validation": null,
-            "test": null
+            "train": "<PATH/TO/TRAIN_DATA_DIR>",
+            "validation": "<PATH/TO/VALIDATION_DATA_DIR>",
+            "test": "<PATH/TO/TEST_DATA_DIR>"
         },
         "exposure": 2,
         "tonemapper": "reinhard",
         "health_check": false,
-        "recurrent_samples": 16,
         "gt_augmentation": true,
         "num_workers": 4,
         "prefetch_factor": 1
@@ -38,7 +40,6 @@
     ],
     "train": {
         "batch_size": 8,
-        "scale": 2.0,
         "seed": 123456,
         "perform_validate": true,
         "validate_frequency": 1,
@@ -46,7 +47,7 @@
         "fp32": {
             "number_of_epochs": 15,
             "checkpoints": {
-                "dir": "./checkpoints"
+                "dir": "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>"
             },
             "lr_scheduler": {
                 "type": "cosine_annealing",
@@ -62,7 +63,7 @@
         "qat": {
             "number_of_epochs": 2,
             "checkpoints": {
-                "dir": "./checkpoints/qat_checkpoints"
+                "dir": "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>"
             },
             "lr_scheduler": {
                 "type": "cosine_annealing",
