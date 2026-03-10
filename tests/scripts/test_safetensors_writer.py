@@ -392,3 +392,53 @@ class TestSafetensorsWriter(unittest.TestCase):
             )
             self.assertEqual(dataset.capture_sequences[capture], expected_segments)
             self.assertEqual(dataset.capture_windows[capture], [(0, 1)])
+
+    def test_generated_safetensor_contains_all_features(self):
+        """Test that all expected features are present in the generated .safetensors file."""
+        generic_safetensors_writer(self.args)
+
+        self.assertTrue(
+            self.output_path.exists(), msg=f"{self.output_path} failed to be created."
+        )
+
+        expected_features = {
+            "EmulatedFramerate",
+            "FovX",
+            "FovY",
+            "ReverseZ",
+            "Samples",
+            "TargetResolution",
+            "X",
+            "Y",
+            "camera_cut",
+            "colour_linear",
+            "depth",
+            "depth_params",
+            "exposure",
+            "ground_truth_linear",
+            "img",
+            "infinite_zFar",
+            "jitter",
+            "motion",
+            "motion_lr",
+            "outDims",
+            "render_size",
+            "scale",
+            "seq",
+            "viewProj",
+            "zFar",
+            "zNear",
+        }
+
+        with safe_open(self.output_path, framework="pt") as written:
+            actual_features = set(written.keys())
+            missing = expected_features - actual_features
+            unexpected = actual_features - expected_features
+            self.assertFalse(
+                missing,
+                msg=f"Missing expected features in {self.output_path}: {missing}",
+            )
+            self.assertFalse(
+                unexpected,
+                msg=f"Unexpected features found in {self.output_path}: {unexpected}",
+            )

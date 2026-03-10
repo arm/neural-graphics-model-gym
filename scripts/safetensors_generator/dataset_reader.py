@@ -273,6 +273,24 @@ class NSSEXRDatasetReader(FeatureIterator):
         truth_raw = read_exr_torch(
             self.seq_data["ground_truth"][self.count], dtype=np.float16, channels="RGB"
         )
+
+        out_features["EmulatedFramerate"] = torch.tensor(
+            self.metadata["EmulatedFramerate"], dtype=torch.float32
+        ).reshape((1, 1))
+
+        # Target resolution dims
+        res_x, res_y = (
+            self.metadata["TargetResolution"]["X"],
+            self.metadata["TargetResolution"]["Y"],
+        )
+        out_features["TargetResolution"] = torch.tensor(
+            [res_x, res_y], dtype=torch.int32
+        ).reshape((1, 2))
+
+        out_features["Samples"] = torch.tensor(
+            self.metadata["Samples"]["Count"], dtype=torch.int32
+        ).reshape((1, 1))
+
         frame_meta_data = self.metadata["Frames"][self.count]
 
         # Render sizes
