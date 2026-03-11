@@ -124,6 +124,10 @@ class QATIntegrationTest(BaseIntegrationTest):
         """Run entire training pipeline with finetuning."""
         self.run_finetune_training_test()
 
+    def test_model_train_finetune_model_from_hf(self):
+        """Run finetuning pipeline using model from HF using unique identifier."""
+        self.run_finetune_training_test_hf_model()
+
     def test_model_train_resume(self):
         """Run entire training pipeline with resuming."""
         self.test_model_train()
