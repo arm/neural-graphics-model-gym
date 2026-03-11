@@ -22,9 +22,21 @@ hatch run test:test
 # (Test individual functions)
 hatch run test:unit
 
+# Run core unit tests only
+hatch run test:unit-core
+
+# Run usecase unit tests only
+hatch run test:unit-usecase-all
+
 # Run all integration tests
 # (Test how parts of the application work together)
 hatch run test:integration
+
+# Run core integration tests only
+hatch run test:integration-core
+
+# Run usecase integration tests only
+hatch run test:integration-usecase-all
 
 # Run export tests
 hatch run test:export
@@ -45,12 +57,14 @@ First set an environment variable for the usecase, then run the test command:
 
 Linux (bash):
 ```bash
-export USECASE=nss && hatch run test:unit
+export USECASE=nss && hatch run test:unit-usecase
+export USECASE=nss && hatch run test:integration-usecase
 ```
 
 Windows (cmd):
 ```bat
-set USECASE=nss && hatch run test:unit
+set USECASE=nss && hatch run test:unit-usecase
+set USECASE=nss && hatch run test:integration-usecase
 ```
 
 **To run unit tests from one specific file with tests:**

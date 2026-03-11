@@ -203,15 +203,23 @@ PYTHONIOENCODING = "utf-8"
 download = "python tests/fetch_huggingface.py"
 
 # Test
-unit = "python -m pytest tests/core/unit tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit tests/scripts"
-integration = "python -m pytest tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"
-integration-fast = "python -m pytest --fast-test tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"
+unit-core = "python -m pytest tests/core/unit tests/scripts"                                                                # core unit tests
+unit-usecase = "python -m pytest tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit"                                   # usecase specific unit tests, specified usecase
+unit-usecase-all = "python -m pytest tests/usecases/*/unit"                                                                 # usecase specific unit tests, all usecases
+unit = ["unit-core", "unit-usecase-all"]
+
+integration-core = "python -m pytest tests/core/integration"                                                                # core integration tests
+integration-usecase = "python -m pytest tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"                     # usecase specific integration tests, specified usecase
+integration-usecase-all = "python -m pytest tests/usecases/*/integration"                                                   # usecase specific integration tests, all usecases
+integration = ["integration-core", "integration-usecase-all"]
+
+integration-usecase-fast = "python -m pytest --fast-test tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"    # usecase specific integration tests, specified usecase, fast test
+integration-usecase-all-fast = "python -m pytest --fast-test tests/usecases/*/integration"                                  # usecase specific integration tests, all usecases, fast test
+integration-fast = ["integration-core", "integration-usecase-all-fast"]
+
 export = "python -m pytest tests/core/export"
-test = [
-    "python -m pytest tests/core/unit tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit tests/scripts",
-    "python -m pytest tests/core/integration tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration",
-    "python -m pytest tests/core/export"
-]
+
+test = ["unit", "integration", "export"]
 
 # Coverage
 coverage-check = [
