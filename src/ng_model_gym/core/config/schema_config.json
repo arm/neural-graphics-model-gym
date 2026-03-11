@@ -282,7 +282,7 @@
                 }
             ],
             "default": 1,
-            "description": "For a single int, N, validate every N epochs. For a List of ints, run validation after each epoch in the List."
+            "description": "For a single int, N, validate every N epochs. For a List of ints, run validation after each epoch in the List. If using with `perform_validate=true`, ensure that at least one validation pass will run within the total number of epochs, otherwise a ValueError is raised."
         },
         "fp32": {
             "number_of_epochs": {

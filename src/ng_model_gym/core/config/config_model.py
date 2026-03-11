@@ -328,7 +328,12 @@ class Train(PydanticConfigModel):
     )
     validate_frequency: Union[int, List[int]] = Field(
         default=1,
-        description="For a single int, N, validate every N epochs. For a List of ints, run validation after each epoch in the List.",
+        description=(
+            "For a single int, N, validate every N epochs. "
+            "For a List of ints, run validation after each epoch in the List. "
+            "If using with `perform_validate=true`, ensure that at least one validation pass "
+            "will run within the total number of epochs, otherwise a ValueError is raised."
+        ),
     )
     fp32: TrainingConfig
     qat: TrainingConfig
@@ -337,6 +342,40 @@ class Train(PydanticConfigModel):
         description="Loss function to use. Choose from: "
         + ", ".join([e.value for e in LossFn]),
     )
+
+    @model_validator(mode="after")
+    def _validate_validation_schedule(self):
+        """
+        Warn early if validation is enabled but won't run within the configured epochs.
+        """
+        if not self.perform_validate:
+            return self
+
+        total_epochs = (
+            self.fp32.number_of_epochs
+        )  # fp32 and qat share validation config shape
+        freq = self.validate_frequency
+
+        def will_run(start_epoch: int, epochs: int, frequency):
+            if isinstance(frequency, int):
+                return frequency > 0 and any(
+                    epoch % frequency == 0 for epoch in range(start_epoch, epochs + 1)
+                )
+            if isinstance(frequency, list):
+                return any(
+                    epoch in frequency for epoch in range(start_epoch, epochs + 1)
+                )
+            return False
+
+        if not will_run(1, total_epochs, freq):
+            raise ValueError(
+                "Validation is enabled (`perform_validate=true`) but no validation pass "
+                "will run with the current settings "
+                f"(validate_frequency={freq}, number_of_epochs={total_epochs}). "
+                "Increase number_of_epochs or adjust validate_frequency."
+            )
+
+        return self
 
 
 class ConfigModel(PydanticConfigModel):

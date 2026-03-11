@@ -49,6 +49,10 @@ class Trainer:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"Device is {self.device.type}")
 
+        # Paths to the most recent and best-performing checkpoints (if validation runs)
+        self.latest_model_save_path: Optional[Path] = None
+        self.best_model_save_path: Optional[Path] = None
+
         # Training config parameters based on FP32 or QAT training
         if self.params.model_train_eval_mode == TrainEvalMode.FP32:
             self.training_mode_params = params.train.fp32

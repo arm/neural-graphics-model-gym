@@ -12,6 +12,8 @@ from io import StringIO
 from pathlib import Path
 from typing import Annotated, get_args, get_origin, Union
 
+from pydantic import ValidationError
+
 from ng_model_gym.core.config import config_model
 from ng_model_gym.core.config.config_utils import load_config_file
 from ng_model_gym.core.utils.directory_utils import create_directory
@@ -185,6 +187,46 @@ class TestConfig(unittest.TestCase):
             self.assertEqual(e.exception.code, 1)
 
             temp_path.unlink(missing_ok=True)
+
+    def test_reject_validation_enabled_without_valid_schedule(self):
+        """Test config fails when validation is enabled but never scheduled to run."""
+
+        user_config = create_simple_params().model_dump(mode="json")
+        user_config["train"]["perform_validate"] = True
+        user_config["train"]["validate_frequency"] = 5
+        user_config["train"]["fp32"]["number_of_epochs"] = 1
+
+        with self.assertRaises(ValidationError) as exc:
+            config_model.ConfigModel.model_validate(user_config)
+
+        self.assertIn(
+            "Validation is enabled (`perform_validate=true`) but no validation pass will run",
+            str(exc.exception),
+        )
+
+    def test_accept_validation_schedule_with_int_frequency(self):
+        """Test config accepts a valid validation schedule when frequency is an int."""
+
+        user_config = create_simple_params().model_dump(mode="json")
+        user_config["train"]["perform_validate"] = True
+        user_config["train"]["validate_frequency"] = 2
+        user_config["train"]["fp32"]["number_of_epochs"] = 5
+
+        loaded_config = config_model.ConfigModel.model_validate(user_config)
+
+        self.assertEqual(loaded_config.train.validate_frequency, 2)
+
+    def test_accept_validation_schedule_with_list_frequency(self):
+        """Test config accepts a valid validation schedule when frequency is a list."""
+
+        user_config = create_simple_params().model_dump(mode="json")
+        user_config["train"]["perform_validate"] = True
+        user_config["train"]["validate_frequency"] = [2, 5]
+        user_config["train"]["fp32"]["number_of_epochs"] = 5
+
+        loaded_config = config_model.ConfigModel.model_validate(user_config)
+
+        self.assertEqual(loaded_config.train.validate_frequency, [2, 5])
 
     def test_custom_models(self):
         """Test custom model config accepts custom fields"""
