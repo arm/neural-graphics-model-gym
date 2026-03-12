@@ -8,7 +8,7 @@ from torch import nn
 from torch.utils._pytree import tree_map
 
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
-from ng_model_gym.core.utils.tensor_types import TensorData
+from ng_model_gym.core.utils.torch_utils import TensorData
 
 
 def model_tracer(ng_model: BaseNGModel, input_data: TensorData) -> Tuple[Any, ...]:

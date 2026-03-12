@@ -6,8 +6,10 @@ import unittest
 
 import torch
 
-from ng_model_gym.core.history_buffer import HistoryBuffer
-from ng_model_gym.core.utils.types import HistoryBufferResetFunction
+from ng_model_gym.usecases.nss.model.history_buffer import (
+    HistoryBuffer,
+    HistoryBufferResetFunction,
+)
 
 
 class TestHistoryBuffer(unittest.TestCase):

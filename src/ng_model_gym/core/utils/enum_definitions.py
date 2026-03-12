@@ -58,16 +58,6 @@ class OptimizerType(str, Enum):
     LARS_ADAM = "lars_adam"
 
 
-class HistoryBufferResetFunction(str, Enum):
-    """Enum of supported history buffer reset functions."""
-
-    IDENTITY = "identity"
-    ZEROS = "zeros"
-    ONES = "ones"
-    RESET_LR = "reset_lr"
-    RESET_HR = "reset_hr"
-
-
 class ExportSpec(str, Enum):
     """Enum of TOSA export specifications."""
 

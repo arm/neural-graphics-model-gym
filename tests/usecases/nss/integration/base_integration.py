@@ -11,8 +11,8 @@ from importlib.resources import files
 from pathlib import Path
 from typing import List
 
-from ng_model_gym.core.utils.checkpoint_utils import latest_checkpoint_in_dir
-from ng_model_gym.core.utils.directory_utils import create_directory
+from ng_model_gym.core.model.checkpoint_loader import latest_checkpoint_in_dir
+from ng_model_gym.core.utils.io.file_utils import create_directory
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import clear_loggers
 

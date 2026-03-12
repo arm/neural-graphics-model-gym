@@ -32,8 +32,8 @@ from ng_model_gym.core.quantization.observers import (
     freeze_all_observers,
     FusedMovingAvgObsFakeQuantizeFix,
 )
-from ng_model_gym.core.utils.tensor_types import TensorData
-from ng_model_gym.core.utils.types import ExportSpec
+from ng_model_gym.core.utils.enum_definitions import ExportSpec
+from ng_model_gym.core.utils.torch_utils import TensorData
 
 logger = logging.getLogger(__name__)
 

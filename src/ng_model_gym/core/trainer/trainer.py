@@ -15,28 +15,28 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm.auto import tqdm
 
 from ng_model_gym.core.config.config_model import ConfigModel, TrainingConfig
+from ng_model_gym.core.data.data_utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.data.dataloader import get_dataloader
-from ng_model_gym.core.data.utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.loss.losses import LossV1
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
+from ng_model_gym.core.model.checkpoint_loader import (
+    latest_checkpoint_in_dir,
+    remap_feedback_model_state_dict,
+)
 from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.optimizers.adam_w import adam_w_torch
 from ng_model_gym.core.optimizers.lars_adam import lars_adam_torch
 from ng_model_gym.core.schedulers.lr_scheduler import CosineAnnealingWithWarmupLR
-from ng_model_gym.core.utils.checkpoint_utils import (
-    latest_checkpoint_in_dir,
-    remap_feedback_model_state_dict,
-)
-from ng_model_gym.core.utils.directory_utils import create_directory
-from ng_model_gym.core.utils.types import (
+from ng_model_gym.core.utils.enum_definitions import (
     LearningRateScheduler,
     LossFn,
     ModelType,
     OptimizerType,
     TrainEvalMode,
 )
+from ng_model_gym.core.utils.io.file_utils import create_directory
 
 logger = logging.getLogger(__name__)
 

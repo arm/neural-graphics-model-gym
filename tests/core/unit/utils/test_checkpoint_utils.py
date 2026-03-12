@@ -7,7 +7,7 @@ import time
 import unittest
 from pathlib import Path
 
-from ng_model_gym.core.utils.checkpoint_utils import latest_checkpoint_in_dir
+from ng_model_gym.core.model.checkpoint_loader import latest_checkpoint_in_dir
 
 
 class RestorePretrainedModelFromCheckpoints(unittest.TestCase):

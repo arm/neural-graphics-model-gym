@@ -1,9 +1,19 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+from enum import Enum
+
 import torch
 
-from ng_model_gym.core.utils.types import HistoryBufferResetFunction
+
+class HistoryBufferResetFunction(str, Enum):
+    """Enum of supported history buffer reset functions."""
+
+    IDENTITY = "identity"
+    ZEROS = "zeros"
+    ONES = "ones"
+    RESET_LR = "reset_lr"
+    RESET_HR = "reset_hr"
 
 
 class HistoryBuffer:

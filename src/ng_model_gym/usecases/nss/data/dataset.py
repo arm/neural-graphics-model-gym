@@ -13,8 +13,8 @@ from torcheval.metrics.functional import peak_signal_noise_ratio as psnr
 from tqdm.auto import tqdm
 
 from ng_model_gym.core.config.config_model import ConfigModel
+from ng_model_gym.core.data.data_utils import DataLoaderMode, DatasetType
 from ng_model_gym.core.data.dataset_registry import register_dataset
-from ng_model_gym.core.data.utils import DataLoaderMode, DatasetType
 from ng_model_gym.core.model.graphics_utils import fixed_normalize_mvs
 from ng_model_gym.core.model.layers.dense_warp import DenseWarp
 from ng_model_gym.core.model.layers.resampling import DownSampling2D

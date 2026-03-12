@@ -12,7 +12,11 @@ from typing import Annotated, Optional, TYPE_CHECKING, TypedDict
 import typer
 from rich.console import Console
 
-from ng_model_gym.core.utils.types import ExportType, ProfilerType, TrainEvalMode
+from ng_model_gym.core.utils.enum_definitions import (
+    ExportType,
+    ProfilerType,
+    TrainEvalMode,
+)
 
 if TYPE_CHECKING:
     from ng_model_gym.core.utils import ConfigModel
@@ -444,8 +448,11 @@ def cli_root(
 
     with console.status("[bold green] Loading modules...", spinner="dots") as _:
         from ng_model_gym.core.config.config_utils import load_config_file
-        from ng_model_gym.core.utils.general_utils import fix_randomness
-        from ng_model_gym.core.utils.logging import log_machine_info, logging_config
+        from ng_model_gym.core.utils.logging_utils import (
+            log_machine_info,
+            logging_config,
+        )
+        from ng_model_gym.core.utils.torch_utils import fix_randomness
 
     # Create a globally accessible "Click" ctx to check if program was invoked from the CLI
     ctx.ensure_object(dict)

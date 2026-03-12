@@ -14,18 +14,20 @@ import ng_model_gym.core.utils.patch.executorch_patch  # pylint: disable=unused-
 from ng_model_gym import download_pretrained_model
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.evaluator import NGModelEvaluator
+from ng_model_gym.core.model.checkpoint_loader import load_checkpoint
 from ng_model_gym.core.trainer import Trainer
-from ng_model_gym.core.utils.checkpoint_utils import load_checkpoint
-from ng_model_gym.core.utils.directory_utils import create_directory
-from ng_model_gym.core.utils.gpu_log_decorator import gpu_log_decorator
-from ng_model_gym.core.utils.logging import log_gpu_torch
-from ng_model_gym.core.utils.memory_log_decorator import memory_log_decorator
-from ng_model_gym.core.utils.time_decorator import time_decorator
-from ng_model_gym.core.utils.types import (
+from ng_model_gym.core.utils.enum_definitions import (
     ExportType,
     ModelType,
     ProfilerType,
     TrainEvalMode,
+)
+from ng_model_gym.core.utils.io.file_utils import create_directory
+from ng_model_gym.core.utils.logging_utils import log_gpu_torch
+from ng_model_gym.core.utils.system_usage_decorators import (
+    gpu_log_decorator,
+    memory_log_decorator,
+    time_decorator,
 )
 
 logger = logging.getLogger(__name__)
@@ -273,7 +275,7 @@ def do_export(
         ...     export_type=ExportType.FP32,
         ...)
     """
-    from ng_model_gym.core.utils.export_utils import (  # pylint: disable=import-outside-toplevel
+    from ng_model_gym.core.export.model_export import (  # pylint: disable=import-outside-toplevel
         executorch_vgf_export,
     )
 

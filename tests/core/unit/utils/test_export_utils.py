@@ -14,13 +14,13 @@ from unittest.mock import DEFAULT, patch
 import torch
 from torch import nn
 
-from ng_model_gym.core.model import BaseNGModel, get_model_key
-from ng_model_gym.core.utils.export_utils import (
+from ng_model_gym.core.export.model_export import (
     DataLoaderMode,
     executorch_vgf_export,
     ExportType,
     TrainEvalMode,
 )
+from ng_model_gym.core.model import BaseNGModel, get_model_key
 
 
 def _flatten(container):
@@ -101,7 +101,7 @@ class TestExportUtils(unittest.TestCase):
         self.tmp_path = Path(tempfile.mkdtemp())
         self.params = make_params(self.tmp_path)
         self.load_ckpt_patch = patch(
-            "ng_model_gym.core.utils.export_utils.load_checkpoint",
+            "ng_model_gym.core.export.model_export.load_checkpoint",
             new=lambda *a, **k: MockNSS(self.params),
         )
         self.load_ckpt_patch.start()
@@ -112,12 +112,12 @@ class TestExportUtils(unittest.TestCase):
         shutil.rmtree(self.tmp_path)
 
     # Patch the heavy or external dependencies on every test:
-    @patch("ng_model_gym.core.utils.export_utils._update_metadata_file", new=DEFAULT)
-    @patch("ng_model_gym.core.utils.export_utils.get_dataloader", side_effect=fake_dl)
-    @patch("ng_model_gym.core.utils.export_utils._export_module_to_vgf", new=DEFAULT)
-    @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
+    @patch("ng_model_gym.core.export.model_export._update_metadata_file", new=DEFAULT)
+    @patch("ng_model_gym.core.export.model_export.get_dataloader", side_effect=fake_dl)
+    @patch("ng_model_gym.core.export.model_export._export_module_to_vgf", new=DEFAULT)
+    @patch("ng_model_gym.core.export.model_export._check_cuda", new=lambda: None)
     @patch(
-        "ng_model_gym.core.utils.export_utils.model_tracer",
+        "ng_model_gym.core.export.model_export.model_tracer",
         new=lambda model, preprocess: torch.zeros(1, 1),
     )
     def test_qat_int8_path(
@@ -165,12 +165,12 @@ class TestExportUtils(unittest.TestCase):
 
         self.assertEqual(meta_path, expected_meta)
 
-    @patch("ng_model_gym.core.utils.export_utils._update_metadata_file", new=DEFAULT)
-    @patch("ng_model_gym.core.utils.export_utils.get_dataloader", side_effect=fake_dl)
-    @patch("ng_model_gym.core.utils.export_utils._export_module_to_vgf", new=DEFAULT)
-    @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
+    @patch("ng_model_gym.core.export.model_export._update_metadata_file", new=DEFAULT)
+    @patch("ng_model_gym.core.export.model_export.get_dataloader", side_effect=fake_dl)
+    @patch("ng_model_gym.core.export.model_export._export_module_to_vgf", new=DEFAULT)
+    @patch("ng_model_gym.core.export.model_export._check_cuda", new=lambda: None)
     @patch(
-        "ng_model_gym.core.utils.export_utils.model_tracer",
+        "ng_model_gym.core.export.model_export.model_tracer",
         new=lambda model, preprocess: torch.zeros(1, 1),
     )
     def test_fp32_path(
@@ -215,14 +215,14 @@ class TestExportUtils(unittest.TestCase):
         )
         self.assertEqual(meta_path, expected_meta)
 
-    @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
-    @patch("ng_model_gym.core.utils.export_utils.get_dataloader", new=fake_dl)
+    @patch("ng_model_gym.core.export.model_export._check_cuda", new=lambda: None)
+    @patch("ng_model_gym.core.export.model_export.get_dataloader", new=fake_dl)
     @patch(
-        "ng_model_gym.core.utils.export_utils._export_module_to_vgf",
+        "ng_model_gym.core.export.model_export._export_module_to_vgf",
         new=lambda *a, **k: None,
     )
     @patch(
-        "ng_model_gym.core.utils.export_utils.model_tracer",
+        "ng_model_gym.core.export.model_export.model_tracer",
         new=lambda model, preprocess: torch.zeros(1, 1),
     )
     def test_metadata_file_is_created(self):
@@ -247,7 +247,7 @@ class TestExportUtils(unittest.TestCase):
         data = json.loads(meta_path.read_text(encoding="utf-8"))
         self.assertEqual(data, {"foo": "bar"})
 
-    @patch("ng_model_gym.core.utils.export_utils._check_cuda", new=lambda: None)
+    @patch("ng_model_gym.core.export.model_export._check_cuda", new=lambda: None)
     def test_inputs_channels_last_for_4d(self):
         """Ensure 4D tensors become channels_last and non-tensors unchanged."""
 
@@ -284,14 +284,14 @@ class TestExportUtils(unittest.TestCase):
             captured["input"] = model_forward_input
 
         with patch(
-            "ng_model_gym.core.utils.export_utils.get_dataloader", side_effect=local_dl
+            "ng_model_gym.core.export.model_export.get_dataloader", side_effect=local_dl
         ), patch(
-            "ng_model_gym.core.utils.export_utils.model_tracer", new=passthrough_tracer
+            "ng_model_gym.core.export.model_export.model_tracer", new=passthrough_tracer
         ), patch(
-            "ng_model_gym.core.utils.export_utils._export_module_to_vgf",
+            "ng_model_gym.core.export.model_export._export_module_to_vgf",
             new=capture_export,
         ), patch(
-            "ng_model_gym.core.utils.export_utils._update_metadata_file",
+            "ng_model_gym.core.export.model_export._update_metadata_file",
             new=lambda *a, **k: None,
         ):
             executorch_vgf_export(

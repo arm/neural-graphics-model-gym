@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import torch
 
-from ng_model_gym.core.utils.gpu_log_decorator import (
+from ng_model_gym.core.utils.system_usage_decorators import (
     gpu_log_decorator,
     GPUSTAT_AVAILABLE,
 )
@@ -26,7 +26,7 @@ class TestGPULogDecorator(unittest.TestCase):
         not GPUSTAT_AVAILABLE or not torch.cuda.is_available(),
         "gpustat not installed, skipped this test.",
     )
-    @patch("ng_model_gym.core.utils.gpu_log_decorator.GPUStatCollection")
+    @patch("ng_model_gym.core.utils.system_usage_decorators.GPUStatCollection")
     def test_decorator_enabled(self, mock_gpustat_cls):
         """
         Check that we query gpustat function before and after the function.

@@ -12,7 +12,7 @@ from safetensors import safe_open
 from safetensors.torch import save_file
 
 from ng_model_gym.core.data import DataLoaderMode, DatasetType
-from ng_model_gym.core.utils.directory_utils import create_directory
+from ng_model_gym.core.utils.io.file_utils import create_directory
 from ng_model_gym.usecases.nss.data.dataset import NSSDataset
 from tests.testing_utils import create_simple_params, validate_params
 from tests.usecases.nss.unit.data.camera_cut_builders import write_camera_cut_fixture

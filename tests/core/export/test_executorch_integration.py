@@ -9,8 +9,8 @@ import unittest
 from pathlib import Path
 
 from ng_model_gym.api import do_export
-from ng_model_gym.core.utils.export_utils import ExportType
-from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.core.export.model_export import ExportType
+from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from tests.testing_utils import create_simple_params
 
 

@@ -16,7 +16,7 @@ from pydantic import ValidationError
 
 from ng_model_gym.core.config import config_model
 from ng_model_gym.core.config.config_utils import load_config_file
-from ng_model_gym.core.utils.directory_utils import create_directory
+from ng_model_gym.core.utils.io.file_utils import create_directory
 from scripts.generate_config_schema import generate_schema
 from tests.testing_utils import create_simple_params
 

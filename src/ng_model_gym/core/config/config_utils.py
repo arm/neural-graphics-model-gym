@@ -23,8 +23,7 @@ from ng_model_gym.core.config.config_model import (
     ConfigModel,
     OutputDirModel,
 )
-from ng_model_gym.core.utils.json_reader import read_json_file
-from ng_model_gym.core.utils.logging import setup_logging
+from ng_model_gym.core.utils.logging_utils import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +75,26 @@ def _discover_config_templates() -> Dict[str, List[TemplateInfo]]:
             templates.setdefault(model_key, []).append(info)
 
     return templates
+
+
+def _read_json_file(json_file_path: Path) -> Dict:
+    """Create dictionary from json file"""
+
+    if not isinstance(json_file_path, Path):
+        raise TypeError("json_file_path must be of type Path from Pathlib")
+
+    try:
+        with open(json_file_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    except FileNotFoundError:
+        logger.error(f"Config file not found for path: {json_file_path.absolute()}")
+        raise
+    except json.JSONDecodeError as e:
+        logger.error(
+            f"Unable to decode JSON in file: {json_file_path.absolute()}\n {e}"
+        )
+        raise
 
 
 def list_config_templates() -> List[str]:
@@ -179,7 +198,7 @@ def load_config_file(user_config_path: Path) -> ConfigModel:
         >>> params = load_config_file(Path("config.json"))
     """
 
-    user_config: dict = read_json_file(user_config_path)
+    user_config: dict = _read_json_file(user_config_path)
 
     validate_schema_version(user_config)
 

@@ -10,8 +10,8 @@ import torch
 from torch.utils.data import Dataset
 
 from ng_model_gym.core.config.config_model import ConfigModel
+from ng_model_gym.core.data.data_utils import DataLoaderMode, DatasetType
 from ng_model_gym.core.data.dataset_registry import DATASET_REGISTRY, get_dataset_key
-from ng_model_gym.core.data.utils import DataLoaderMode, DatasetType
 
 logger = logging.getLogger(__name__)
 
