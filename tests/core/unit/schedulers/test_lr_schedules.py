@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.schedulers import CosineAnnealingWithWarmupLR
 from ng_model_gym.core.trainer import get_lr_schedule
-from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from tests.testing_utils import create_simple_params, validate_params
 
 

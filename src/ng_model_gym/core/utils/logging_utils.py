@@ -11,7 +11,7 @@ import GPUtil
 import psutil
 
 from ng_model_gym.core.config.config_model import ConfigModel
-from ng_model_gym.core.utils.directory_utils import create_directory
+from ng_model_gym.core.utils.io.file_utils import create_directory
 
 logger = logging.getLogger(__name__)
 

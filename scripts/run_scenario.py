@@ -30,7 +30,7 @@ import numpy as np
 import safetensors
 import torch
 
-from ng_model_gym.core.utils import dds_utils
+from scripts.utils import dds_utils
 
 
 def generate_preprocess_push_constants(

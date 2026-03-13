@@ -17,7 +17,7 @@ from pydantic import (
 from pydantic.json_schema import SkipJsonSchema
 from pydantic_core import PydanticCustomError
 
-from ng_model_gym.core.utils.types import (
+from ng_model_gym.core.utils.enum_definitions import (
     LearningRateScheduler,
     LossFn,
     OptimizerType,

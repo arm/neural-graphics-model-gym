@@ -13,7 +13,7 @@ from ng_model_gym.core.model import (
     get_model_key,
     register_model,
 )
-from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from tests.testing_utils import create_simple_params
 
 

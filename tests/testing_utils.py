@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from ng_model_gym.core.config.config_model import ConfigModel
-from ng_model_gym.core.utils.directory_utils import create_directory
+from ng_model_gym.core.utils.io.file_utils import create_directory
 
 
 def clear_loggers() -> None:

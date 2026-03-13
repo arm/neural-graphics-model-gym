@@ -4,4 +4,4 @@
 
 from .adam_w import adam_w_torch
 from .lars_adam import LARS, lars_adam_torch
-from .utils import OptimizerWrapper
+from .optimizer_wrapper import OptimizerWrapper

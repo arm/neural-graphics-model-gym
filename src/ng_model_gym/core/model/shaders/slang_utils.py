@@ -9,7 +9,7 @@ from importlib.resources import files
 import slangtorch
 from rich.console import Console
 
-from ng_model_gym.core.utils.general_utils import is_invoked_cli, suspend_tqdm_bar
+from ng_model_gym.core.utils.io.cli_utils import is_invoked_cli, suspend_tqdm_bar
 
 logger = logging.getLogger(__name__)
 

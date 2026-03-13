@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-from ng_model_gym.core.utils import dds_utils
+from scripts.utils import dds_utils
 
 
 class TestDdsUtils(unittest.TestCase):

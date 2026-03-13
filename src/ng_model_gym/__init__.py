@@ -40,7 +40,7 @@ if TYPE_CHECKING:
         load_config_file,
         print_config_options,
     )
-    from ng_model_gym.core.utils.logging import logging_config
+    from ng_model_gym.core.utils.logging_utils import logging_config
 else:
 
     def __getattr__(attr):
@@ -73,7 +73,7 @@ else:
 
             return print_config_options
         if attr == "logging_config":
-            from ng_model_gym.core.utils.logging import logging_config
+            from ng_model_gym.core.utils.logging_utils import logging_config
 
             return logging_config
         if attr == "generate_config_file":

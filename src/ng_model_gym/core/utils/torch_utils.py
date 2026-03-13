@@ -1,16 +1,13 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-import logging
 import random
-from contextlib import contextmanager
+from typing import Dict, List, Union
 
-import click
 import numpy as np
 import torch
-from tqdm.asyncio import tqdm
 
-logger = logging.getLogger(__name__)
+TensorData = Union[torch.Tensor, Dict[str, torch.Tensor], List[torch.Tensor]]
 
 
 def fix_randomness(seed, use_deterministic_cuda=False):
@@ -39,25 +36,3 @@ def clamp_tensor(
 ) -> torch.Tensor:
     """Clips between input within range: `[mini, maxi]`"""
     return torch.maximum(torch.minimum(img, maxi), mini)
-
-
-def is_invoked_cli() -> bool:
-    """Checks if the current program is running from our CLI"""
-    ctx = click.get_current_context(silent=True)
-    is_cli_program = bool(ctx and ctx.obj.get("ng-model-gym-cli-active"))
-    return is_cli_program
-
-
-@contextmanager
-def suspend_tqdm_bar():
-    """Hide tqdm bar whilst in this context manager"""
-    tqdm_bars = list(getattr(tqdm, "_instances", []))
-
-    for tqdm_bar in tqdm_bars:
-        tqdm_bar.clear()
-
-    try:
-        yield
-    finally:
-        for tqdm_bar in tqdm_bars:
-            tqdm_bar.refresh()

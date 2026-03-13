@@ -7,7 +7,7 @@ from typing import Dict, List, Union
 
 import torch
 
-from ng_model_gym.core.utils.types import ToneMapperMode
+from ng_model_gym.core.utils.enum_definitions import ToneMapperMode
 
 logger = logging.getLogger(__name__)
 

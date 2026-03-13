@@ -9,7 +9,7 @@ import torch
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.model_registry import get_model_key, MODEL_REGISTRY
-from ng_model_gym.core.utils.types import TrainEvalMode
+from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 
 logger = logging.getLogger(__name__)
 

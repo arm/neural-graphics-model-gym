@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import argparse
@@ -15,7 +15,7 @@ import torch
 from safetensors.torch import save_file
 from tqdm.auto import tqdm
 
-from ng_model_gym.core.utils.logging import setup_logging
+from ng_model_gym.core.utils.logging_utils import setup_logging
 from scripts.safetensors_generator.dataset_reader import (
     Dataset_Readers,
     FeatureIterator,

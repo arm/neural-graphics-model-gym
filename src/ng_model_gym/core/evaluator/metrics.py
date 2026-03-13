@@ -12,7 +12,7 @@ from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.image.ssim import StructuralSimilarityIndexMeasure
 
 from ng_model_gym.core.config.config_model import ConfigModel
-from ng_model_gym.core.utils.general_utils import suspend_tqdm_bar
+from ng_model_gym.core.utils.io.cli_utils import suspend_tqdm_bar
 
 logger = logging.getLogger(__name__)
 

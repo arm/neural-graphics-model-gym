@@ -6,8 +6,12 @@ from pathlib import Path
 
 from ng_model_gym.api import do_evaluate, do_export, do_training
 from ng_model_gym.core.config.config_utils import load_config_file
-from ng_model_gym.core.utils.logging import logging_config
-from ng_model_gym.core.utils.types import ExportType, ProfilerType, TrainEvalMode
+from ng_model_gym.core.utils.enum_definitions import (
+    ExportType,
+    ProfilerType,
+    TrainEvalMode,
+)
+from ng_model_gym.core.utils.logging_utils import logging_config
 from tests.usecases.nss.integration.base_integration import BaseIntegrationTest
 
 

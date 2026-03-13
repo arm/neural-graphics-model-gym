@@ -9,16 +9,18 @@ import torch
 from torch import nn, Tensor
 
 from ng_model_gym.core.config.config_model import ConfigModel, NSSModelSettings
-from ng_model_gym.core.data.utils import tonemap_forward
-from ng_model_gym.core.history_buffer import HistoryBuffer
+from ng_model_gym.core.data.data_utils import tonemap_forward
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.graphics_utils import (
     compute_jitter_tile_offset,
     generate_lr_to_hr_lut,
 )
 from ng_model_gym.core.model.model_registry import register_model
-from ng_model_gym.core.utils.tensor_types import TensorData
-from ng_model_gym.core.utils.types import HistoryBufferResetFunction
+from ng_model_gym.core.utils.torch_utils import TensorData
+from ng_model_gym.usecases.nss.model.history_buffer import (
+    HistoryBuffer,
+    HistoryBufferResetFunction,
+)
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
 from ng_model_gym.usecases.nss.model.nss_padding_utils import (
     NSSPaddingPolicy,

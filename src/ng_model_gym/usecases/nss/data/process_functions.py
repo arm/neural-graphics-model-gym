@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -7,8 +7,8 @@ from typing import Dict
 import torch
 import torchvision.transforms.functional as transforms
 
-from ng_model_gym.core.data.utils import tonemap_forward, ToneMapperMode
-from ng_model_gym.core.utils.general_utils import clamp_tensor
+from ng_model_gym.core.data.data_utils import tonemap_forward, ToneMapperMode
+from ng_model_gym.core.utils.torch_utils import clamp_tensor
 
 logger = logging.getLogger(__name__)
 

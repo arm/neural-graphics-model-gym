@@ -13,13 +13,13 @@ import numpy as np
 import torch
 from safetensors import safe_open
 
-from ng_model_gym.core.data.utils import DataLoaderMode
-from ng_model_gym.core.utils.exr_utils import read_exr_torch
+from ng_model_gym.core.data.data_utils import DataLoaderMode
 from ng_model_gym.usecases.nss.data.dataset import NSSDataset
 from scripts.safetensors_generator.dataset_reader import (
     generic_safetensors_reader,
     NSSEXRDatasetReader,
 )
+from scripts.safetensors_generator.exr_utils import read_exr_torch
 from scripts.safetensors_generator.safetensors_writer import generic_safetensors_writer
 from tests.testing_utils import create_simple_params
 from tests.usecases.nss.unit.data.camera_cut_builders import compute_expected_segments
