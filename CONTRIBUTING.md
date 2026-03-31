@@ -38,11 +38,11 @@ Before making a pull request for any code changes, you must run the following ch
 ```bash
 hatch run test:test                          # Run all tests
 hatch run test:coverage-check                # Create coverage report
-hatch run static-analyis:format              # Format files
-hatch run static-analyis:lint-all            # Lints src and test files
-hatch run static-analyis:bandit-check        # Run security check
-hatch run static-analyis:blocklint           # Run non-inclusive language check
-hatch run static-analyis:copyright           # Run copyright header check
+hatch run static-analysis:format              # Format files
+hatch run static-analysis:lint-all            # Lints src and test files
+hatch run static-analysis:bandit-check        # Run security check
+hatch run static-analysis:blocklint           # Run non-inclusive language check
+hatch run static-analysis:copyright           # Run copyright header check
 ```
 
 ### `pre-commit` module
