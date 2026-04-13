@@ -90,7 +90,8 @@ pip install dist/ng_model_gym-{version}-py3-none-any.whl
 ## **Docker**
 ### Build the Docker image
 
-A Dockerfile to help build and run Neural Graphics Model Gym is [provided](../Dockerfile). This will build and install everything required, such as Python and system packages, into a Docker image.
+A Dockerfile to help build and run Neural Graphics Model Gym is [provided](../Dockerfile).
+This installs system dependencies and the Python runtime (but does not install Python package dependencies) and copies the Neural Graphics Model Gym source into the container.
 
 Run the following command to build the Docker image:
 
@@ -105,7 +106,12 @@ To run the container, specify the shared memory size and access to all GPUs usin
 docker run -it --shm-size=2gb --gpus all neural-graphics-model-gym:latest
 ```
 
-You can then run any of the commands in the next sections from within your Docker container.
+To use Neural Graphics Model Gym as a Python package inside the container, run:
+```bash
+pip install .
+```
+
+You can then follow the usage instructions from within your Docker container (see [Usage](./usage.md)).
 
 #### Increase shared memory
 To run training with the Docker image, the shared memory size must be increased from the default allocated to a container by using the `--shm-size` flag.
