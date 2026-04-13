@@ -40,8 +40,37 @@ WORKDIR ${NG_MODEL_GYM_DIR}
 # Copy Neural Graphics Model Gym folder to container, excluding files from .dockerignore.
 COPY . ${NG_MODEL_GYM_DIR}
 
-# Install Python packages from pyproject.toml
-RUN python -m pip install -U pip
-RUN pip install .
+RUN printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  '' \
+  'echo' \
+  'print_banner_text "=" "Base Image Disclaimer"' \
+  'echo' \
+  'echo "This image is provided by Arm and includes Arm-developed components on top of a publicly available base image (e.g., Ubuntu)."' \
+  'echo "Arm has not audited or tested the base OS or its third-party packages."' \
+  'echo "For issues related to Arm'\''s software, contact Arm."' \
+  'echo "For base image concerns, contact the upstream provider."' \
+  'echo' \
+  > /opt/nvidia/entrypoint.d/40-disclaimer.sh
+
+RUN cat <<'EOF' > /home/CONTAINER-WELCOME.txt
+Neural Graphics Model Gym is available as source code in /home/neural-graphics-model-gym.
+
+To use the CLI or the Python package, run:
+  cd /home/neural-graphics-model-gym
+  python -m pip install -U pip
+  pip install .
+
+For usage and available commands, see /home/neural-graphics-model-gym/docs/usage.md.
+EOF
+
+RUN printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  '' \
+  'print_banner_text "=" "Neural Graphics Model Gym"' \
+  'echo' \
+  'cat /home/CONTAINER-WELCOME.txt' \
+  'echo' \
+  > /opt/nvidia/entrypoint.d/41-install-package.sh
 
 CMD ["/bin/bash"]
