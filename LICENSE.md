@@ -231,7 +231,7 @@ license text is included in, or next to, those files.
   code must also be made under the terms of [Apache License 2.0](./LICENSES/Apache-2.0.txt).
   Relevant files:
 
-   - `src/ng_model_gym/core/utils/export_utils.py`
+   - `src/ng_model_gym/core/export/model_export.py`
    - `src/ng_model_gym/core/utils/patch/executorch_patch.py`
 
 - Some code replicates functionality from the [TensorFlow](https://github.com/tensorflow/tensorflow) project.
