@@ -33,7 +33,7 @@ class TestDatasetFactory(unittest.TestCase):
     def setUp(self):
         train_data_dir = Path("./tests/usecases/nss/datasets/train")
 
-        self.params = create_simple_params()
+        self.params = create_simple_params(usecase="nss")
         self.params.dataset.path.train = train_data_dir
 
     def tearDown(self):

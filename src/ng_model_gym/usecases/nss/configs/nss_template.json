@@ -1,7 +1,7 @@
 {
-    "config_schema_version": "3",
+    "config_schema_version": "5",
     "model": {
-        "name": "nss",
+        "name": "NSS",
         "model_source": "prebuilt",
         "version": "1",
         "scale": 2.0,
@@ -25,10 +25,10 @@
     "output": {
         "dir": "./output",
         "export_frame_png": false,
-        "tensorboard_output_dir": "./tensorboard-logs",
+        "tensorboard_output_dir": "./tensorboard-logs/nss",
         "export": {
             "dynamic_shape": true,
-            "vgf_output_dir": "./output/vgf"
+            "vgf_output_dir": "./output/vgf/nss"
         }
     },
 
@@ -47,7 +47,7 @@
         "fp32": {
             "number_of_epochs": 15,
             "checkpoints": {
-                "dir": "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>"
+                "dir": "./output/checkpoints/nss/fp32"
             },
             "lr_scheduler": {
                 "type": "cosine_annealing",
@@ -56,14 +56,15 @@
             },
             "optimizer": {
                 "optimizer_type": "lars_adam",
-                "learning_rate": "2e-3"
+                "learning_rate": "2e-3",
+                "eps": 1e-7
             }
         },
 
         "qat": {
             "number_of_epochs": 2,
             "checkpoints": {
-                "dir": "<OUTPUT/PATH/FOR/CHECKPOINTS_DIR>"
+                "dir": "./output/checkpoints/nss/qat"
             },
             "lr_scheduler": {
                 "type": "cosine_annealing",
@@ -72,7 +73,8 @@
             },
             "optimizer": {
                 "optimizer_type": "lars_adam",
-                "learning_rate": "2e-3"
+                "learning_rate": "2e-3",
+                "eps": 1e-7
             }
         }
     },

@@ -119,3 +119,51 @@ class LossV1(torch.nn.Module):
         loss = lerp_tensor(loss_spatial_temporal, loss_spatial_filtered, f_weight)
 
         return loss
+
+
+class LPIPSSpatialLoss(torch.nn.Module):
+    """Spatial loss that blends L1 and LPIPS metrics."""
+
+    def __init__(self, loss_args: Dict[str, float], device: torch.device):
+        super().__init__()
+        self.loss_args = loss_args
+        if "alpha" not in self.loss_args:
+            raise ValueError("LPIPSSpatialLoss requires 'alpha' in loss_args")
+
+        self.device = device
+        self.L1_loss = torch.nn.L1Loss(reduce=False)
+        self.lpips_loss = lpips.LPIPS().to(self.device)
+
+    def forward(self, y_true, y_pred):
+        """Compute the weighted spatial loss for the given predictions."""
+        y_pred_out = y_pred["output"]
+
+        loss_L1 = self.L1_loss(y_true, y_pred_out)
+        loss_lpips = self.lpips_loss(y_true, y_pred_out)
+        loss = lerp_tensor(loss_L1, loss_lpips, self.loss_args["alpha"]).mean()
+        return loss
+
+
+class LPIPSSpatialLossV5(torch.nn.Module):
+    """Spatial loss used by the NFRU v1 reference pipeline."""
+
+    def __init__(self, loss_args: Dict[str, float], device: torch.device):
+        super().__init__()
+        self.loss_args = loss_args
+        if "alpha" not in self.loss_args:
+            raise ValueError("LPIPSSpatialLossV5 requires 'alpha' in loss_args")
+
+        self.alpha = float(self.loss_args["alpha"])
+        self.device = device
+        self.l1_loss = torch.nn.L1Loss(reduce=False)
+        self.lpips_loss = lpips.LPIPS().to(self.device)
+
+    def forward(self, y_true: torch.Tensor, y_pred: TensorData) -> torch.Tensor:
+        """Blend L1 and LPIPS with the v5 configuration."""
+        y_pred_out = y_pred["output"]
+
+        loss_l1 = self.l1_loss(y_true, y_pred_out)
+        loss_lpips = self.lpips_loss(y_true, y_pred_out, normalize=True)
+        alpha_tensor = loss_l1.new_tensor(self.alpha)
+        loss = lerp_tensor(loss_l1, loss_lpips, alpha_tensor)
+        return loss.mean()

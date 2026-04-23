@@ -31,14 +31,17 @@ class TestGeneratingConfigFile(unittest.TestCase):
 
     def test_config_files_created(self):
         """Test the files created exist"""
-        config_path, schema_path = generate_config_file("nss", self.output_path)
-
-        self.assertTrue(config_path.exists())
-        self.assertTrue(schema_path.exists())
+        for template in ["NSS", "NFRU"]:
+            with self.subTest(template=template):
+                config_path, schema_path = generate_config_file(
+                    template, self.output_path
+                )
+                self.assertTrue(config_path.exists())
+                self.assertTrue(schema_path.exists())
 
     def test_placeholders_exist(self):
         """Test the generated config file has placeholders for the user to edit"""
-        config_path, _ = generate_config_file("nss", self.output_path)
+        config_path, _ = generate_config_file("custom", self.output_path)
 
         with open(config_path, "r", encoding="utf-8") as f:
             config_data = json.load(f)
@@ -65,13 +68,19 @@ class TestGeneratingConfigFile(unittest.TestCase):
         """Test case/whitespace insensitive generate_config template name"""
         config_path, _ = generate_config_file("  nSs  ", self.output_path)
 
-        self.assertEqual(config_path.name, "nss.json")
+        self.assertEqual(config_path.name, "nss_config.json")
 
     def test_nss_in_template_list(self):
         """Test list config templates includes nss"""
         templates = list_config_templates()
 
-        self.assertIn("nss", templates)
+        self.assertIn("NSS", templates)
+
+    def test_nfru_in_template_list(self):
+        """Test list config templates includes nfru"""
+        templates = list_config_templates()
+
+        self.assertIn("NFRU", templates)
 
     def test_custom_in_template_list(self):
         """Test list config templates includes custom"""
@@ -80,10 +89,10 @@ class TestGeneratingConfigFile(unittest.TestCase):
         self.assertIn("custom", templates)
 
     def test_generate_custom_template_name(self):
-        """Test custom template output uses custom_template.json"""
+        """Test custom template output uses custom_config.json"""
         config_path, _ = generate_config_file("custom", self.output_path)
 
-        self.assertEqual(config_path.name, "custom_template.json")
+        self.assertEqual(config_path.name, "custom_config.json")
 
     def test_generate_config_file_empty_template_raises(self):
         """Test passing an empty template raises"""

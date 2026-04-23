@@ -156,7 +156,9 @@ def generate_config_file(
         selected_config_template == "custom"
         and matching[0].source.name == "custom_template.json"
     ):
-        file_name = "custom_template"
+        file_name = "custom_config"
+    else:
+        file_name = f"{file_name}_config"
     suffix = ".json"
     config_output_path = output_dir / f"{file_name}{suffix}"
 
@@ -195,7 +197,7 @@ def load_config_file(user_config_path: Path) -> ConfigModel:
         ConfigModel: Parsed and validated configuration model.
 
     Example:
-        >>> params = load_config_file(Path("config.json"))
+        >>> params = load_config_file(Path("nss_config.json"))
     """
 
     user_config: dict = _read_json_file(user_config_path)

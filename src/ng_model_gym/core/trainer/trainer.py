@@ -18,7 +18,7 @@ from ng_model_gym.core.config.config_model import ConfigModel, TrainingConfig
 from ng_model_gym.core.data.data_utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.evaluator.metrics import get_metrics
-from ng_model_gym.core.loss.losses import LossV1
+from ng_model_gym.core.loss.losses import LossV1, LPIPSSpatialLoss, LPIPSSpatialLossV5
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.checkpoint_loader import (
     latest_checkpoint_in_dir,
@@ -26,6 +26,7 @@ from ng_model_gym.core.model.checkpoint_loader import (
 )
 from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
+from ng_model_gym.core.optimizers.adam import adam_torch
 from ng_model_gym.core.optimizers.adam_w import adam_w_torch
 from ng_model_gym.core.optimizers.lars_adam import lars_adam_torch
 from ng_model_gym.core.schedulers.lr_scheduler import CosineAnnealingWithWarmupLR
@@ -99,9 +100,15 @@ class Trainer:
         self._quantize_modules()
         self._set_up_tensorboard_logging()
 
-        self.metrics = get_metrics(self.params)
-        for metric in self.metrics:
+        self.train_metrics = get_metrics(self.params, mode="train")
+        for metric in self.train_metrics:
             metric.to(self.device)
+
+        self.val_metrics = []
+        if self.params.train.perform_validate:
+            self.val_metrics = get_metrics(self.params, mode="val")
+            for metric in self.val_metrics:
+                metric.to(self.device)
 
         self.avg_val_loss = float("inf")
 
@@ -284,10 +291,17 @@ class Trainer:
             )
 
             for iteration, (inputs_dataset, ground_truth_data) in train_pbar:
+                self.model.on_train_batch_start()
                 self.optimizer.zero_grad()
 
+                inputs_dataset, ground_truth_data = self.model.on_before_batch_transfer(
+                    (inputs_dataset, ground_truth_data)
+                )
                 inputs_dataset = move_to_device(inputs_dataset, self.device)
                 ground_truth_data = move_to_device(ground_truth_data, self.device)
+                inputs_dataset, ground_truth_data = self.model.on_after_batch_transfer(
+                    (inputs_dataset, ground_truth_data)
+                )
 
                 self.model.y_true = ground_truth_data
 
@@ -318,7 +332,7 @@ class Trainer:
                     f"Mini batch Loss: {loss.item():.4f}, "
                 )
 
-                for metric in self.metrics:
+                for metric in self.train_metrics:
                     metric.update(inference_out["output"], ground_truth_data)
                     progress_bar += f"{metric}: {metric.compute():.4f}, "
 
@@ -328,14 +342,14 @@ class Trainer:
                 train_pbar.set_description(progress_bar)
 
                 tb_values = self._get_values_for_logging(
-                    {"Loss": avg_loss}, self.metrics, name="Train/"
+                    {"Loss": avg_loss}, self.train_metrics, name="Train/"
                 )
                 self._tensorboard_update(
                     tb_values, iteration + (epoch - 1) * total_batches
                 )
                 self.model.on_train_batch_end()
 
-            for metric in self.metrics:
+            for metric in self.train_metrics:
                 metric.reset()
 
             # Evaluate on the validation set, depending on the epoch number
@@ -366,8 +380,14 @@ class Trainer:
 
         for iteration, (inputs_dataset, ground_truth_data) in val_pbar:
             # Move tensors to device.
+            inputs_dataset, ground_truth_data = self.model.on_before_batch_transfer(
+                (inputs_dataset, ground_truth_data)
+            )
             inputs_dataset = move_to_device(inputs_dataset, self.device)
             ground_truth_data = move_to_device(ground_truth_data, self.device)
+            inputs_dataset, ground_truth_data = self.model.on_after_batch_transfer(
+                (inputs_dataset, ground_truth_data)
+            )
 
             self.model.y_true = ground_truth_data
 
@@ -386,7 +406,7 @@ class Trainer:
                 f"Avg. Loss: {self.avg_val_loss:.4f}, "
             )
 
-            for metric in self.metrics:
+            for metric in self.val_metrics:
                 metric.update(inference_out["output"], ground_truth_data)
                 progress_bar += f"{metric}: {metric.compute():.4f}, "
 
@@ -394,11 +414,11 @@ class Trainer:
 
         #  Push validation set results to Tensorboard.
         tb_values = self._get_values_for_logging(
-            {"Loss": self.avg_val_loss}, self.metrics, name="Validation/"
+            {"Loss": self.avg_val_loss}, self.val_metrics, name="Validation/"
         )
         self._tensorboard_update(tb_values, epoch)
 
-        for metric in self.metrics:
+        for metric in self.val_metrics:
             metric.reset()
 
         self.model.on_validation_end()
@@ -513,6 +533,12 @@ def get_loss_fn(params: ConfigModel, device: torch.device):
 
     if loss_name == LossFn.LOSS_V1:
         return LossV1(params.model.recurrent_samples, device)
+    if loss_name == LossFn.LPIPSSpatialLoss:
+        loss_args = params.train.loss_args if hasattr(params.train, "loss_args") else {}
+        return LPIPSSpatialLoss(loss_args, device)
+    if loss_name == LossFn.LPIPSSpatialLossV5:
+        loss_args = params.train.loss_args if hasattr(params.train, "loss_args") else {}
+        return LPIPSSpatialLossV5(loss_args, device)
 
     # Defensive (all enums should be handled above)
     raise ValueError(f"No implementation for loss function {loss_name}")
@@ -527,15 +553,22 @@ def get_optimizer_type(
     Expected values (string) are set in the OptimizerType enum.
     """
     optimizer_type = training_mode_params.optimizer.optimizer_type
+    optimizer_kwargs = training_mode_params.optimizer.model_dump(exclude_none=True)
+    optimizer_kwargs.pop("optimizer_type", None)
+    optimizer_kwargs.pop("learning_rate", None)
 
     if optimizer_type == OptimizerType.LARS_ADAM:
-        return lars_adam_torch(training_mode_params.optimizer.learning_rate)(
-            model_params
-        ).optimizer
+        return lars_adam_torch(
+            training_mode_params.optimizer.learning_rate, **optimizer_kwargs
+        )(model_params).optimizer
     if optimizer_type == OptimizerType.ADAM_W:
-        return adam_w_torch(training_mode_params.optimizer.learning_rate)(
-            model_params
-        ).optimizer
+        return adam_w_torch(
+            training_mode_params.optimizer.learning_rate, **optimizer_kwargs
+        )(model_params).optimizer
+    if optimizer_type == OptimizerType.ADAM:
+        return adam_torch(
+            training_mode_params.optimizer.learning_rate, **optimizer_kwargs
+        )(model_params).optimizer
 
     # Defensive (all enums should be handled above)
     raise ValueError(f"Unsupported optimizer type {optimizer_type}")

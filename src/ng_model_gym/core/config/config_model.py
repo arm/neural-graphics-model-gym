@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 import pathlib
 import tempfile
-from typing import Annotated, List, Literal, Optional, Union
+from numbers import Real
+from typing import Annotated, Any, List, Literal, Optional, Union
 
 from pydantic import (
     BaseModel,
@@ -26,7 +27,8 @@ from ng_model_gym.core.utils.enum_definitions import (
 )
 
 # pylint: disable=line-too-long
-CONFIG_SCHEMA_VERSION = "3"
+
+CONFIG_SCHEMA_VERSION = "5"
 
 # Pydantic models representing the configuration file structure.
 # For fields which are not core to all model types (e.g. recurrent_samples),
@@ -81,11 +83,70 @@ class Paths(PydanticConfigModel):
     )
 
 
+ColourPipelineStage = Union[str, dict[str, Any]]
+ColourPipelineGroup = list[ColourPipelineStage]
+ColourPipelineConfig = list[Union[ColourPipelineStage, ColourPipelineGroup]]
+ColourExposureRange = Annotated[list[float], Field(min_length=2, max_length=2)]
+ColourExposureConfig = Union[float, Literal["auto"], ColourExposureRange]
+
+
+class ColourPreprocessingSplitConfig(PydanticConfigModel):
+    """Per-split colour preprocessing config using lowercase user-facing keys."""
+
+    pipeline: ColourPipelineConfig = Field(
+        default_factory=list,
+        description=(
+            "Ordered colour stages. Nested lists indicate mutually exclusive stages "
+            "to sample from during random-effects training."
+        ),
+    )
+    exposure: ColourExposureConfig = Field(
+        default=2.0,
+        description='Fixed exposure, "auto", or a two-item range for resampling.',
+    )
+    auto_exposure_key_value: float = Field(
+        default=1.0,
+        description="Key value used when exposure is set to auto.",
+    )
+    auto_exposure_variance: Optional[dict[str, float]] = Field(
+        default=None,
+        description="Optional per-time-index multiplier applied to auto exposure.",
+    )
+
+
+class ColourPreprocessingConfig(PydanticConfigModel):
+    """Per-split colour preprocessing for NFRU datasets."""
+
+    train: Optional[ColourPreprocessingSplitConfig] = Field(
+        default=None, description="Colour preprocessing applied to training data."
+    )
+    validation: Optional[ColourPreprocessingSplitConfig] = Field(
+        default=None, description="Colour preprocessing applied to validation data."
+    )
+    test: Optional[ColourPreprocessingSplitConfig] = Field(
+        default=None, description="Colour preprocessing applied to test data."
+    )
+
+
 class Processing(PydanticConfigModel):
     """Processing specific configuration"""
 
     shader_accurate: bool = Field(
         description="Use slang shaders that match deployment shaders"
+    )
+
+
+class MetricsConfig(PydanticConfigModel):
+    """Metrics configuration for train/val/test splits."""
+
+    train: Optional[List[str]] = Field(
+        default=None, description="Metric names to instantiate during training."
+    )
+    val: Optional[List[str]] = Field(
+        default=None, description="Metric names to instantiate during validation."
+    )
+    test: Optional[List[str]] = Field(
+        default=None, description="Metric names to instantiate during evaluation/test."
     )
 
 
@@ -128,9 +189,43 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
     recurrent_samples: int = Field(gt=1, description="Number of recurrent samples")
 
 
+class NFRUModelSettings(PrebuiltModelSettingsBase):
+    """NFRU model settings"""
+
+    name: Literal["nfru"]
+    scale_factor: StrictFloat = Field(
+        default=2.0,
+        ge=2.0,
+        le=2.0,
+        description="Interpolation scale factor for the NFRU model. Only 2 (or 2.0) is currently supported.",
+    )
+    legacy_nfru_capture_paths: List[str] = Field(
+        default_factory=list,
+        description="Path substrings identifying legacy NFRU captures that should use the old window stride behavior.",
+    )
+
+    @field_validator("scale_factor", mode="before")
+    @classmethod
+    def _validate_nfru_scale_factor(cls, value):
+        """Require NFRU scale_factor to be the numeric value 2 or 2.0."""
+        if isinstance(value, bool) or not isinstance(value, Real):
+            raise PydanticCustomError(
+                "InvalidScaleFactorType",
+                "model.scale_factor must be provided as the numeric value 2 or 2.0.",
+            )
+
+        if float(value) != 2.0:
+            raise PydanticCustomError(
+                "InvalidScaleFactor",
+                "model.scale_factor must be 2 or 2.0. NFRU currently only supports 2x interpolation.",
+            )
+
+        return 2.0
+
+
 # DO NOT FORGET TO ADD NEW MODEL SETTINGS HERE
 prebuilt_models_settings = Annotated[
-    Union[NSSModelSettings],
+    Union[NSSModelSettings, NFRUModelSettings],
     Field(discriminator="name"),
 ]
 
@@ -147,6 +242,13 @@ class Dataset(PydanticConfigModel):
     name: str = Field(description="Dataset name")
     version: Optional[str] = Field(description="Dataset version", default=None)
     path: Paths
+    colour_preprocessing: Optional[ColourPreprocessingConfig] = Field(
+        default=None,
+        description=(
+            "Required lowercase colour pipeline configuration for train, "
+            "validation, and test."
+        ),
+    )
     exposure: Optional[float] = Field(
         ge=0.0, description="Training dataset exposure value", default=None
     )
@@ -164,6 +266,10 @@ class Dataset(PydanticConfigModel):
         ge=0,
         description="Number of batches loaded in advance by each dataloader worker. "
         "Used only if num_workers > 0",
+    )
+    align_data: bool = Field(
+        default=True,
+        description="Whether to align loaded dataset features to the model input set.",
     )
     extension: Optional[str] = Field(
         description="File extension for dataset files to be found (grep) and loaded, e.g. '.safetensors', '.jpg'. Defaults to .safetensors.",
@@ -296,6 +402,11 @@ class Optimizer(PydanticConfigModel):
         le=1.0,
         description="The learning rate. Scheduler may override this value",
     )
+    eps: Optional[float] = Field(
+        default=None,
+        gt=0.0,
+        description="Optional epsilon value for optimizers that support it.",
+    )
 
 
 class TrainingConfig(PydanticConfigModel):
@@ -342,6 +453,10 @@ class Train(PydanticConfigModel):
         description="Loss function to use. Choose from: "
         + ", ".join([e.value for e in LossFn]),
     )
+    loss_args: Optional[dict] = Field(
+        default=None,
+        description="Optional dictionary of arguments to pass to the loss function",
+    )
 
     @model_validator(mode="after")
     def _validate_validation_schedule(self):
@@ -381,6 +496,22 @@ class Train(PydanticConfigModel):
 class ConfigModel(PydanticConfigModel):
     """Pydantic model representing configuration file"""
 
+    @model_validator(mode="before")
+    @classmethod
+    def _normalise_model_name(cls, values: dict):
+        """Normalise pre-built model names to lowercase."""
+
+        if isinstance(values, dict):
+            model = values.get("model")
+
+            if isinstance(model, dict) and model.get("model_source") == "prebuilt":
+                name = model.get("name")
+
+                if isinstance(name, str):
+                    model["name"] = name.lower()
+
+        return values
+
     config_schema_version: str = Field(
         CONFIG_SCHEMA_VERSION,
         description="Config schema version. Used to check compatibility.",
@@ -390,10 +521,45 @@ class ConfigModel(PydanticConfigModel):
     output: Output
     train: Train
     processing: Processing
-    metrics: Optional[List[str]] = Field(
+    metrics: Optional[Union[List[str], MetricsConfig]] = Field(
         default=None,
-        description="Metric names to instantiate. Temporal metrics are replaced with streaming variants during evaluation.",
+        description=(
+            "Metric names to instantiate. Provide a list to use the same metrics for"
+            " train/val/test, or an object with train/val/test lists. Temporal metrics"
+            " are replaced with streaming variants during evaluation."
+        ),
     )
     model_train_eval_mode: SkipJsonSchema[Optional[TrainEvalMode]] = Field(
         default=None, exclude=True
     )  # Hidden from user. Internal param.
+
+    @model_validator(mode="after")
+    def _validate_nfru_colour_preprocessing(self):
+        """Require explicit colour-preprocessing config for NFRU v1."""
+        if getattr(self.model, "name", None) != "nfru":
+            return self
+
+        colour_preprocessing = self.dataset.colour_preprocessing
+        if colour_preprocessing is None:
+            raise PydanticCustomError(
+                "NFRUColourPreprocessingRequired",
+                "NFRU requires dataset.colour_preprocessing.train, "
+                "dataset.colour_preprocessing.validation, and "
+                "dataset.colour_preprocessing.test.",
+            )
+
+        required_splits = ("train", "validation", "test")
+        missing_or_invalid_splits = [
+            split
+            for split in required_splits
+            if getattr(colour_preprocessing, split, None) is None
+        ]
+        if missing_or_invalid_splits:
+            raise PydanticCustomError(
+                "NFRUColourPreprocessingMissingSplit",
+                "NFRU dataset.colour_preprocessing must define object configurations for "
+                "train, validation, and test. Missing or invalid splits: "
+                f"{', '.join(missing_or_invalid_splits)}.",
+            )
+
+        return self

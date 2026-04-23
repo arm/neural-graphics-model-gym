@@ -55,7 +55,7 @@ class TestModelTracer(unittest.TestCase):
     """Test model tracer"""
 
     def setUp(self):
-        self.params = create_simple_params()
+        self.params = create_simple_params(usecase="nss")
 
     def test_tracer_captures_input_tensor(self):
         """Test tracer captures single input tensor"""

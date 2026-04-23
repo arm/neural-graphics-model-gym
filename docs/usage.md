@@ -27,6 +27,8 @@ ng-model-gym init --list
 ```
 Running `ng-model-gym init` with no arguments also lists templates.
 
+The standard templates include `nss` and `nfru`.
+
 To generate a configuration file, run:
 ```bash
 ng-model-gym init <model-template> [save_dir]
@@ -39,6 +41,12 @@ This command creates two files in the selected output directory (or your working
 
 - `schema_config.json`
   -  An accompanying file detailing all available configuration parameters
+
+NFRU configuration files can be generated with:
+
+```bash
+ng-model-gym init nfru [save_dir]
+```
 
 Use your custom configuration when invoking CLI commands by providing its path with the `--config-path` or `-c` flag as shown below:
 

@@ -32,6 +32,17 @@ class HuggingfaceModelServer(BaseModelServer):
                 revision="2e9b606acd9fa25071825a12f0764f1c3bef9480",
             )
         ]
+        # TODO: NFRU HF integration stub:
+        # Keep this disabled until repo/revision are available, otherwise list/download
+        # fails fast when the repository does not exist.
+        # self.nfru_repo_stub = RepositoryMetadata(
+        #     namespace="Arm",
+        #     name="neural-frame-rate-upscaling",  # Placeholder until repo is published
+        #     url="https://huggingface.co/Arm/neural-frame-rate-upscaling",
+        #     revision="<pin-nfru-revision-hash>",
+        # )
+
+        # self.repos.append(self.nfru_repo_stub)
 
     def list_repositories(
         self,

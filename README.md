@@ -44,6 +44,8 @@ Currently, we include the following Neural Graphics use cases:
 
 * Neural Super Sampling (NSS)
   * NSS allows for high-fidelity, real-time graphics in game engines. By feeding low-resolution frames, along with spatial and motion information, into a neural network we are able to construct high-resolution frames that suffer no loss in quality.
+* Neural Frame Rate Upscaling (NFRU)
+  * NFRU allows for higher frame-rate real-time graphics in game engines. By feeding low-frame-rate frames, along with spatial and motion information, into a neural network we are able to construct intermediate frames that increase the output frame rate.
 
 
 ## Quick Start
@@ -92,6 +94,12 @@ Generate a JSON configuration file for a model. If no directory path is provided
 ng-model-gym init <model-template> [save_dir]
 ```
 This file contains configuration options for the different usage modes (training, evaluation, and exporting) and paths to local datasets. Some entries have placeholder values (e.g. "<...>"). Make sure to replace those with your own settings.
+
+NFRU configurations can be generated with the `nfru` template:
+
+```bash
+ng-model-gym init nfru [save_dir]
+```
 
 > **For Windows users:**
 >
@@ -229,6 +237,8 @@ We also support defining custom use cases to group together related models, data
 ## Generating new training data
 
 To train the Neural Super Sampling model, you will first need to capture training data from your game engine in the format expected by the model. Information regarding the types of data to capture and how to convert your captured frames can be found [here](./docs/nss/nss_data_generation.md).
+
+For Neural Frame Rate Upscaling training data, see [nfru_data_generation.md](./docs/nfru/nfru_data_generation.md).
 
 
 ## Troubleshooting

@@ -11,26 +11,19 @@ from ng_model_gym.core.utils.enum_definitions import (
     ProfilerType,
     TrainEvalMode,
 )
-from ng_model_gym.core.utils.logging_utils import logging_config
-from tests.usecases.nss.integration.base_integration import BaseIntegrationTest
+from tests.usecases.nss.integration.base_integration import NSSBaseIntegrationTest
+
+# pylint: disable=duplicate-code
 
 
-class ApiIntegrationTest(BaseIntegrationTest):
-    """Integration tests for API functions in ng_model_gym."""
+class ApiIntegrationTest(NSSBaseIntegrationTest):
+    """NSS specific integration tests for API functions in ng_model_gym."""
 
     def setUp(self):
         """Load a fresh config before each test."""
         super().setUp()
-        # load config from the BaseIntegrationTest-provided path
+        # load config from the NSSBaseIntegrationTest-provided path
         self.config = load_config_file(Path(self.test_cfg_path))
-
-    def test_logging_config_no_mutation(self):
-        """logging_config should not modify the config."""
-        before = self.config.model_dump()
-        logging_config(self.config, "ng_model_gym", log_level=10)
-        after = self.config.model_dump()
-
-        self.assertEqual(before, after, "logging_config mutated the config!")
 
     def test_do_training_no_mutation(self):
         """do_training should not modify the config and return a model."""
@@ -42,17 +35,6 @@ class ApiIntegrationTest(BaseIntegrationTest):
 
         self.assertEqual(before, after, "do_training mutated the config!")
         self.assertIsNotNone(model, "do_training did not return a model")
-
-    def test_resume_finetune_flags_mutually_exclusive(self):
-        """Test error raised if both resume and finetune args specified"""
-        with self.assertRaises(ValueError):
-            do_training(
-                self.config,
-                TrainEvalMode.FP32,
-                ProfilerType.DISABLED,
-                finetune_model_path="random_weight.pt",
-                resume_model_path="ckpt10.pt",
-            )
 
     def test_do_evaluate_no_mutation(self):
         """do_evaluate should not modify the config."""

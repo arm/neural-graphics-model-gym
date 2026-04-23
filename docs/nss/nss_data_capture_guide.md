@@ -40,7 +40,7 @@ Locate the point in your engine's rendering pipeline before most post-processing
 2. To create the low-resolution (SrcResolution) input frames, pass the color, motion vector, and depth buffers into one or more shaders which decimate and jitter them.
 3. To generate the high-quality (TargetResolution) ground-truth frames, downsample the color as recommended in the [Data Capture Theory](#data-capture-theory) section of this document.
 4. Save these textures to disk in the layout as defined in the [Dataset Specification](nss_dataset_specification.md). You do not need to continue the rendering pipeline after this step.
-5. After you render the required number of frames, write a JSON file with required metadata. You can see an [example](../../tests/datasets/test_exr/0002.json) in the Neural Graphics Model Gym. If your capturing method used Camera Cuts (or large rotations/translations during a capture sequence), please ensure every frame includes a `CameraCut` boolean so the tooling can split captures into cut-free sequences (see [Annotating Camera Cuts](#annotating-camera-cuts)).
+5. After you render the required number of frames, write a JSON file with required metadata. You can see an [example](../../tests/datasets/test_nss_exr/0002.json) in the Neural Graphics Model Gym. If your capturing method used Camera Cuts (or large rotations/translations during a capture sequence), please ensure every frame includes a `CameraCut` boolean so the tooling can split captures into cut-free sequences (see [Annotating Camera Cuts](#annotating-camera-cuts)).
 6. Optionally, to capture frames of a pre-authored sequence, use **Replay** functionality in your game engine to simplify the capture process and make it repeatable.
 
 ## Recommendations

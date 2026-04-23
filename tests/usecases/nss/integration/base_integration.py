@@ -17,7 +17,7 @@ from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import clear_loggers
 
 
-class BaseIntegrationTest(BaseGPUMemoryTest):
+class NSSBaseIntegrationTest(BaseGPUMemoryTest):
     """Base class for Integration Tests for NSS training pipeline."""
 
     def setUp(self) -> None:
@@ -67,7 +67,7 @@ class BaseIntegrationTest(BaseGPUMemoryTest):
         ] = False  # Speed up integration tests
 
         self.cfg_json["output"]["tensorboard_output_dir"] = str(self.tensorboard_dir)
-        self.test_cfg_path = Path(self.test_dir, "test_default.json")
+        self.test_cfg_path = Path(self.test_dir, "test_nss_template.json")
 
         with open(self.test_cfg_path, "w", encoding="utf-8") as f:
             json.dump(self.cfg_json, f)

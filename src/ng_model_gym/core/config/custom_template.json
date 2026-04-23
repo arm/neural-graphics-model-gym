@@ -1,5 +1,5 @@
 {
-    "config_schema_version": "3",
+    "config_schema_version": "5",
     "model": {
         "name": "<NAME_OF_REGISTERED_MODEL>",
         "model_source": "custom",
@@ -54,7 +54,8 @@
             },
             "optimizer": {
                 "optimizer_type": "<>",
-                "learning_rate": "<>"
+                "learning_rate": "<>",
+                "eps": "<>"
             }
         },
         "qat": {
@@ -69,7 +70,8 @@
             },
             "optimizer": {
                 "optimizer_type": "<>",
-                "learning_rate": "<>"
+                "learning_rate": "<>",
+                "eps": "<>"
             }
         }
     },

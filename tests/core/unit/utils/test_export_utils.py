@@ -15,12 +15,14 @@ import torch
 from torch import nn
 
 from ng_model_gym.core.export.model_export import (
+    _export_module_to_vgf,
     DataLoaderMode,
     executorch_vgf_export,
     ExportType,
     TrainEvalMode,
 )
 from ng_model_gym.core.model import BaseNGModel, get_model_key
+from ng_model_gym.usecases.nfru.model.nfru_v1 import NFRUv1
 
 
 def _flatten(container):
@@ -60,6 +62,27 @@ class MockNSS(BaseNGModel):
     def get_additional_constants(self):
         """Mock method to return additional constants."""
         return {"foo": "bar"}
+
+
+class MockNFRUDynamicModel(nn.Module):
+    """Minimal module wrapper using the NFRU dynamic export shape contract."""
+
+    def __init__(self):
+        super().__init__()
+        self.autoencoder = nn.Conv2d(16, 16, kernel_size=1)
+
+    def get_neural_network(self):
+        """Return a tiny network suitable for export tests."""
+        return self.autoencoder
+
+    def set_neural_network(self, neural_network):
+        """Replace the underlying test network."""
+        self.autoencoder = neural_network
+
+    def define_dynamic_export_model_input(self):
+        """Reuse the NFRU export spec while fixing batch to the test batch size."""
+        dynamic_shape = NFRUv1.define_dynamic_export_model_input(self)
+        return ({0: 1, 2: dynamic_shape[0][2], 3: dynamic_shape[0][3]},)
 
 
 # pylint: disable-next=unused-argument
@@ -110,6 +133,15 @@ class TestExportUtils(unittest.TestCase):
         """Clean up the temporary directory."""
         self.load_ckpt_patch.stop()
         shutil.rmtree(self.tmp_path)
+
+    def test_nfru_dynamic_export_shape_matches_single_tensor_input(self):
+        """NFRUv1 should return one dynamic-shape dict for its single tensor input."""
+        dynamic_shape = NFRUv1.define_dynamic_export_model_input(SimpleNamespace())
+
+        self.assertIsInstance(dynamic_shape, tuple)
+        self.assertEqual(len(dynamic_shape), 1)
+        self.assertIsInstance(dynamic_shape[0], dict)
+        self.assertEqual(set(dynamic_shape[0]), {0, 2, 3})
 
     # Patch the heavy or external dependencies on every test:
     @patch("ng_model_gym.core.export.model_export._update_metadata_file", new=DEFAULT)
@@ -329,3 +361,52 @@ class TestExportUtils(unittest.TestCase):
         self.assertIsInstance(transformed, tuple)
         self.assertEqual(transformed[0]["meta"]["k"], 123)
         self.assertEqual(transformed[0]["meta"]["s"], "testing")
+
+    @patch(
+        "ng_model_gym.core.export.model_export.to_edge_transform_and_lower",
+        new=lambda *a, **k: None,
+    )
+    @patch(
+        "ng_model_gym.core.export.model_export.VgfPartitioner",
+        new=lambda *a, **k: object(),
+    )
+    @patch(
+        "ng_model_gym.core.export.model_export.VgfCompileSpec",
+        new=lambda *a, **k: SimpleNamespace(
+            dump_intermediate_artifacts_to=lambda path: object()
+        ),
+    )
+    @patch(
+        "ng_model_gym.core.export.model_export.TosaSpecification.create_from_string",
+        new=lambda *a, **k: object(),
+    )
+    def test_export_module_to_vgf_rejects_odd_shapes_and_accepts_even_shapes(self):
+        """Dynamic NFRU export requires even heights and widths."""
+        params = make_params(self.tmp_path)
+        params.model = SimpleNamespace(name="NFRU", version="1")
+        model = MockNFRUDynamicModel()
+
+        accepted_input = (torch.rand(1, 16, 4, 6),)
+        _export_module_to_vgf(
+            params,
+            model,
+            accepted_input,
+            ExportType.FP32,
+            self.tmp_path / "metadata.json",
+        )
+
+        for bad_shape, axis_name in (
+            ((1, 16, 3, 6), "height"),
+            ((1, 16, 4, 5), "width"),
+        ):
+            with self.subTest(shape=bad_shape):
+                with self.assertRaises(torch._dynamo.exc.UserError) as exc:
+                    _export_module_to_vgf(
+                        params,
+                        model,
+                        (torch.rand(*bad_shape),),
+                        ExportType.FP32,
+                        self.tmp_path / "metadata.json",
+                    )
+
+                self.assertIn(axis_name, str(exc.exception))

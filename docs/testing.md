@@ -58,13 +58,19 @@ First set an environment variable for the usecase, then run the test command:
 Linux (bash):
 ```bash
 export USECASE=nss && hatch run test:unit-usecase
+export USECASE=nfru && hatch run test:unit-usecase
+
 export USECASE=nss && hatch run test:integration-usecase
+export USECASE=nfru && hatch run test:integration-usecase
 ```
 
 Windows (cmd):
 ```bat
 set USECASE=nss && hatch run test:unit-usecase
+set USECASE=nfru && hatch run test:unit-usecase
+
 set USECASE=nss && hatch run test:integration-usecase
+set USECASE=nfru && hatch run test:integration-usecase
 ```
 
 **To run unit tests from one specific file with tests:**

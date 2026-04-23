@@ -2,6 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import argparse
+import copy
 import json
 import math
 import shutil
@@ -13,19 +14,24 @@ import numpy as np
 import torch
 from safetensors import safe_open
 
-from ng_model_gym.core.data.data_utils import DataLoaderMode
+from ng_model_gym.core.data import DataLoaderMode, generic_safetensors_reader
 from ng_model_gym.usecases.nss.data.dataset import NSSDataset
-from scripts.safetensors_generator.dataset_reader import (
-    generic_safetensors_reader,
+from scripts.safetensors_generator.dataset_readers import (
+    NFRUEXRDatasetReader,
     NSSEXRDatasetReader,
 )
 from scripts.safetensors_generator.exr_utils import read_exr_torch
-from scripts.safetensors_generator.safetensors_writer import generic_safetensors_writer
+from scripts.safetensors_generator.safetensors_writer import (
+    generic_safetensors_writer,
+    GrowingTensorBuffer,
+)
 from tests.testing_utils import create_simple_params
 from tests.usecases.nss.unit.data.camera_cut_builders import compute_expected_segments
 
+# pylint:disable=too-many-lines
 
-class TestSafetensorsWriter(unittest.TestCase):
+
+class TestNSSSafetensorsWriter(unittest.TestCase):
     """Test output .safetensors file generated from .exr"""
 
     def setUp(self):
@@ -34,19 +40,19 @@ class TestSafetensorsWriter(unittest.TestCase):
         self.seq_id = 0
 
         self.args = argparse.Namespace()
-        self.args.src = Path("tests/datasets/test_exr")
+        self.args.src = Path("tests/datasets/test_nss_exr")
         self.args.dst = Path("tests/datasets")
         self.args.dst_root = self.args.dst / Path(self.args.src.parts[-1])
         self.args.threads = 1
         self.args.extension = "exr"
         self.args.overwrite = False
         self.args.linear_truth = True
-        self.args.reader = "EXRv101"
+        self.args.reader = "NSSv1_0_1"
 
         self.output_path = Path(self.args.dst_root / f"{self.seq_path}.safetensors")
         self.crop_output_root = Path(self.args.dst_root / f"{self.seq_path}")
 
-        self.reader = NSSEXRDatasetReader(
+        self.nss_reader = NSSEXRDatasetReader(
             src_root=self.args.src,
             dst_root=self.args.dst_root,
             seq_id=self.seq_id,
@@ -97,14 +103,14 @@ class TestSafetensorsWriter(unittest.TestCase):
             self.output_path.exists(), msg=f"{self.output_path} failed to be created."
         )
 
-        iterator = iter(self.reader)
+        iterator = iter(self.nss_reader)
         frame = next(iterator)
         dst_file_path, features = frame[0]
 
         sf_path = (self.args.dst_root / dst_file_path).with_suffix(".safetensors")
 
         # Create test reference container and Sequence Descriptor
-        test_reference = {k: torch.tensor(v) for k, v in features.items()}
+        test_reference = {k: v.detach().clone() for k, v in features.items()}
 
         # Create Reference Dataset from saved .safetensors
         test_target = generic_safetensors_reader(sf_path, 0)
@@ -382,7 +388,7 @@ class TestSafetensorsWriter(unittest.TestCase):
 
             output_root = self._writer_output_root(args)
 
-            params = create_simple_params(dataset=str(output_root))
+            params = create_simple_params(usecase="nss", dataset_path=str(output_root))
             params.dataset.path.test = output_root
             dataset = NSSDataset(params, DataLoaderMode.TEST)
 
@@ -442,3 +448,628 @@ class TestSafetensorsWriter(unittest.TestCase):
                 unexpected,
                 msg=f"Unexpected features found in {self.output_path}: {unexpected}",
             )
+
+
+@unittest.skip("NFRU EXR fixtures removed pending refreshed writer coverage")
+class TestNFRUSafetensorsWriter(unittest.TestCase):
+    """Test output .safetensors file generated from NFRU .exr"""
+
+    _NFRU_EXR_SUBDIRS = (
+        "ground_truth",
+        "ground_truth_final",
+        "motion_gt_m1",
+        "motion_gt_m2",
+        "x2/depth",
+        "x2/motion_m1",
+        "x2/motion_m2",
+    )
+
+    @staticmethod
+    def _make_writer_args(src: Path, dst: Path) -> argparse.Namespace:
+        """Construct default writer arguments for NFRU tests."""
+        args = argparse.Namespace()
+        args.src = src
+        args.dst = dst
+        args.dst_root = dst / src.name
+        args.threads = 1
+        args.extension = "exr"
+        args.overwrite = False
+        args.linear_truth = True
+        args.reader = "NFRUv2_2"
+        return args
+
+    @classmethod
+    def _trim_nfru_fixture_to_frame_count(cls, src_root: Path, frame_count: int):
+        """
+        Keep only the first `frame_count` frames in a copied NFRU fixture.
+
+        Metadata-focused tests can run on one frame, while motion-vector tests
+        keep at least five frames so center-frame temporal features are valid.
+        """
+        metadata_path = src_root / "0000.json"
+        with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+            metadata = json.load(metadata_file)
+        metadata["Frames"] = metadata["Frames"][:frame_count]
+        with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+            json.dump(metadata, metadata_file, indent=2)
+
+        for subdir in cls._NFRU_EXR_SUBDIRS:
+            exr_dir = src_root / subdir / "0000"
+            for exr_file in exr_dir.glob("*.exr"):
+                if int(exr_file.stem) >= frame_count:
+                    exr_file.unlink()
+                    exr_file.with_name(exr_file.name + ".license").unlink(
+                        missing_ok=True
+                    )
+
+    @staticmethod
+    def _clone_frame(frame: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        """Detach and clone tensors from a saved frame dict."""
+        return {k: v.detach().clone() for k, v in frame.items()}
+
+    @classmethod
+    def setUpClass(cls):
+        """
+        Build two reusable class fixtures:
+        - 1-frame fixture for fast metadata assertions.
+        - 5-frame fixture for center-frame motion/flow assertions.
+        """
+        super().setUpClass()
+        cls._fixtures_tmp_root = Path(tempfile.mkdtemp())
+
+        source_root = Path("tests/datasets/test_nfru_exr")
+
+        cls._metadata_src = cls._fixtures_tmp_root / "nfru_src_metadata"
+        shutil.copytree(source_root, cls._metadata_src)
+        cls._trim_nfru_fixture_to_frame_count(cls._metadata_src, frame_count=1)
+
+        cls._one_frame_args = cls._make_writer_args(
+            src=cls._metadata_src, dst=cls._fixtures_tmp_root / "one_frame_dst"
+        )
+
+        generic_safetensors_writer(cls._one_frame_args)
+        cls._one_frame_output_path = cls._one_frame_args.dst_root / "0000.safetensors"
+        cls._one_frame_frame_zero = generic_safetensors_reader(
+            cls._one_frame_output_path, 0
+        )
+
+        cls._five_frame_src = cls._fixtures_tmp_root / "nfru_src_five_frame"
+        shutil.copytree(source_root, cls._five_frame_src)
+        cls._trim_nfru_fixture_to_frame_count(cls._five_frame_src, frame_count=5)
+
+        cls._five_frame_args = cls._make_writer_args(
+            src=cls._five_frame_src, dst=cls._fixtures_tmp_root / "five_frame_dst"
+        )
+        generic_safetensors_writer(cls._five_frame_args)
+        cls._five_frame_output_path = cls._five_frame_args.dst_root / "0000.safetensors"
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean up class-level temporary output."""
+        shutil.rmtree(cls._fixtures_tmp_root, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        """Set up test"""
+        self.seq_path = Path("0000")
+        self.seq_id = 0
+
+        self.args = argparse.Namespace(**vars(self._one_frame_args))
+        self.args.dst_root = self._writer_output_root(self.args)
+
+        self.nfru_reader = NFRUEXRDatasetReader(
+            src_root=self.args.src,
+            dst_root=self.args.dst_root,
+            seq_id=self.seq_id,
+            seq_path=self.seq_path,
+            args=self.args,
+        )
+
+    def _clone_args(self, src: Path | None = None, dst: Path | None = None):
+        args = argparse.Namespace(**vars(self.args))
+        if src is not None:
+            args.src = src
+        if dst is not None:
+            args.dst = dst
+        args.dst_root = self._writer_output_root(args)
+        return args
+
+    @staticmethod
+    def _writer_output_root(args: argparse.Namespace) -> Path:
+        return Path(args.dst) / Path(args.src).name
+
+    def _write_and_read_frame_zero(
+        self, src: Path, dst: Path
+    ) -> dict[str, torch.Tensor]:
+        """
+        Write a Safetensors file based upon the args attribute. Return the
+        first frame of the written file, as a dict of the keys and values
+        making up the frame.
+        """
+        args = self._clone_args(src=src, dst=dst)
+        generic_safetensors_writer(args)
+        output_path = self._writer_output_root(args) / f"{self.seq_path}.safetensors"
+        return generic_safetensors_reader(output_path, 0)
+
+    def test_compare_saved_tensors(self):
+        """Test tensor values, dtype and shape are preserved for NFRU inputs."""
+        self.assertTrue(
+            self._one_frame_output_path.exists(),
+            msg=f"{self._one_frame_output_path} failed to be created.",
+        )
+
+        iterator = iter(self.nfru_reader)
+        frame = next(iterator)
+        dst_file_path, features = frame[0]
+
+        sf_path = (self.args.dst_root / dst_file_path).with_suffix(".safetensors")
+
+        # Get calculated dataset
+        test_reference = {k: v.detach().clone() for k, v in features.items()}
+        # For comparison, get dataset from saved .safetensors
+        test_target = generic_safetensors_reader(sf_path, 0)
+
+        mse_fn = lambda y, x: torch.mean((y - x) ** 2)
+        for name, test_ref in test_reference.items():
+            test_target_parsed = test_target[name]
+
+            # Check loaded tensor has same data type as original
+            self.assertEqual(
+                test_target_parsed.dtype,
+                test_ref.dtype,
+                msg=f"{name} data type mismatch.",
+            )
+
+            if test_ref.dtype not in [torch.int64, torch.int32, torch.bool]:
+                # Check MSE between loaded tensor and original
+                mse = mse_fn(test_target_parsed, test_ref)
+                self.assertTrue(
+                    np.isclose(0.0, mse.numpy(), atol=1e-6),
+                    msg=f"MSE higher than expected for {name}, dtype:{test_ref.dtype} value: {mse}",
+                )
+            else:
+                print(
+                    f"Name: {name}, Value: {test_target_parsed} "
+                    f"(Reference: {test_ref}), Test Skipped"
+                )
+
+    def test_output_contains_valid_optical_flow(self):
+        """
+        Center frame in a 5-frame fixture should contain valid computed flow.
+
+        Frame 0 is edge-padded by design; frame 2 has sufficient neighbors for
+        both f60 (+/-1) and f30 (+/-2) temporal flow computation.
+        """
+        self.assertTrue(
+            self._five_frame_output_path.exists(),
+            msg=f"{self._five_frame_output_path} failed to be created.",
+        )
+
+        edge_data = generic_safetensors_reader(self._five_frame_output_path, 0)
+        data = generic_safetensors_reader(self._five_frame_output_path, 2)
+        flow_tensor_names = [
+            "flow_{}_f30_m1@blockmatch_v3",
+            "flow_{}_f30_p1@blockmatch_v3",
+            "flow_{}_f60_m1@blockmatch_v3",
+            "flow_{}_f60_p1@blockmatch_v3",
+        ]
+
+        for tensor_name in flow_tensor_names:
+            self.assertIn(
+                tensor_name,
+                data,
+                msg=f"Missing optical-flow tensor '{tensor_name}' in output.",
+            )
+            flow_tensor = data[tensor_name]
+            self.assertEqual(
+                flow_tensor.dtype,
+                torch.float16,
+                msg=f"Unexpected dtype for optical-flow tensor '{tensor_name}'.",
+            )
+            self.assertEqual(
+                flow_tensor.ndim,
+                3,
+                msg=f"Unexpected rank for optical-flow tensor '{tensor_name}'.",
+            )
+            self.assertEqual(
+                flow_tensor.shape[0],
+                2,
+                msg=f"Optical-flow tensor '{tensor_name}' must have 2 channels.",
+            )
+            self.assertGreater(flow_tensor.shape[1], 0)
+            self.assertGreater(flow_tensor.shape[2], 0)
+            self.assertTrue(
+                torch.isfinite(flow_tensor).all(),
+                msg=f"Optical-flow tensor '{tensor_name}' contains non-finite values.",
+            )
+            self.assertGreater(
+                torch.max(torch.abs(flow_tensor)).item(),
+                0.0,
+                msg=f"Optical-flow tensor '{tensor_name}' should not be all zeros on center frame.",
+            )
+            self.assertFalse(
+                torch.allclose(edge_data[tensor_name], flow_tensor),
+                msg=(
+                    f"Optical-flow tensor '{tensor_name}' should differ between "
+                    "edge frame and center frame."
+                ),
+            )
+
+    def test_output_contains_dilated_motion_hints(self):
+        """Center frame should persist low-frequency dilated synthetic MV hints."""
+        self.assertTrue(
+            self._five_frame_output_path.exists(),
+            msg=f"{self._five_frame_output_path} failed to be created.",
+        )
+
+        data = generic_safetensors_reader(self._five_frame_output_path, 2)
+        hint_pairs = [
+            ("sy_{}_f30_m1", "dilated_sy_{}_f30_m1"),
+            ("sy_{}_f30_p1", "dilated_sy_{}_f30_p1"),
+        ]
+
+        for raw_name, dilated_name in hint_pairs:
+            self.assertIn(
+                raw_name,
+                data,
+                msg=f"Missing raw motion-hint tensor '{raw_name}'.",
+            )
+            self.assertIn(
+                dilated_name,
+                data,
+                msg=f"Missing dilated motion-hint tensor '{dilated_name}'.",
+            )
+
+            raw_hint = data[raw_name]
+            dilated_hint = data[dilated_name]
+
+            self.assertEqual(dilated_hint.dtype, torch.float16)
+            self.assertEqual(dilated_hint.ndim, 3)
+            self.assertEqual(dilated_hint.shape[0], 2)
+            self.assertTrue(torch.isfinite(dilated_hint).all())
+            self.assertGreater(torch.max(torch.abs(dilated_hint)).item(), 0.0)
+
+            self.assertEqual(dilated_hint.shape[1], raw_hint.shape[1] * 2)
+            self.assertEqual(dilated_hint.shape[2], raw_hint.shape[2] * 2)
+
+    def test_inverse_y_metadata_changes_written_viewproj(self):
+        """Toggling JSON InverseY must update InverseY and ViewProj tensors."""
+        baseline = self._clone_frame(self._one_frame_frame_zero)
+        baseline_inverse_y = int(baseline["InverseY"].item())
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            shutil.copytree(self.args.src, src)
+            metadata_path = src / f"{self.seq_path}.json"
+
+            with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+
+                metadata["InverseY"] = not bool(baseline_inverse_y)
+            with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+                json.dump(metadata, metadata_file, indent=2)
+
+            modified_args = self._clone_args(
+                src=src,
+                dst=Path(tmp_dir) / "dst_modified",
+            )
+            generic_safetensors_writer(modified_args)
+            modified_output = (
+                self._writer_output_root(modified_args) / f"{self.seq_path}.safetensors"
+            )
+            inverse = generic_safetensors_reader(modified_output, 0)
+
+            self.assertIn("InverseY", baseline)
+            self.assertIn("InverseY", inverse)
+            self.assertEqual(int(baseline["InverseY"].item()), baseline_inverse_y)
+            self.assertEqual(
+                int(inverse["InverseY"].item()), int(not baseline_inverse_y)
+            )
+            self.assertFalse(
+                torch.allclose(baseline["ViewProj"], inverse["ViewProj"]),
+                msg="ViewProj should change when InverseY metadata toggles.",
+            )
+
+    def test_upscaling_ratio_index_selects_jitter_entry(self):
+        """x2_index must select the matching jitter entry from JSON metadata."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            shutil.copytree(self.args.src, src)
+            metadata_path = src / f"{self.seq_path}.json"
+
+            with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+
+            target_x = 0.25
+            target_y = -0.5
+            metadata["UpscalingRatiosIndices"]["x2_index"] = 1
+            for frame in metadata["Frames"]:
+                frame["NormalizedPerRatioJitter"] = [
+                    {"X": 0.0, "Y": 0.0},
+                    {"X": target_x, "Y": target_y},
+                ]
+            with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+                json.dump(metadata, metadata_file, indent=2)
+
+            args = self._clone_args(src=src, dst=Path(tmp_dir) / "dst")
+            generic_safetensors_writer(args)
+
+            output_path = (
+                self._writer_output_root(args) / f"{self.seq_path}.safetensors"
+            )
+            data = generic_safetensors_reader(output_path, 0)
+            self.assertIn("jitter", data)
+            _, render_h, render_w = data["rgb_linear"].shape
+            expected_jitter = torch.tensor(
+                [target_y * render_h, target_x * render_w], dtype=torch.float32
+            ).reshape(2, 1, 1)
+            torch.testing.assert_close(data["jitter"], expected_jitter)
+
+    def test_root_depth_plane_metadata_overrides_frame_planes(self):
+        """Root NearPlane/FarPlane metadata must drive written plane tensors."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            shutil.copytree(self.args.src, src)
+            metadata_path = src / f"{self.seq_path}.json"
+
+            with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+
+            metadata["NearPlane"] = 7.0
+            metadata["FarPlane"] = 1234.0
+            metadata["Frames"][0]["CameraNearPlane"] = 0.25
+            metadata["Frames"][0]["CameraFarPlane"] = 0.5
+            with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+                json.dump(metadata, metadata_file, indent=2)
+
+            args = self._clone_args(src=src, dst=Path(tmp_dir) / "dst")
+            generic_safetensors_writer(args)
+
+            output_path = (
+                self._writer_output_root(args) / f"{self.seq_path}.safetensors"
+            )
+            data = generic_safetensors_reader(output_path, 0)
+            self.assertIn("NearPlane", data)
+            self.assertIn("FarPlane", data)
+            self.assertIn("infinite_zFar", data)
+            self.assertEqual(float(data["NearPlane"].item()), 7.0)
+            self.assertEqual(float(data["FarPlane"].item()), 1234.0)
+            self.assertFalse(bool(data["infinite_zFar"].item()))
+
+    def test_frame_depth_plane_metadata_used_when_root_planes_missing(self):
+        """Frame CameraNear/FarPlane metadata should be used when root planes are absent."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            shutil.copytree(self.args.src, src)
+            metadata_path = src / f"{self.seq_path}.json"
+
+            with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+
+            metadata.pop("NearPlane", None)
+            metadata.pop("FarPlane", None)
+            metadata["Frames"][0]["CameraNearPlane"] = 3.0
+            metadata["Frames"][0]["CameraFarPlane"] = -1
+            with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+                json.dump(metadata, metadata_file, indent=2)
+
+            args = self._clone_args(src=src, dst=Path(tmp_dir) / "dst")
+            generic_safetensors_writer(args)
+
+            output_path = (
+                self._writer_output_root(args) / f"{self.seq_path}.safetensors"
+            )
+            data = generic_safetensors_reader(output_path, 0)
+            self.assertIn("NearPlane", data)
+            self.assertIn("FarPlane", data)
+            self.assertIn("infinite_zFar", data)
+            self.assertEqual(float(data["NearPlane"].item()), 3.0)
+            self.assertEqual(float(data["FarPlane"].item()), 5000.0)
+            self.assertTrue(bool(data["infinite_zFar"].item()))
+
+    def test_fovx_metadata_changes_written_fovx(self):
+        """Changing frame FovX in JSON must change the written FovX tensor."""
+        baseline = self._clone_frame(self._one_frame_frame_zero)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            shutil.copytree(self.args.src, src)
+            metadata_path = src / f"{self.seq_path}.json"
+            with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+
+            modified_metadata = copy.deepcopy(metadata)
+            modified_metadata["Frames"][0]["FovX"] = 0.9
+            with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+                json.dump(modified_metadata, metadata_file, indent=2)
+
+            modified = self._write_and_read_frame_zero(src, Path(tmp_dir) / "dst_mod")
+
+            self.assertIn("FovX", baseline)
+            self.assertIn("FovX", modified)
+            self.assertFalse(
+                torch.allclose(baseline["FovX"], modified["FovX"]),
+                msg="FovX should change when frame FovX metadata changes.",
+            )
+
+    def test_fovy_metadata_changes_written_fovy_and_depth_params(self):
+        """Changing frame FovY in JSON must change written FovY and DepthParams tensors."""
+        baseline = self._clone_frame(self._one_frame_frame_zero)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            shutil.copytree(self.args.src, src)
+            metadata_path = src / f"{self.seq_path}.json"
+            with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+
+            modified_metadata = copy.deepcopy(metadata)
+            modified_metadata["Frames"][0]["FovY"] = 0.75
+            with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+                json.dump(modified_metadata, metadata_file, indent=2)
+
+            modified = self._write_and_read_frame_zero(src, Path(tmp_dir) / "dst_mod")
+
+            self.assertIn("FovY", baseline)
+            self.assertIn("FovY", modified)
+            self.assertFalse(
+                torch.allclose(baseline["FovY"], modified["FovY"]),
+                msg="FovY should change when frame FovY metadata changes.",
+            )
+            self.assertIn("DepthParams", baseline)
+            self.assertIn("DepthParams", modified)
+            self.assertFalse(
+                torch.allclose(baseline["DepthParams"], modified["DepthParams"]),
+                msg="DepthParams should change when frame FovY metadata changes.",
+            )
+
+    def test_view_projection_metadata_changes_written_viewproj(self):
+        """Changing frame ViewProjection in JSON must change the written ViewProj tensor."""
+        baseline = self._clone_frame(self._one_frame_frame_zero)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            shutil.copytree(self.args.src, src)
+            metadata_path = src / f"{self.seq_path}.json"
+            with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+
+            modified_metadata = copy.deepcopy(metadata)
+            modified_metadata["Frames"][0]["ViewProjection"][0] += 0.25
+            with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+                json.dump(modified_metadata, metadata_file, indent=2)
+
+            modified = self._write_and_read_frame_zero(src, Path(tmp_dir) / "dst_mod")
+
+            self.assertIn("ViewProj", baseline)
+            self.assertIn("ViewProj", modified)
+            self.assertFalse(
+                torch.allclose(baseline["ViewProj"], modified["ViewProj"]),
+                msg="ViewProj should change when frame ViewProjection metadata changes.",
+            )
+
+    def test_exposure_metadata_changes_written_exposure_only(self):
+        """Changing frame Exposure in JSON must change exposure tensor but not tonemapped rgb."""
+        baseline = self._clone_frame(self._one_frame_frame_zero)
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            shutil.copytree(self.args.src, src)
+            metadata_path = src / f"{self.seq_path}.json"
+            with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+
+            modified_metadata = copy.deepcopy(metadata)
+            modified_metadata["Frames"][0]["Exposure"] = 2.75
+            with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+                json.dump(modified_metadata, metadata_file, indent=2)
+
+            modified = self._write_and_read_frame_zero(src, Path(tmp_dir) / "dst_mod")
+
+            self.assertIn("exposure", baseline)
+            self.assertIn("exposure", modified)
+            self.assertFalse(
+                torch.allclose(baseline["exposure"], modified["exposure"]),
+                msg="exposure tensor should change when frame Exposure metadata changes.",
+            )
+            self.assertIn("rgb_reinhard", baseline)
+            self.assertIn("rgb_reinhard", modified)
+            self.assertTrue(
+                torch.allclose(baseline["rgb_reinhard"], modified["rgb_reinhard"]),
+                msg=(
+                    "Tonemapped rgb is expected to remain unchanged: "
+                    "NFRUEXRDatasetReader applies a fixed internal exposure value."
+                ),
+            )
+
+
+class TestGrowingTensorBuffer(unittest.TestCase):
+    """Unit tests for tensor append and growth behavior."""
+
+    def test_init_rejects_scalar_tensor(self):
+        """A scalar tensor cannot be appended on dim 0."""
+        with self.assertRaises(ValueError) as e:
+            GrowingTensorBuffer(torch.tensor(1.0))
+        self.assertIn(
+            "Expected tensor with at least 1 dimension for dim-0 append",
+            str(e.exception),
+        )
+
+    def test_append_grows_and_preserves_content(self):
+        """Appending beyond capacity should grow storage and keep all values."""
+        first = torch.tensor([[1.0, 2.0]], dtype=torch.float32)
+        to_append = torch.tensor([[3.0, 4.0], [5.0, 6.0]], dtype=torch.float32)
+
+        buffer = GrowingTensorBuffer(first)
+        self.assertEqual(buffer.length, 1)
+        self.assertEqual(buffer.capacity, 1)
+
+        buffer.append(to_append)
+        self.assertEqual(buffer.length, 3)
+        # Buffer capacity should double each time that it grows
+        # After appending 2 more rows to a capacity of 1, it should have grown to at least 3,
+        # which means it should have doubled twice (1 -> 2 -> 4)
+        self.assertEqual(buffer.capacity, 4)
+
+        expected = torch.cat([first, to_append], dim=0)
+        torch.testing.assert_close(buffer.as_tensor(), expected)
+
+    def test_append_zero_length_tensor_keeps_existing_data(self):
+        """Appending a 0-length batch should be a no-op."""
+        first = torch.tensor([[1.0, 2.0]], dtype=torch.float32)
+        empty = torch.empty((0, 2), dtype=torch.float32)
+
+        buffer = GrowingTensorBuffer(first)
+        before_length = buffer.length
+        before_capacity = buffer.capacity
+        before = buffer.as_tensor().clone()
+
+        buffer.append(empty)
+
+        self.assertEqual(buffer.length, before_length)
+        self.assertEqual(buffer.capacity, before_capacity)
+        torch.testing.assert_close(buffer.as_tensor(), before)
+
+    def test_append_rejects_mismatched_dtype(self):
+        """Appending with a different dtype should fail fast."""
+        buffer = GrowingTensorBuffer(torch.ones((1, 2), dtype=torch.float32))
+        with self.assertRaises(ValueError) as e:
+            buffer.append(torch.ones((1, 2), dtype=torch.float16))
+        self.assertIn(
+            "Mismatched dtype while appending tensor buffer", str(e.exception)
+        )
+
+    def test_append_rejects_mismatched_shape(self):
+        """Appending with a different tail shape should fail fast."""
+        buffer = GrowingTensorBuffer(torch.ones((1, 2), dtype=torch.float32))
+        with self.assertRaises(ValueError) as e:
+            buffer.append(torch.ones((1, 3), dtype=torch.float32))
+        self.assertIn(
+            "Mismatched shape while appending tensor buffer", str(e.exception)
+        )
+
+    def test_append_rejects_mismatched_device(self):
+        """Appending with a different device should fail fast."""
+        buffer = GrowingTensorBuffer(
+            torch.ones((1, 2), device="cpu", dtype=torch.float32)
+        )
+
+        try:
+            cuda_tensor = torch.empty((1, 2), device="cuda", dtype=torch.float32)
+        except (RuntimeError, AssertionError):
+            self.skipTest("CUDA device not available in this torch build")
+
+        with self.assertRaises(ValueError) as e:
+            buffer.append(cuda_tensor)
+        self.assertIn(
+            "Mismatched device while appending tensor buffer", str(e.exception)
+        )
+
+    def test_initial_zero_length_input_supported(self):
+        """A zero-length first tensor should initialize and append correctly."""
+        buffer = GrowingTensorBuffer(torch.empty((0, 2), dtype=torch.float32))
+        self.assertEqual(buffer.length, 0)
+        self.assertEqual(buffer.capacity, 1)
+        self.assertEqual(tuple(buffer.as_tensor().shape), (0, 2))
+
+        later = torch.tensor([[7.0, 8.0], [9.0, 10.0]], dtype=torch.float32)
+        buffer.append(later)
+
+        self.assertEqual(buffer.length, 2)
+        self.assertEqual(buffer.capacity, 2)
+        torch.testing.assert_close(buffer.as_tensor(), later)

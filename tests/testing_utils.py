@@ -2,6 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import atexit
+import copy
 import logging
 import platform
 import shutil
@@ -12,6 +13,69 @@ import numpy as np
 
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.utils.io.file_utils import create_directory
+
+TEST_PARAMS_PRESETS = {
+    "nss": {
+        "model": {
+            "name": "NSS",
+            "model_source": "prebuilt",
+            "version": "1",
+            "scale": 2.0,
+            "recurrent_samples": 16,
+        },
+        "dataset": {
+            "name": "NSS",
+            "version": "1",
+            "path": {
+                "train": "",
+                "validation": "",
+                "test": "",
+            },
+            "exposure": 2,
+            "tonemapper": "reinhard",
+            "health_check": True,
+            "gt_augmentation": True,
+            "num_workers": 0 if platform.system() == "Windows" else 4,
+            "prefetch_factor": 1,
+        },
+    },
+    "nfru": {
+        "model": {
+            "name": "NFRU",
+            "model_source": "prebuilt",
+            "version": "1",
+            "scale_factor": 2.0,
+            "legacy_nfru_capture_paths": [],
+        },
+        "dataset": {
+            "name": "NFRU",
+            "version": "1",
+            "path": {"train": "", "validation": "", "test": ""},
+            "health_check": True,
+            "gt_augmentation": True,
+            "num_workers": 0 if platform.system() == "Windows" else 4,
+            "prefetch_factor": 1,
+            "align_data": True,
+            "colour_preprocessing": {
+                "train": {
+                    "pipeline": [
+                        ["reinhard"],
+                        ["none", "contrast", "saturation", "temperature_tint"],
+                    ],
+                    "exposure": [1.0, 2.5],
+                },
+                "validation": {
+                    "pipeline": ["reinhard"],
+                    "exposure": 2.0,
+                },
+                "test": {
+                    "pipeline": ["reinhard"],
+                    "exposure": 2.0,
+                },
+            },
+        },
+    },
+}
 
 
 def clear_loggers() -> None:
@@ -35,15 +99,31 @@ def get_test_representative_dataset(shape, size=100):
 
 
 def create_simple_params(
+    usecase,
+    dataset_path=None,
     output_dir="./output",
-    dataset=None,
     checkpoints="./checkpoints",
 ) -> ConfigModel:
     """
-    Returns configuration created with test parameters.
+    Returns configuration created with test parameters dependent on use-case.
 
-    E.g. create_simple_params(override_params={"train": {"batch_size": 4}}, output_dir="./output")
+    E.g. create_simple_params(usecase="nss", output_dir="./output", dataset_path="path/to/dataset")
     """
+    usecase_preset = TEST_PARAMS_PRESETS[usecase.lower()]
+
+    if usecase_preset is None:
+        raise ValueError(
+            f"Unknown usecase '{usecase}'. Valid options: {TEST_PARAMS_PRESETS.keys()}"
+        )
+
+    model = copy.deepcopy(usecase_preset["model"])
+    dataset = copy.deepcopy(usecase_preset["dataset"])
+
+    dataset["path"] = {
+        "train": dataset_path,
+        "validation": dataset_path,
+        "test": dataset_path,
+    }
 
     # Create temp directory for fields mandating path. Individual tests should override with their
     # own path for these fields.
@@ -56,28 +136,10 @@ def create_simple_params(
 
     export_dir = vgf_output_tmp_dir / "vgf"
 
-    num_workers = 0 if platform.system() == "Windows" else 4
-
     default_params = {
-        "model": {
-            "name": "nss",
-            "model_source": "prebuilt",
-            "version": "1",
-            "scale": 2.0,
-            "recurrent_samples": 16,
-        },
+        "model": model,
         "processing": {"shader_accurate": False},
-        "dataset": {
-            "name": "NSS",
-            "version": "1",
-            "path": {"train": dataset, "validation": dataset, "test": dataset},
-            "health_check": True,
-            "gt_augmentation": True,
-            "exposure": 2,
-            "tonemapper": "reinhard",
-            "num_workers": num_workers,
-            "prefetch_factor": 1,
-        },
+        "dataset": dataset,
         "output": {
             "dir": output_dir,
             "export_frame_png": False,

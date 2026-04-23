@@ -5,6 +5,7 @@
 from .data_utils import (
     DataLoaderMode,
     DatasetType,
+    generic_safetensors_reader,
     move_to_device,
     tonemap_forward,
     tonemap_inverse,

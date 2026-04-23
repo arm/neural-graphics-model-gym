@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: Copyright 2022-2023 Advanced Micro Devices, Inc. All rights reserved.
 // SPDX-License-Identifier: MIT
-// SPDX-FileCopyrightText: Copyright 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: Copyright 2025-2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 // SPDX-License-Identifier: Apache-2.0
 
 /* !NOTE: source code copied from FSR2, which has the following licence:
@@ -27,8 +27,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 Reference please see:
-- https://github.com/GPUOpen-Effects/FidelityFX-FSR2/blob/master/src/ffx-fsr2-api/shaders/ffx_fsr2_depth_clip.h
-- https://github.com/GPUOpen-Effects/FidelityFX-FSR2/blob/master/src/ffx-fsr2-api/shaders/ffx_fsr2_reconstruct_dilated_velocity_and_previous_depth.h
+- https://github.com/GPUOpen-Effects/FidelityFX-FSR2/blob/HEAD/src/ffx-fsr2-api/shaders/ffx_fsr2_depth_clip.h
+- https://github.com/GPUOpen-Effects/FidelityFX-FSR2/blob/HEAD/src/ffx-fsr2-api/shaders/ffx_fsr2_reconstruct_dilated_velocity_and_previous_depth.h
 */
 
 module depth_clip;
@@ -164,7 +164,7 @@ public float ComputeDepthClip(TensorView<float> depth_tm1, uint b, float2 uv, fl
         const int2 iOffset = bilinearInfo.iOffsets[iSampleIndex];
         const int2 iSamplePos = bilinearInfo.iBasePos + iOffset;
 
-        //ANET Modification for off-screen regions to be flagged as disocclusions too
+        // Modification for off-screen regions to be flagged as disocclusions too
         const float fWeight = bilinearInfo.fWeights[iSampleIndex];
         const bool onscreen = IsOnScreen(iSamplePos, uint2(depth_tm1_size));
         fWeightSum += onscreen ? 0.f : fWeight;

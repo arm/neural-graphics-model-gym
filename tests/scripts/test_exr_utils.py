@@ -16,7 +16,7 @@ class TestExrUtils(unittest.TestCase):
         """Tests the read_exr_torch function"""
 
         exr = read_exr_torch(
-            "tests/datasets/test_exr/x2/motion/0002/0000.exr",
+            "tests/datasets/test_nss_exr/x2/motion/0002/0000.exr",
             dtype=np.float32,
             channels="RGBA",
         )

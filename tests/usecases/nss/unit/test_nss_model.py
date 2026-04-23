@@ -38,7 +38,7 @@ class TestNSS(BaseGPUMemoryTest):
     def setUp(self):
         """Setup NSS model."""
         super().setUp()
-        params = create_simple_params(dataset="")
+        params = create_simple_params(usecase="nss")
         params.model_train_eval_mode = TrainEvalMode.FP32
         params.dataset.gt_augmentation = True
         params.train.batch_size = 2
