@@ -2,6 +2,8 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
+import re
+from collections import defaultdict, OrderedDict
 from pathlib import Path
 from typing import Any, Tuple
 
@@ -16,6 +18,79 @@ from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.utils.enum_definitions import ModelType, TrainEvalMode
 
 logger = logging.getLogger(__name__)
+_TENSOR_CONSTANT_KEY = re.compile(r"^(?P<stem>.*_tensor_constant)(?P<index>\d+)$")
+
+
+def _is_legacy_qat_tensor_constant_group(entries) -> bool:
+    """Detect the old PT2E QAT layout that lifted BatchNorm tracking buffers."""
+
+    if len(entries) < 3:
+        return False
+
+    if [index for index, _ in entries] != list(range(len(entries))):
+        return False
+
+    integer_dtypes = {
+        torch.int8,
+        torch.int16,
+        torch.int32,
+        torch.int64,
+        torch.uint8,
+    }
+
+    for position, (_, tensor) in enumerate(entries):
+        if position % 3 == 0:
+            if tensor.ndim != 0 or tensor.dtype not in integer_dtypes:
+                return False
+        elif not tensor.dtype.is_floating_point or tensor.ndim == 0:
+            return False
+
+    return True
+
+
+def _remap_legacy_qat_tensor_constants(state_dict):
+    """Drop legacy BatchNorm tracking constants and compact the tensor-constant indices."""
+
+    grouped_entries = defaultdict(list)
+
+    for key, value in state_dict.items():
+        match = _TENSOR_CONSTANT_KEY.match(key)
+        if match is None:
+            continue
+        grouped_entries[match.group("stem")].append((int(match.group("index")), value))
+
+    legacy_stems = {
+        stem
+        for stem, entries in grouped_entries.items()
+        if _is_legacy_qat_tensor_constant_group(sorted(entries))
+    }
+    if not legacy_stems:
+        return state_dict
+
+    logger.warning(
+        "Loading QAT state dict with deprecated PT2E tensor-constant layout. "
+        "Removing legacy BatchNorm tracking constants for compatibility."
+    )
+
+    remapped_state_dict = OrderedDict()
+    next_index_by_stem = defaultdict(int)
+
+    for key, value in state_dict.items():
+        match = _TENSOR_CONSTANT_KEY.match(key)
+        if match is None or match.group("stem") not in legacy_stems:
+            remapped_state_dict[key] = value
+            continue
+
+        legacy_index = int(match.group("index"))
+        if legacy_index % 3 == 0:
+            continue
+
+        stem = match.group("stem")
+        remapped_key = f"{stem}{next_index_by_stem[stem]}"
+        remapped_state_dict[remapped_key] = value
+        next_index_by_stem[stem] += 1
+
+    return remapped_state_dict
 
 
 def remap_feedback_model_state_dict(state_dict):
@@ -28,7 +103,7 @@ def remap_feedback_model_state_dict(state_dict):
     )
 
     if not has_old_prefix:
-        return state_dict
+        return _remap_legacy_qat_tensor_constants(state_dict)
 
     logger.warning(
         "Loading model state dict with deprecated naming scheme."
@@ -38,7 +113,7 @@ def remap_feedback_model_state_dict(state_dict):
     torch.nn.modules.utils.consume_prefix_in_state_dict_if_present(
         state_dict, old_prefix
     )
-    return state_dict
+    return _remap_legacy_qat_tensor_constants(state_dict)
 
 
 def _prepare_qat_forward_input(

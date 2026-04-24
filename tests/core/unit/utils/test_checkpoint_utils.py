@@ -5,9 +5,15 @@ import logging
 import tempfile
 import time
 import unittest
+from collections import OrderedDict
 from pathlib import Path
 
-from ng_model_gym.core.model.checkpoint_loader import latest_checkpoint_in_dir
+import torch
+
+from ng_model_gym.core.model.checkpoint_loader import (
+    latest_checkpoint_in_dir,
+    remap_feedback_model_state_dict,
+)
 
 
 class RestorePretrainedModelFromCheckpoints(unittest.TestCase):
@@ -77,3 +83,87 @@ class RestorePretrainedModelFromCheckpoints(unittest.TestCase):
                 latest_checkpoint_in_dir(Path(temp_dir)),
                 Path(temp_dir, "ckpt-3.pt"),
             )
+
+    def test_remap_feedback_model_state_dict_strips_legacy_prefix(self):
+        """Legacy FeedbackModel checkpoints should drop the `nss_model.` namespace."""
+        state_dict = OrderedDict(
+            {
+                "nss_model.autoencoder.weight": torch.ones(1),
+                "nss_model.autoencoder.bias": torch.zeros(1),
+            }
+        )
+
+        remapped = remap_feedback_model_state_dict(state_dict)
+
+        self.assertIn("autoencoder.weight", remapped)
+        self.assertIn("autoencoder.bias", remapped)
+        self.assertNotIn("nss_model.autoencoder.weight", remapped)
+
+    def test_remap_feedback_model_state_dict_compacts_legacy_qat_tensor_constants(self):
+        """Old PT2E QAT checkpoints should drop BatchNorm tracking counters."""
+        state_dict = OrderedDict(
+            {
+                "nss_model.autoencoder._tensor_constant0": torch.tensor(0),
+                "nss_model.autoencoder._tensor_constant1": torch.ones(32),
+                "nss_model.autoencoder._tensor_constant2": torch.zeros(32),
+                "nss_model.autoencoder._tensor_constant3": torch.tensor(0),
+                "nss_model.autoencoder._tensor_constant4": torch.ones(64),
+                "nss_model.autoencoder._tensor_constant5": torch.zeros(64),
+                "nss_model.autoencoder.activation_post_process_0.scale": torch.ones(1),
+            }
+        )
+
+        remapped = remap_feedback_model_state_dict(state_dict)
+
+        self.assertEqual(
+            list(remapped.keys()),
+            [
+                "autoencoder._tensor_constant0",
+                "autoencoder._tensor_constant1",
+                "autoencoder._tensor_constant2",
+                "autoencoder._tensor_constant3",
+                "autoencoder.activation_post_process_0.scale",
+            ],
+        )
+        self.assertTrue(
+            torch.equal(remapped["autoencoder._tensor_constant0"], torch.ones(32))
+        )
+        self.assertTrue(
+            torch.equal(remapped["autoencoder._tensor_constant3"], torch.zeros(64))
+        )
+
+    def test_remap_feedback_model_state_dict_compacts_legacy_qat_constants_without_prefix(
+        self,
+    ):
+        """Legacy PT2E tensor constants should be compacted even without `nss_model.`."""
+        state_dict = OrderedDict(
+            {
+                "autoencoder._tensor_constant0": torch.tensor(0),
+                "autoencoder._tensor_constant1": torch.ones(16),
+                "autoencoder._tensor_constant2": torch.zeros(16),
+            }
+        )
+
+        remapped = remap_feedback_model_state_dict(state_dict)
+
+        self.assertEqual(
+            list(remapped.keys()),
+            ["autoencoder._tensor_constant0", "autoencoder._tensor_constant1"],
+        )
+        self.assertTrue(
+            torch.equal(remapped["autoencoder._tensor_constant1"], torch.zeros(16))
+        )
+
+    def test_remap_feedback_model_state_dict_keeps_current_qat_tensor_constants(self):
+        """Current PT2E QAT checkpoints should remain unchanged."""
+        state_dict = OrderedDict(
+            {
+                "autoencoder._tensor_constant0": torch.ones(32),
+                "autoencoder._tensor_constant1": torch.zeros(32),
+                "autoencoder._tensor_constant2": torch.ones(64),
+            }
+        )
+
+        remapped = remap_feedback_model_state_dict(state_dict)
+
+        self.assertEqual(list(remapped.keys()), list(state_dict.keys()))
