@@ -158,9 +158,7 @@ class NFRUDataset(torch.utils.data.Dataset):
 
         # Validate data
         if self.loader_mode_enum == DataLoaderMode.TRAIN and dataset_cfg.health_check:
-            logger.info(
-                "NFRU dataset health check requested but not yet implemented."
-            )
+            logger.info("NFRU dataset health check requested but not yet implemented.")
         # pylint: enable=duplicate-code
 
     def _configure_sliding_window_data_structures(self):

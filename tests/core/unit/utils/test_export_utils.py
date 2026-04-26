@@ -101,7 +101,9 @@ def make_params(tmp_path):
     p.dataset = SimpleNamespace(
         num_workers=num_workers,
         prefetch_factor=4,
-        path=SimpleNamespace(train="train_data", test="test_data"),
+        path=SimpleNamespace(
+            train="train_data", test="test_data", validation="test_data"
+        ),
     )
 
     p.model = SimpleNamespace(name="NSS", version="42")
@@ -228,7 +230,7 @@ class TestExportUtils(unittest.TestCase):
 
         # Dataloader correct arguments passed.
         _, kwargs = mock_get_dataloader.call_args
-        self.assertEqual(kwargs["loader_mode"], DataLoaderMode.TEST)
+        self.assertEqual(kwargs["loader_mode"], DataLoaderMode.VAL)
         self.assertTrue(kwargs["trace_mode"])
 
         # Export module to a VGF file called with correct parameters.

@@ -100,7 +100,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
             with self.subTest(model):
                 # Load config and setup for current test
                 params = create_simple_params(usecase="nss")
-                params.dataset.path.test = Path("tests/usecases/nss/datasets/test")
+                params.dataset.path.validation = Path("tests/usecases/nss/datasets/val")
                 params.output.export.vgf_output_dir = self.tosa_out_dir
                 params.model_train_eval_mode = TrainEvalMode.FP32
                 # Ensure TOSA output directory does not exist
@@ -128,7 +128,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
             # Load config and setup for current test
             params = create_simple_params(usecase="nss")
             params.output.export.vgf_output_dir = self.tosa_out_dir
-            params.dataset.path.test = Path("tests/usecases/nss/datasets/test")
+            params.dataset.path.validation = Path("tests/usecases/nss/datasets/val")
 
             # Ensure TOSA output directory does not exist
             tosa_out_dir = Path(params.output.export.vgf_output_dir)
