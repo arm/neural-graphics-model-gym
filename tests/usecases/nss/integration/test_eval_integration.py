@@ -6,12 +6,12 @@ import re
 import subprocess
 from pathlib import Path
 
-from tests.usecases.nss.integration.base_integration import BaseIntegrationTest
+from tests.usecases.nss.integration.base_integration import NSSBaseIntegrationTest
 
 # pylint: disable=duplicate-code
 
 
-class EvaluationIntegrationTest(BaseIntegrationTest):
+class EvaluationIntegrationTest(NSSBaseIntegrationTest):
     """Tests for NSS Evaluation pipeline."""
 
     def _extract_metric_value(self, metric, log_line):
@@ -50,44 +50,6 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
             ]
         )
 
-    def test_train_eval_raises_error_missing_dataset(self):
-        """Test train --eval raises error if missing dataset path"""
-
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        # Override dataset paths
-        cfg_json["dataset"]["path"]["train"] = None
-        cfg_json["dataset"]["path"]["validation"] = None
-        cfg_json["dataset"]["path"]["test"] = None
-
-        self.test_cfg_path = Path(self.test_dir, "test_empty_datasets_path.json")
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(cfg_json, f)
-
-        with self.assertRaises(subprocess.CalledProcessError) as sub_proc_out:
-            subprocess.run(
-                [
-                    "ng-model-gym",
-                    f"--config-path={self.test_cfg_path}",
-                    "train",
-                    "--evaluate",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-        exc = sub_proc_out.exception
-
-        self.assertNotEqual(
-            exc.returncode,
-            0,
-            f"Expected non zero exit code for missing dataset, got {exc.returncode}",
-        )
-
-        self.assertIn("config error", exc.stderr.lower())
-
     def test_qat_eval_pipeline(self):
         """E2E test of QAT model and evaluating it"""
         sub_proc = subprocess.run(
@@ -106,44 +68,6 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
                 "-------------- Evaluation Complete --------------",
             ]
         )
-
-    def test_qat_eval_raises_error_missing_dataset(self):
-        """Test qat --eval raises error if missing dataset path"""
-
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        # Override dataset paths
-        cfg_json["dataset"]["path"]["train"] = None
-        cfg_json["dataset"]["path"]["validation"] = None
-        cfg_json["dataset"]["path"]["test"] = None
-
-        self.test_cfg_path = Path(self.test_dir, "test_empty_datasets_path.json")
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(cfg_json, f)
-
-        with self.assertRaises(subprocess.CalledProcessError) as sub_proc_out:
-            subprocess.run(
-                [
-                    "ng-model-gym",
-                    f"--config-path={self.test_cfg_path}",
-                    "qat",
-                    "--evaluate",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-        exc = sub_proc_out.exception
-
-        self.assertNotEqual(
-            exc.returncode,
-            0,
-            f"Expected non zero exit code for missing dataset, got {exc.returncode}",
-        )
-
-        self.assertIn("config error", exc.stderr.lower())
 
     # pylint: enable=duplicate-code
 
@@ -317,45 +241,6 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
             ssim, ssim_max, f"SSIM should be less than or equal to {ssim_max}"
         )
 
-    def test_eval_command_raises_error_missing_dataset(self):
-        """Test eval cli raises error if missing dataset path"""
-
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        # Override dataset paths
-        cfg_json["dataset"]["path"]["train"] = None
-        cfg_json["dataset"]["path"]["validation"] = None
-        cfg_json["dataset"]["path"]["test"] = None
-
-        self.test_cfg_path = Path(self.test_dir, "test_empty_datasets_path.json")
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(cfg_json, f)
-
-        with self.assertRaises(subprocess.CalledProcessError) as sub_proc_out:
-            subprocess.run(
-                [
-                    "ng-model-gym",
-                    f"--config-path={self.test_cfg_path}",
-                    "evaluate",
-                    "--model-path=tests/usecases/nss/weights/nss_v0.1.0_fp32.pt",
-                    "--model-type=fp32",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-        exc = sub_proc_out.exception
-
-        self.assertNotEqual(
-            exc.returncode,
-            0,
-            f"Expected non zero exit code for missing dataset, got {exc.returncode}",
-        )
-
-        self.assertIn("config error", exc.stderr.lower())
-
     # pylint: disable=duplicate-code
     def test_validation(self):
         """E2E test of evaluating on a validation set after each training epoch"""
@@ -418,43 +303,6 @@ class EvaluationIntegrationTest(BaseIntegrationTest):
         self.assertNotIn("Validation: Epoch 2/4", sub_proc.stderr)
         self.assertIn("Validation: Epoch 3/4", sub_proc.stderr)
         self.assertIn("Validation: Epoch 4/4", sub_proc.stderr)
-
-    def test_train_command_with_validation_raises_error_missing_dataset(self):
-        """Test train with validation raises error if missing dataset path"""
-
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        # Override validation dataset path and perform_validate
-        cfg_json["dataset"]["path"]["validation"] = None
-        cfg_json["train"]["perform_validate"] = True
-
-        self.test_cfg_path = Path(self.test_dir, "test_empty_datasets_path.json")
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(cfg_json, f)
-
-        with self.assertRaises(subprocess.CalledProcessError) as sub_proc_out:
-            subprocess.run(
-                [
-                    "ng-model-gym",
-                    f"--config-path={self.test_cfg_path}",
-                    "train",
-                    "--evaluate",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-        exc = sub_proc_out.exception
-
-        self.assertNotEqual(
-            exc.returncode,
-            0,
-            f"Expected non zero exit code for missing dataset, got {exc.returncode}",
-        )
-
-        self.assertIn("config error", exc.stderr.lower())
 
     # pylint: enable=duplicate-code
 

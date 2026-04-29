@@ -19,7 +19,7 @@ class TestLRScheduleFunctions(unittest.TestCase):
     def setUp(self):
         """Setup test case"""
         torch.manual_seed(0)
-        self.params = create_simple_params()
+        self.params = create_simple_params(usecase="nss")
         self.params.model_train_eval_mode = TrainEvalMode.FP32
 
     def test_cosine_annealing_schedule(self):
@@ -169,7 +169,7 @@ class TestSchedulerConfig(unittest.TestCase):
     # pylint: disable=C0116
     def setUp(self):
         """Run before each test case"""
-        self.params = create_simple_params().model_dump()
+        self.params = create_simple_params(usecase="nss").model_dump()
 
     def test_cosine_annealing_valid(self):
         params = self.params

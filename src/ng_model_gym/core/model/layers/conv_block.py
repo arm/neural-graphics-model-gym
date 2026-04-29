@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 from typing import Optional, Tuple
@@ -15,7 +15,7 @@ class ConvBlock(nn.Module):
         in_channels: int,
         out_channels: int,
         kernel_size: int,
-        padding: Tuple[int],
+        padding: Tuple[int] = (1, 1),
         bias: Optional[bool] = True,
         stride: Optional[Tuple[int]] = (1, 1),
         activation: Optional[str] = "",

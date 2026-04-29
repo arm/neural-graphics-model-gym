@@ -37,7 +37,7 @@ class TestNSSV1ModelCore(BaseGPUMemoryTest):
         autoencoder.load_state_dict(forward_inputs["autoencoder_state"])
         autoencoder.to(device)
 
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.model.recurrent_samples = None
         params.dataset.tonemapper = ToneMapperMode.REINHARD
         params.model_train_eval_mode = TrainEvalMode.FP32

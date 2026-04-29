@@ -5,12 +5,12 @@ import json
 import subprocess
 from pathlib import Path
 
-from tests.usecases.nss.integration.base_integration import BaseIntegrationTest
+from tests.usecases.nss.integration.base_integration import NSSBaseIntegrationTest
 
 # pylint: disable=duplicate-code
 
 
-class QATIntegrationTest(BaseIntegrationTest):
+class QATIntegrationTest(NSSBaseIntegrationTest):
     """Tests for NSS training pipeline."""
 
     # pylint: disable=duplicate-code

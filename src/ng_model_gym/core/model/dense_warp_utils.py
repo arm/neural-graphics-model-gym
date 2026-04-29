@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-FileCopyrightText: Copyright 2018 The TensorFlow Authors. All Rights Reserved.
 # SPDX-License-Identifier: Apache-2.0
@@ -33,7 +33,8 @@ def interpolate_bilinear_w_zero_pad(
     if len(grid.shape) != 4:
         raise ValueError("Grid must be 4D Tensor.")
 
-    # We convert image grid to NHWC @TODO should be able to do in NCHW format?
+    # We convert image grid to NHWC
+    # TODO should be able to do in NCHW format
     grid = torch.permute(grid, [0, 2, 3, 1])
 
     # grid shape checks
@@ -169,7 +170,8 @@ def interpolate_bilinear(
     if len(grid.shape) != 4:
         raise ValueError("Grid must be 4D Tensor.")
 
-    # We convert image grid to NHWC @TODO should be able to do in NCHW format?
+    # We convert image grid to NHWC
+    # TODO should be able to do in NCHW format?
     grid = torch.permute(grid, [0, 2, 3, 1])
     grid_shape = grid.size()
 
@@ -355,7 +357,8 @@ def backward_warp_nearest(
     gj0c = (torch.clamp(gjf, 0, float(w - 1))).to(torch.int32)
 
     # Flatten Grid
-    # We convert image to NHWC @TODO should be able to do in NCHW format?
+    # We convert image to NHWC
+    # TODO should be able to do in NCHW format
     image = image.permute(0, 2, 3, 1)
     flattened_grid = torch.reshape(image, [batch_size * h * w, ch])
     batch_offsets = torch.reshape(
@@ -517,7 +520,8 @@ def catmull_rom_warp(
         image.size(3),
     )
 
-    # We convert image grid to NHWC @TODO should be able to do in NCHW format?
+    # We convert image grid to NHWC
+    # TODO should be able to do in NCHW format
     image = torch.permute(image, [0, 2, 3, 1])
     flow = torch.permute(flow, [0, 2, 3, 1])
 

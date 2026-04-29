@@ -51,7 +51,7 @@ class TestModelFactory(unittest.TestCase):
     """Test Model Factory."""
 
     def setUp(self):
-        self.params = create_simple_params()
+        self.params = create_simple_params(usecase="nss")
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def tearDown(self):

@@ -46,7 +46,7 @@ class TestConfig(unittest.TestCase):
     def test_loading_user_config_file(self):
         """Test loading config"""
 
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.train.seed = 9876
         params = params.model_dump_json()
 
@@ -93,7 +93,7 @@ class TestConfig(unittest.TestCase):
 
     def test_reject_vgf_output_dir_in_tmp(self):
         """Test vgf_output_dir cannot be set to a temp directory"""
-        user_config = create_simple_params().model_dump_json()
+        user_config = create_simple_params(usecase="nss").model_dump_json()
         user_config_dict = json.loads(user_config)
         user_config_dict["output"]["export"]["vgf_output_dir"] = str(
             Path(tempfile.gettempdir()) / "vgf"
@@ -119,7 +119,7 @@ class TestConfig(unittest.TestCase):
     def test_outdated_config_validation(self):
         """Test exception raised when parameter in user config is outdated"""
 
-        user_config = create_simple_params().model_dump_json()
+        user_config = create_simple_params(usecase="nss").model_dump_json()
         user_config_dict = json.loads(user_config)
         user_config_dict |= {"extra": "field"}
         user_config = json.dumps(user_config_dict)
@@ -143,7 +143,7 @@ class TestConfig(unittest.TestCase):
 
     def test_invalid_json_file(self):
         """Test invalid JSON file throws exception"""
-        user_config = create_simple_params()
+        user_config = create_simple_params(usecase="nss")
         user_config = user_config.model_dump_json()
         with tempfile.TemporaryDirectory() as tmp_dir:
             with tempfile.NamedTemporaryFile(
@@ -167,7 +167,7 @@ class TestConfig(unittest.TestCase):
     def test_reject_incomplete_config(self):
         """Test incomplete config throws exception"""
 
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         # Delete seed param
         params = params.model_dump_json(exclude={"train": {"seed"}})
 
@@ -191,7 +191,7 @@ class TestConfig(unittest.TestCase):
     def test_reject_validation_enabled_without_valid_schedule(self):
         """Test config fails when validation is enabled but never scheduled to run."""
 
-        user_config = create_simple_params().model_dump(mode="json")
+        user_config = create_simple_params(usecase="nss").model_dump(mode="json")
         user_config["train"]["perform_validate"] = True
         user_config["train"]["validate_frequency"] = 5
         user_config["train"]["fp32"]["number_of_epochs"] = 1
@@ -207,7 +207,7 @@ class TestConfig(unittest.TestCase):
     def test_accept_validation_schedule_with_int_frequency(self):
         """Test config accepts a valid validation schedule when frequency is an int."""
 
-        user_config = create_simple_params().model_dump(mode="json")
+        user_config = create_simple_params(usecase="nss").model_dump(mode="json")
         user_config["train"]["perform_validate"] = True
         user_config["train"]["validate_frequency"] = 2
         user_config["train"]["fp32"]["number_of_epochs"] = 5
@@ -219,7 +219,7 @@ class TestConfig(unittest.TestCase):
     def test_accept_validation_schedule_with_list_frequency(self):
         """Test config accepts a valid validation schedule when frequency is a list."""
 
-        user_config = create_simple_params().model_dump(mode="json")
+        user_config = create_simple_params(usecase="nss").model_dump(mode="json")
         user_config["train"]["perform_validate"] = True
         user_config["train"]["validate_frequency"] = [2, 5]
         user_config["train"]["fp32"]["number_of_epochs"] = 5
@@ -231,7 +231,7 @@ class TestConfig(unittest.TestCase):
     def test_custom_models(self):
         """Test custom model config accepts custom fields"""
 
-        user_config = create_simple_params().model_dump(mode="json")
+        user_config = create_simple_params(usecase="nss").model_dump(mode="json")
         user_config["model"] = {
             "name": "my_model",
             "model_source": "custom",
@@ -308,7 +308,7 @@ class TestConfigLogging(unittest.TestCase):
             with open(log_file_path, "r", encoding="utf-8") as f:
                 existing_log = f.read()
 
-        user_config = create_simple_params()
+        user_config = create_simple_params(usecase="nss")
         user_config.train.fp32.number_of_epochs = 0
         user_config.output.tensorboard_output_dir = "./tensorboard-logs"
         create_directory(user_config.output.tensorboard_output_dir)

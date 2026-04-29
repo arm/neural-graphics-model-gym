@@ -84,7 +84,6 @@ class NSSDataset(Dataset):
             else self.config_params.dataset.gt_augmentation
         )
 
-        # TODO: Bug if a st exists but has less than recurrent_samples frames, it will raise missing
         if not self.frame_indexes:
             raise ValueError(
                 f"No {extension.value} files found at path {self.data_path} "
@@ -309,6 +308,15 @@ class NSSDataset(Dataset):
             with safetensors.safe_open(capture, framework="pt") as f:
                 metadata = f.metadata()
                 seq_length = int(metadata["Length"])
+
+                # Skip captures that are shorter than recurrent_samples.
+                if seq_length < n_frames:
+                    logger.warning(
+                        f"Skipping capture '{capture}'. "
+                        f"Capture length ({seq_length}) must be >= recurrent_samples ({n_frames})."
+                    )
+                    continue
+
                 camera_cut_sequences = self._compute_sequences(
                     capture, f, seq_length, n_frames
                 )

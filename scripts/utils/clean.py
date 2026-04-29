@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -38,13 +38,15 @@ def main():
         for p in root.rglob(pattern):
             rm(p)
 
-    shader_root = (
-        root / "src" / "ng_model_gym" / "usecases" / "nss" / "model" / "shaders"
-    )
+    shader_roots = [
+        root / "src" / "ng_model_gym" / "usecases" / "nss" / "model" / "shaders",
+        root / "src" / "ng_model_gym" / "usecases" / "nfru" / "model" / "shaders",
+    ]
 
     for pattern in [".slangtorch_cache", "*.lock"]:
-        for p in shader_root.rglob(pattern):
-            rm(p)
+        for shader_root in shader_roots:
+            for p in shader_root.rglob(pattern):
+                rm(p)
 
 
 if __name__ == "__main__":

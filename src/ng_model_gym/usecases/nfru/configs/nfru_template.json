@@ -1,0 +1,114 @@
+{
+    "config_schema_version": "5",
+    "model": {
+        "name": "NFRU",
+        "model_source": "prebuilt",
+        "version": "1",
+        "scale_factor": 2.0,
+        "legacy_nfru_capture_paths": []
+    },
+    "dataset": {
+        "name": "NFRU",
+        "version": "1",
+        "path": {
+            "train": "<PATH/TO/TRAIN_DATA_DIR>",
+            "validation": "<PATH/TO/VALIDATION_DATA_DIR>",
+            "test": "<PATH/TO/TEST_DATA_DIR>"
+        },
+        "colour_preprocessing": {
+            "train": {
+                "pipeline": [
+                    [
+                        "reinhard"
+                    ],
+                    [
+                        "none",
+                        "contrast",
+                        "saturation",
+                        "temperature_tint"
+                    ]
+                ],
+                "exposure": [
+                    1.0,
+                    2.5
+                ]
+            },
+            "validation": {
+                "pipeline": [
+                    "reinhard"
+                ],
+                "exposure": 2.0
+            },
+            "test": {
+                "pipeline": [
+                    "reinhard"
+                ],
+                "exposure": 2.0
+            }
+        },
+        "health_check": false,
+        "gt_augmentation": true,
+        "num_workers": 4,
+        "prefetch_factor": 1,
+        "align_data": true
+    },
+    "output": {
+        "dir": "./output",
+        "export_frame_png": false,
+        "tensorboard_output_dir": "./tensorboard-logs/nfru",
+        "export": {
+            "dynamic_shape": true,
+            "vgf_output_dir": "./output/vgf/nfru"
+        }
+    },
+    "metrics": [
+        "PSNR",
+        "SSIM",
+        "STLPIPS"
+    ],
+    "train": {
+        "batch_size": 16,
+        "seed": 123456,
+        "perform_validate": false,
+        "validate_frequency": 1,
+        "loss_fn": "LPIPSSpatialLoss",
+        "loss_args": {
+            "alpha": 0.1
+        },
+        "fp32": {
+            "number_of_epochs": 70,
+            "checkpoints": {
+                "dir": "./output/checkpoints/nfru/fp32"
+            },
+            "lr_scheduler": {
+                "type": "cosine_annealing",
+                "warmup_percentage": 0.05,
+                "min_lr": 3e-06
+            },
+            "optimizer": {
+                "optimizer_type": "adam",
+                "learning_rate": "1e-3",
+                "eps": 1e-7
+            }
+        },
+        "qat": {
+            "number_of_epochs": 100,
+            "checkpoints": {
+                "dir": "./output/checkpoints/nfru/qat"
+            },
+            "lr_scheduler": {
+                "type": "cosine_annealing",
+                "warmup_percentage": 0.1,
+                "min_lr": 1e-06
+            },
+            "optimizer": {
+                "optimizer_type": "lars_adam",
+                "learning_rate": "1e-4",
+                "eps": 1e-7
+            }
+        }
+    },
+    "processing": {
+        "shader_accurate": true
+    }
+}

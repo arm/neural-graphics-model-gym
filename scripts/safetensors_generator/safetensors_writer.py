@@ -16,9 +16,9 @@ from safetensors.torch import save_file
 from tqdm.auto import tqdm
 
 from ng_model_gym.core.utils.logging_utils import setup_logging
-from scripts.safetensors_generator.dataset_reader import (
+from scripts.safetensors_generator.dataset_readers import (
     Dataset_Readers,
-    FeatureIterator,
+    SafetensorsFeatureIterator,
 )
 
 logger = logging.getLogger("safetensors_writer")
@@ -67,7 +67,8 @@ class SafetensorsWriter:
         src_dir: Top-level source directory where data to write into Safetensors exists
         dst_dir: Destination directory to write Safetensors
         file_ext: file extension for the source content
-        sequence_iterator: `FeatureIterator` inherited class used to read data that we write
+        sequence_iterator: `SafetensorsFeatureIterator` inherited class used to
+            read data that we write
         args: Any extra arguments that will pass down to help configure `sequence_iterator`
         threads: Number of parallel threads to spawn when writing data, default is `os.cpu_count`
     """
@@ -77,7 +78,7 @@ class SafetensorsWriter:
         src_dir: Union[str, Path],
         dst_dir: Union[str, Path],
         file_ext: str,
-        sequence_iterator: FeatureIterator,
+        sequence_iterator: SafetensorsFeatureIterator,
         args: argparse.Namespace = None,
         threads: int = None,
     ):
@@ -160,6 +161,58 @@ class SafetensorsWriter:
                 seq_generator(seq_n, 0)
 
 
+class GrowingTensorBuffer:
+    """Append tensors along dim 0 using amortized growth to avoid large final cat()."""
+
+    def __init__(self, first_tensor: torch.Tensor):
+        if first_tensor.ndim == 0:
+            raise ValueError(
+                "Expected tensor with at least 1 dimension for dim-0 append"
+            )
+
+        self.dtype = first_tensor.dtype
+        self.device = first_tensor.device
+        self.tail_shape = first_tensor.shape[1:]
+        self.capacity = max(1, int(first_tensor.shape[0]))
+        self.length = 0
+        self.data = torch.empty(
+            (self.capacity, *self.tail_shape), dtype=self.dtype, device=self.device
+        )
+        self.append(first_tensor)
+
+    def _grow(self, min_capacity: int):
+        new_capacity = self.capacity
+        while new_capacity < min_capacity:
+            new_capacity *= 2
+        new_data = torch.empty(
+            (new_capacity, *self.tail_shape), dtype=self.dtype, device=self.device
+        )
+        new_data[: self.length].copy_(self.data[: self.length])
+        self.data = new_data
+        self.capacity = new_capacity
+
+    def append(self, tensor: torch.Tensor):
+        """Append a batch tensor on dim 0, growing backing storage when needed."""
+        if tensor.dtype != self.dtype:
+            raise ValueError("Mismatched dtype while appending tensor buffer")
+        if tensor.device != self.device:
+            raise ValueError("Mismatched device while appending tensor buffer")
+        if tensor.shape[1:] != self.tail_shape:
+            raise ValueError("Mismatched shape while appending tensor buffer")
+
+        append_len = int(tensor.shape[0])
+        next_len = self.length + append_len
+        if next_len > self.capacity:
+            self._grow(next_len)
+
+        self.data[self.length : next_len].copy_(tensor)
+        self.length = next_len
+
+    def as_tensor(self) -> torch.Tensor:
+        """Return a view of the valid prefix excluding unused capacity."""
+        return self.data[: self.length]
+
+
 def tqdm_initialiser(*args, **kwargs):
     """Initialise tqdm with multiprocessing lock"""
     tqdm.set_lock(*args, **kwargs)
@@ -182,7 +235,10 @@ def generic_safetensors_writer(args):
 
 
 def write_safetensors(
-    iterator: FeatureIterator, pid: int, writer: SafetensorsWriter, seq_id: int
+    iterator: SafetensorsFeatureIterator,
+    pid: int,
+    writer: SafetensorsWriter,
+    seq_id: int,
 ):
     """Iterate over features and write to .safetensors"""
     # Allows for writing multiple 'sequences' from a single source,
@@ -200,7 +256,7 @@ def write_safetensors(
                 if dst_file_path not in sub_seq_dict:
                     sub_seq_dict[dst_file_path] = {}
                     sub_seq_dict[dst_file_path]["data"] = {
-                        k: [feature[k]] for k in feature.keys()
+                        k: GrowingTensorBuffer(feature[k]) for k in feature.keys()
                     }
                     sub_seq_dict[dst_file_path]["length"] = 0
                 else:
@@ -213,10 +269,7 @@ def write_safetensors(
         logger.info(f"Writing {sub_seq} to file. This may take a while.")
         sf_file = (writer.dst_root / sub_seq).with_suffix(".safetensors")
         sf_file.parent.mkdir(parents=True, exist_ok=True)
-        # TODO: Bit of a bottleneck atm, threads will hang on this
-        raw_data = {
-            k: torch.cat(sub_data["data"][k], axis=0) for k in sub_data["data"].keys()
-        }
+        raw_data = {k: sub_data["data"][k].as_tensor() for k in sub_data["data"].keys()}
         metadata = {
             "Length": str(sub_data["length"]),
             "Created": datetime.now().strftime("%d-%m-%Y"),
@@ -318,7 +371,7 @@ if __name__ == "__main__":
         help="Name of the data reader to use",
         type=str,
         choices=Dataset_Readers.keys(),
-        default="EXRv101",
+        default="NSSv1_0_1",
     )
     parser.add_argument(
         "-crop_size", help="Crop size in `outDims`", type=int, default=256

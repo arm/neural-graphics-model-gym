@@ -31,7 +31,7 @@ class NGModelEvaluator:
         self.export_png_dir = (
             Path(self.out_dir, "png") if self.params.output.export_frame_png else None
         )
-        self.metrics = get_metrics(self.params, is_test=True)
+        self.metrics = get_metrics(self.params, mode="test")
         self.dataloader = None
         self.idx = 0
         self.x_in = None
@@ -69,8 +69,14 @@ class NGModelEvaluator:
         # Run evaluation.
         for self.idx, (self.x_in, self.y_true) in evaluate_pbar:
             # Ensure input data and ground truth are on the same device as the model.
+            self.x_in, self.y_true = self.model.on_before_batch_transfer(
+                (self.x_in, self.y_true)
+            )
             self.x_in = move_to_device(self.x_in, self.model.device)
             self.y_true = move_to_device(self.y_true, self.model.device)
+            self.x_in, self.y_true = self.model.on_after_batch_transfer(
+                (self.x_in, self.y_true)
+            )
 
             # Run Inference on model - gradients not needed as we only evaluate.
             with torch.no_grad():

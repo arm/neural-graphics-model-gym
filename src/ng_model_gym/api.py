@@ -202,7 +202,7 @@ def do_evaluate(
             - `ProfilerType.GPU_MEMORY`: GPU memory profiling
 
     Example:
-        >>> params = load_config_file("config.json")
+        >>> params = load_config_file("nss_config.json")
         >>> do_evaluate(
         ...     params=params,
         ...     model_path="/checkpoints/model_latest.pt",
@@ -268,7 +268,7 @@ def do_export(
         export_type (ExportType): The exported model type e.g ExportType.FP32, ExportType.QAT_INT8
 
     Example:
-        >>> params = load_config_file(Path("config.json"))
+        >>> params = load_config_file(Path("nss_config.json"))
         >>> do_export(
         ...     params=params,
         ...     model_path="/path/model_to_export.pt",

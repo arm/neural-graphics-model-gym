@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+# pylint: disable=duplicate-code
 
 import random
 import tempfile
@@ -24,7 +25,7 @@ class TestNSSDataset(unittest.TestCase):
     def setUp(self):
         """Set up test"""
         self.params = create_simple_params(
-            dataset="./tests/usecases/nss/datasets/train"
+            usecase="nss", dataset_path="./tests/usecases/nss/datasets/train"
         )
         self.params.model.recurrent_samples = 4
 
@@ -54,7 +55,9 @@ class TestNSSDataset(unittest.TestCase):
     def test_dataloader_data_transformation(self):
         """Check data from raw to training transformation is correct"""
 
-        params = create_simple_params(dataset="./tests/usecases/nss/datasets/train")
+        params = create_simple_params(
+            usecase="nss", dataset_path="./tests/usecases/nss/datasets/train"
+        )
         params.model.recurrent_samples = 2
         params.train.batch_size = 2
         params.dataset.gt_augmentation = False
@@ -136,7 +139,8 @@ class TestNSSDataset(unittest.TestCase):
 
         # Create params pointing to SafeTensors dataset with missing exposure field
         params = create_simple_params(
-            dataset="tests/usecases/nss/datasets/missing_exposure_field"
+            usecase="nss",
+            dataset_path="tests/usecases/nss/datasets/missing_exposure_field",
         )
 
         # Set exposure to None to match missing dataset field
@@ -169,7 +173,7 @@ class TestNSSDataset(unittest.TestCase):
 
     def test_windows_skip_mid_sequence_cuts(self):
         """Sliding windows stop before mid-span cuts but still start exactly on the cut."""
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.model.recurrent_samples = 4
 
         flags = [False, False, False, False, True, False, False, False, False, False]
@@ -188,7 +192,7 @@ class TestNSSDataset(unittest.TestCase):
 
     def test_seq_id_changes_per_segment_in_test_mode(self):
         """Sequence hashes change at each cut when iterating in TEST mode."""
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.model.recurrent_samples = 4
 
         flags = [False, False, False, False, True, False, False, False]
@@ -214,7 +218,7 @@ class TestNSSDataset(unittest.TestCase):
 
     def test_seq_tensor_resets_when_camera_cut_true(self):
         """`seq` tensor visible to the model flips only when the camera_cut flag is set."""
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.model.recurrent_samples = 4
 
         flags = [False, False, True, False, False]
@@ -235,7 +239,7 @@ class TestNSSDataset(unittest.TestCase):
 
     def test_short_camera_cut_segments_are_dropped(self):
         """Segments shorter than recurrent_samples should not emit any sliding windows."""
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.model.recurrent_samples = 4
 
         # 2 valid sequences: frames 0-3 and 7-10 (inclusive)
@@ -271,7 +275,7 @@ class TestNSSDataset(unittest.TestCase):
 
     def test_legacy_file_without_camera_cut(self):
         """Test handling of legacy files without camera cut flags."""
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.model.recurrent_samples = 4
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -286,11 +290,45 @@ class TestNSSDataset(unittest.TestCase):
             capture = dataset.captures[0]
             self.assertEqual(dataset.capture_sequences[capture], [(0, 10)])
 
+    def test_short_capture_logs_warning_and_is_skipped(self):
+        """Captures shorter than recurrent_samples emit a warning and are ignored."""
+        params = create_simple_params(usecase="nss")
+        params.model.recurrent_samples = 4
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dataset_dir = Path(tmp_dir) / "train"
+            write_camera_cut_fixture(
+                dataset_dir,
+                camera_cut_flags=[False, False, False],
+                file_name="short_capture",
+            )
+            write_camera_cut_fixture(
+                dataset_dir,
+                camera_cut_flags=[False] * 6,
+                file_name="valid_capture",
+            )
+            params.dataset.path.train = dataset_dir
+
+            with self.assertLogs(
+                "ng_model_gym.usecases.nss.data.dataset", level="WARNING"
+            ) as logs:
+                dataset = NSSDataset(params, DataLoaderMode.TRAIN)
+
+            joined_logs = "\n".join(logs.output)
+            self.assertIn("Skipping capture", joined_logs)
+            self.assertIn(
+                "Capture length (3) must be >= recurrent_samples (4)", joined_logs
+            )
+            self.assertEqual(len(dataset.captures), 2)
+            self.assertEqual(len(dataset.capture_windows), 1)
+
     def test_recurrent_samples(self):
         """Test recurrent samples set correctly according to dataloader mode"""
 
         with self.subTest("train_mode_two_recurrent_samples"):
-            params = create_simple_params(dataset="./tests/usecases/nss/datasets/train")
+            params = create_simple_params(
+                usecase="nss", dataset_path="./tests/usecases/nss/datasets/train"
+            )
             params.model.recurrent_samples = 2
             dataset = NSSDataset(
                 params,
@@ -301,7 +339,7 @@ class TestNSSDataset(unittest.TestCase):
 
         with self.subTest("train_mode_missing_recurrent_samples"):
             config_json = create_simple_params(
-                dataset="./tests/usecases/nss/datasets/train"
+                usecase="nss", dataset_path="./tests/usecases/nss/datasets/train"
             ).model_dump(mode="json")
             config_json["model"] = {
                 "name": "my_custom_model",
@@ -320,7 +358,9 @@ class TestNSSDataset(unittest.TestCase):
             self.assertIn("train/validation", str(exc.exception))
 
         with self.subTest("train_mode_raise_recurrent_samples_less_than_two"):
-            params = create_simple_params(dataset="./tests/usecases/nss/datasets/train")
+            params = create_simple_params(
+                usecase="nss", dataset_path="./tests/usecases/nss/datasets/train"
+            )
             params.model.recurrent_samples = 1
             with self.assertRaises(ValueError) as exc:
                 NSSDataset(
@@ -331,7 +371,9 @@ class TestNSSDataset(unittest.TestCase):
             self.assertIn("model.recurrent_samples >= 2", str(exc.exception))
 
         with self.subTest("test_mode_sets_single_sample"):
-            params = create_simple_params(dataset="./tests/usecases/nss/datasets/train")
+            params = create_simple_params(
+                usecase="nss", dataset_path="./tests/usecases/nss/datasets/train"
+            )
             params.model.recurrent_samples = 10
             dataset = NSSDataset(
                 params,

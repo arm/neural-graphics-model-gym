@@ -46,6 +46,18 @@ class TinyModel(nn.Module):
         """hook for trainer tests"""
         return None
 
+    def on_train_batch_start(self) -> None:
+        """hook for trainer tests"""
+        return None
+
+    def on_before_batch_transfer(self, batch):
+        """hook for trainer tests"""
+        return batch
+
+    def on_after_batch_transfer(self, batch):
+        """hook for trainer tests"""
+        return batch
+
     def on_train_batch_end(self) -> None:
         """hook for trainer tests"""
         return None
@@ -81,7 +93,8 @@ class TestTrainerMethods(unittest.TestCase):
         self.mock_trainer.training_mode_params.number_of_epochs = 10
         self.mock_trainer.starting_epoch = 1
         self.mock_trainer.device = torch.device("cpu")
-        self.mock_trainer.metrics = []
+        self.mock_trainer.train_metrics = []
+        self.mock_trainer.val_metrics = []
         self.mock_trainer.is_feedback = False
 
         # --- Model ---
@@ -154,11 +167,20 @@ class TestTrainerMethods(unittest.TestCase):
         """Test trainer lifecycle hooks are called"""
         trainer = self.mock_trainer
         trainer.model.on_train_epoch_start = Mock()
+        trainer.model.on_train_batch_start = Mock()
         trainer.model.on_train_batch_end = Mock()
         trainer.model.on_train_epoch_end = Mock()
         trainer.model.on_train_end = Mock()
         trainer.model.on_validation_start = Mock()
         trainer.model.on_validation_end = Mock()
+        trainer.model.on_before_batch_transfer = Mock(
+            spec=TinyModel.on_before_batch_transfer
+        )
+        trainer.model.on_before_batch_transfer.side_effect = lambda batch: batch
+        trainer.model.on_after_batch_transfer = Mock(
+            spec=TinyModel.on_after_batch_transfer
+        )
+        trainer.model.on_after_batch_transfer.side_effect = lambda batch: batch
 
         trainer.training_mode_params.number_of_epochs = 2
         trainer.starting_epoch = 1
@@ -185,6 +207,10 @@ class TestTrainerMethods(unittest.TestCase):
         Trainer.train(trainer)
 
         self.assertEqual(trainer.model.on_train_epoch_start.call_count, 2)
+        self.assertEqual(trainer.model.on_before_batch_transfer.call_count, 10)
+        self.assertEqual(trainer.model.on_after_batch_transfer.call_count, 10)
+        self.assertEqual(trainer.model.on_train_batch_start.call_count, 6)
+        self.assertEqual(trainer.model.on_train_batch_start.call_count, 6)
         self.assertEqual(trainer.model.on_train_batch_end.call_count, 6)
         self.assertEqual(trainer.model.on_train_epoch_end.call_count, 2)
         self.assertEqual(trainer.model.on_train_end.call_count, 1)
@@ -275,7 +301,7 @@ class TestTrainerMethods(unittest.TestCase):
             mock_resume_trainer.lr_schedule.load_state_dict = Mock()
             mock_resume_trainer.lr_schedule.step = Mock()
 
-            mock_resume_trainer.params = create_simple_params()
+            mock_resume_trainer.params = create_simple_params(usecase="nss")
             mock_resume_trainer.params.train.resume = Path(
                 model_save_path, "ckpt-10.pt"
             )
@@ -374,13 +400,13 @@ class TestLossFnFactory(unittest.TestCase):
     # pylint: disable=C0116
     def test_get_loss_fn_with_valid_loss_v1(self):
         """Test get_loss_fn() returns LossV1 when requested"""
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.train.loss_fn = LossFn.LOSS_V1.value
         loss_obj = get_loss_fn(params, torch.device("cpu"))
         self.assertIsInstance(loss_obj, LossV1)
 
     def test_get_loss_fn_raises_exception(self):
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.train.loss_fn = "does_not_exist"
         with self.assertRaises(ValueError):
             _ = get_loss_fn(params, torch.device("cpu"))
@@ -393,7 +419,7 @@ class TestOptimizerFactory(unittest.TestCase):
 
     # pylint: disable=C0116
     def test_get_optimizer_type_with_valid_lars_adam_fp32(self):
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.train.fp32.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
 
         mock_trainer = Mock(spec=Trainer)
@@ -409,7 +435,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertEqual(optimizer_obj.optim.__class__, optim.Adam)
 
     def test_get_optimizer_type_with_valid_lars_adam_qat(self):
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.train.qat.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
 
         mock_trainer = Mock(spec=Trainer)
@@ -425,7 +451,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertEqual(optimizer_obj.optim.__class__, optim.Adam)
 
     def test_get_optimizer_type_with_valid_adam_w_fp32(self):
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.train.fp32.optimizer.optimizer_type = OptimizerType.ADAM_W.value
 
         mock_trainer = Mock(spec=Trainer)
@@ -440,7 +466,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertIsInstance(optimizer_obj, optim.AdamW)
 
     def test_get_optimizer_type_with_valid_adam_w_qat(self):
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.train.qat.optimizer.optimizer_type = OptimizerType.ADAM_W.value
 
         mock_trainer = Mock(spec=Trainer)
@@ -454,8 +480,77 @@ class TestOptimizerFactory(unittest.TestCase):
         )
         self.assertIsInstance(optimizer_obj, optim.AdamW)
 
+    def test_get_optimizer_type_with_custom_eps_for_adam_w(self):
+        params = create_simple_params(usecase="nss")
+        params.train.fp32.optimizer.optimizer_type = OptimizerType.ADAM_W.value
+        params.train.fp32.optimizer.eps = 1e-5
+
+        mock_trainer = Mock(spec=Trainer)
+        mock_trainer.model = TinyModel()
+        mock_trainer.params = params
+        mock_trainer.training_mode_params = params.train.fp32
+
+        optimizer_obj = get_optimizer_type(
+            mock_trainer.training_mode_params,
+            mock_trainer.model.parameters(),
+        )
+        self.assertIsInstance(optimizer_obj, optim.AdamW)
+        self.assertAlmostEqual(optimizer_obj.defaults["eps"], 1e-5)
+
+    def test_get_optimizer_type_with_valid_adam_uses_default_eps(self):
+        params = create_simple_params(usecase="nss")
+        params.train.fp32.optimizer.optimizer_type = OptimizerType.ADAM.value
+
+        mock_trainer = Mock(spec=Trainer)
+        mock_trainer.model = TinyModel()
+        mock_trainer.params = params
+        mock_trainer.training_mode_params = params.train.fp32
+
+        optimizer_obj = get_optimizer_type(
+            mock_trainer.training_mode_params,
+            mock_trainer.model.parameters(),
+        )
+        self.assertIsInstance(optimizer_obj, optim.Adam)
+        self.assertAlmostEqual(optimizer_obj.defaults["eps"], 1e-7)
+
+    def test_get_optimizer_type_with_custom_eps(self):
+        params = create_simple_params(usecase="nss")
+        params.train.fp32.optimizer.optimizer_type = OptimizerType.ADAM.value
+        params.train.fp32.optimizer.eps = 1e-5
+
+        mock_trainer = Mock(spec=Trainer)
+        mock_trainer.model = TinyModel()
+        mock_trainer.params = params
+        mock_trainer.training_mode_params = params.train.fp32
+
+        optimizer_obj = get_optimizer_type(
+            mock_trainer.training_mode_params,
+            mock_trainer.model.parameters(),
+        )
+        self.assertIsInstance(optimizer_obj, optim.Adam)
+        self.assertAlmostEqual(optimizer_obj.defaults["eps"], 1e-5)
+
+    def test_get_optimizer_type_with_custom_eps_for_lars_adam(self):
+        params = create_simple_params(usecase="nss")
+        params.train.fp32.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
+        params.train.fp32.optimizer.eps = 1e-5
+
+        mock_trainer = Mock(spec=Trainer)
+        mock_trainer.model = TinyModel()
+        mock_trainer.params = params
+        mock_trainer.training_mode_params = params.train.fp32
+
+        optimizer_obj = get_optimizer_type(
+            mock_trainer.training_mode_params,
+            mock_trainer.model.parameters(),
+        )
+        self.assertIsInstance(optimizer_obj, LARS)
+        self.assertEqual(optimizer_obj.optim.__class__, optim.Adam)
+        self.assertAlmostEqual(optimizer_obj.optim.defaults["eps"], 1e-5)
+        self.assertAlmostEqual(optimizer_obj.eps, 1e-8)
+
     def test_get_optimizer_type_raises_exception(self):
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
         params.train.fp32.optimizer.optimizer_type = "does_not_exist"
 
         mock_trainer = Mock(spec=Trainer)

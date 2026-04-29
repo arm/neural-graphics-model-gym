@@ -27,10 +27,11 @@ checkpoints/*
 .cache/*
 *.pt
 !tests/usecases/nss/unit/data/nss_v1_golden_values/*.pt
+!tests/usecases/nfru/unit/data/nfru_v1_golden_values/*.pt
 *.safetensors
 
 # These files are generated if the user runs `init`
-config*.json
+*_config*.json
 schema_config.json
 
 # Keep the schema config file in source control

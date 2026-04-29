@@ -1,10 +1,10 @@
-// SPDX-FileCopyrightText: Copyright 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: Copyright 2025-2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 // SPDX-License-Identifier: Apache-2.0
-import "./tensor";
-import "./tonemap";
-import "./depth";
-import "./image";
-import "./depth_clip";
+import "../../../common/model/shaders/tensor";
+import "../../../common/model/shaders/tonemap";
+import "../../../common/model/shaders/depth";
+import "../../../common/model/shaders/image";
+import "../../../common/model/shaders/depth_clip";
 
 #define EPS 1e-7
 

@@ -11,8 +11,8 @@ import torch.nn.functional as F
 from torch import nn
 
 from ng_model_gym.core.model.layers.dense_warp import DenseWarp
-from scripts.optical_flow.argmin_centered import ArgMinCentered
-from scripts.optical_flow.down_sampling_2d import DownSampling2D
+from ng_model_gym.usecases.nfru.utils.down_sampling_2d import DownSampling2D
+from scripts.safetensors_generator.dataset_readers.argmin_centered import ArgMinCentered
 
 
 def _cast(img: torch.Tensor, dtype: torch.dtype) -> torch.Tensor:

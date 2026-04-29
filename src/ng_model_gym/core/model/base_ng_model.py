@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
 import torch
@@ -36,6 +37,17 @@ from ng_model_gym.core.utils.enum_definitions import ExportSpec
 from ng_model_gym.core.utils.torch_utils import TensorData
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class QATQuantizationProfile:
+    """Usecase-specific knobs for QAT graph preparation."""
+
+    per_channel_weight_quantization: bool = True
+    use_global_quantization_config: bool = True
+    use_fixed_sigmoid_output_qparams: bool = True
+    activation_fake_quant_eps: float = 2e-12
+    weight_fake_quant_eps: float = 2e-12
 
 
 class BaseNGModel(nn.Module, ABC):
@@ -164,6 +176,13 @@ class BaseNGModel(nn.Module, ABC):
         freeze_all_observers(current_network)
         move_exported_model_to_eval(current_network)
 
+    def get_qat_quantization_profile(self) -> QATQuantizationProfile:
+        """
+        Return QAT quantization knobs for this model.
+        Override in usecase-specific models when compatibility requires it.
+        """
+        return QATQuantizationProfile()
+
     def quantize_modules(
         self,
         input_data: Tuple[Any, ...],
@@ -176,11 +195,20 @@ class BaseNGModel(nn.Module, ABC):
 
         logger.info("Preparing model for QAT")
 
+        # Check layer has not already been quantized
+        current_network = self.get_neural_network()
+        if isinstance(current_network, GraphModule):
+            raise RuntimeError(
+                "Attempting to quantize network that is already of type GraphModule"
+            )
+
         # Configure TOSA Quantizer
         quantizer = TOSAQuantizer(TosaSpecification.create_from_string(tosa_spec))
+        qprofile = self.get_qat_quantization_profile()
+        fake_quant_ctor = FusedMovingAvgObsFakeQuantizeFix
 
         # Activations get asymmetric per-tensor with moving average of min/max
-        extra_args: Dict[str, Any] = {"eps": 2e-12}
+        extra_args: Dict[str, Any] = {"eps": qprofile.activation_fake_quant_eps}
         extra_args["observer"] = MovingAverageMinMaxObserver.with_args(
             # PyTorch uses `1e-2` as default which seems a little aggressive
             averaging_constant=1e-5,
@@ -195,34 +223,48 @@ class BaseNGModel(nn.Module, ABC):
             quant_max=127,
             qscheme=torch.per_tensor_affine,
             is_dynamic=False,
-            observer_or_fake_quant_ctr=FusedMovingAvgObsFakeQuantizeFix.with_args(
-                **extra_args,
-            ),
+            observer_or_fake_quant_ctr=fake_quant_ctor.with_args(**extra_args),
         )
 
-        # Weights get symmetric per-channel with true min/max
-        extra_args: Dict[str, Any] = {"eps": 2e-12}
-        extra_args["observer"] = MovingAveragePerChannelMinMaxObserver.with_args(
-            # TODO: work out the correct quantizer to use for this
-            # `FakeQuantize` on upstream doesn't work
-            # Setting to `1.0` is equivalent to not using a moving average
-            averaging_constant=1.0,
-            dtype=torch.int8,
-            reduce_range=False,
-            quant_min=-127,
-            quant_max=127,
-        )
-        weight_quantization_spec = QuantizationSpec(
-            dtype=torch.int8,
-            quant_min=-127,
-            quant_max=127,
-            qscheme=torch.per_channel_symmetric,
-            ch_axis=0,
-            is_dynamic=False,
-            observer_or_fake_quant_ctr=FusedMovingAvgObsFakeQuantizeFix.with_args(
-                **extra_args
-            ),
-        )
+        # Weights get symmetric quantization with true min/max.
+        # Default is per-channel, but some usecases' checkpoints require per-tensor.
+        extra_args: Dict[str, Any] = {"eps": qprofile.weight_fake_quant_eps}
+        if qprofile.per_channel_weight_quantization:
+            extra_args["observer"] = MovingAveragePerChannelMinMaxObserver.with_args(
+                # TODO: work out the correct quantizer to use for this
+                # `FakeQuantize` on upstream doesn't work
+                # Setting to `1.0` is equivalent to not using a moving average
+                averaging_constant=1.0,
+                dtype=torch.int8,
+                reduce_range=False,
+                quant_min=-127,
+                quant_max=127,
+            )
+            weight_quantization_spec = QuantizationSpec(
+                dtype=torch.int8,
+                quant_min=-127,
+                quant_max=127,
+                qscheme=torch.per_channel_symmetric,
+                ch_axis=0,
+                is_dynamic=False,
+                observer_or_fake_quant_ctr=fake_quant_ctor.with_args(**extra_args),
+            )
+        else:
+            extra_args["observer"] = MovingAverageMinMaxObserver.with_args(
+                averaging_constant=1.0,
+                dtype=torch.int8,
+                reduce_range=False,
+                quant_min=-127,
+                quant_max=127,
+            )
+            weight_quantization_spec = QuantizationSpec(
+                dtype=torch.int8,
+                quant_min=-127,
+                quant_max=127,
+                qscheme=torch.per_tensor_symmetric,
+                is_dynamic=False,
+                observer_or_fake_quant_ctr=fake_quant_ctor.with_args(**extra_args),
+            )
 
         # Bias is assumed to be fine without simulated quantization, because it pre-populates the
         # accumulate register, it's only quantized to int32, with negligible precision drop
@@ -232,30 +274,35 @@ class BaseNGModel(nn.Module, ABC):
             weight=weight_quantization_spec,
             bias=None,
         )
-        quantizer.set_global(quantization_config=default_qconfig)
+        if qprofile.use_global_quantization_config:
+            quantizer.set_global(quantization_config=default_qconfig)
+        else:
+            for name, _ in current_network.named_modules():
+                quantizer.set_module_name(name, quantization_config=default_qconfig)
 
-        # Special case `sigmoid` output nodes, where we use fixed params
-        # to ensure table generates full [0, 1] range, also,
-        # because we alias this as an SNORM texture to use linear interpolation via HW sampler,
-        # we use symmetric [-127, 127] value range, because SNORM disregards -128
-        q_min = -127
-        q_max = 127
-        scale = 1 / (q_max - q_min)
-        sigmoid_qspec = FixedQParamsQuantizationSpec(
-            dtype=torch.int8,
-            scale=scale,
-            zero_point=q_min,
-            quant_min=q_min,
-            quant_max=q_max,
-            qscheme=torch.per_tensor_affine,
-        )
-        sigmoid_qconfig = QuantizationConfig(
-            input_activation=default_qconfig.input_activation,
-            output_activation=sigmoid_qspec,
-            weight=None,
-            bias=None,
-        )
-        quantizer.set_module_type(nn.Sigmoid, sigmoid_qconfig)
+        if qprofile.use_fixed_sigmoid_output_qparams:
+            # Special case `sigmoid` output nodes, where we use fixed params
+            # to ensure table generates full [0, 1] range, also,
+            # because we alias this as an SNORM texture to use linear interpolation via HW sampler,
+            # we use symmetric [-127, 127] value range, because SNORM disregards -128
+            q_min = -127
+            q_max = 127
+            scale = 1 / (q_max - q_min)
+            sigmoid_qspec = FixedQParamsQuantizationSpec(
+                dtype=torch.int8,
+                scale=scale,
+                zero_point=q_min,
+                quant_min=q_min,
+                quant_max=q_max,
+                qscheme=torch.per_tensor_affine,
+            )
+            sigmoid_qconfig = QuantizationConfig(
+                input_activation=default_qconfig.input_activation,
+                output_activation=sigmoid_qspec,
+                weight=None,
+                bias=None,
+            )
+            quantizer.set_module_type(nn.Sigmoid, sigmoid_qconfig)
 
         def trace_and_quantize_module(
             module: nn.Module, inputs: Tuple[TensorData]
@@ -266,13 +313,6 @@ class BaseNGModel(nn.Module, ABC):
             )
             # Insert FakeQuantizer nodes
             return prepare_qat_pt2e(aten_dialect, quantizer)
-
-        # Check layer has not already been quantized
-        current_network = self.get_neural_network()
-        if isinstance(current_network, GraphModule):
-            raise RuntimeError(
-                "Attempting to quantize network that is already of type GraphModule"
-            )
 
         # Grab the relevant layer to quantize
         quantized_network = trace_and_quantize_module(current_network, input_data)
@@ -304,6 +344,10 @@ class BaseNGModel(nn.Module, ABC):
         """Hook called at the end of each training epoch"""
         return None
 
+    def on_train_batch_start(self) -> None:
+        """Hook called at the start of each training batch"""
+        return None
+
     def on_train_batch_end(self) -> None:
         """Hook called at the end of each training batch"""
         return None
@@ -323,5 +367,13 @@ class BaseNGModel(nn.Module, ABC):
     def on_evaluation_start(self) -> None:
         """Hook called at the start of evaluation"""
         return None
+
+    def on_before_batch_transfer(self, batch: Any) -> Any:
+        """Hook called before a batch of data is transferred to a device."""
+        return batch
+
+    def on_after_batch_transfer(self, batch: Any) -> Any:
+        """Hook called after a batch of data is transferred to a device."""
+        return batch
 
     # pylint: enable=duplicate-code

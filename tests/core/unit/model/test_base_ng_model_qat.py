@@ -49,7 +49,7 @@ class TestBaseNGModelQAT(unittest.TestCase):
         self.device = torch.device("cpu")
         self.mock_forward_input = torch.randn((4, 4), device=self.device)
         self.mock_forward_input_trace = (self.mock_forward_input,)
-        self.params = create_simple_params()
+        self.params = create_simple_params(usecase="nss")
 
     def test_qat_train_raises_if_not_quantized(self):
         """Test model raises error if not prepared with fake quant observers before QAT training"""

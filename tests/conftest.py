@@ -6,7 +6,11 @@ import platform
 import sys
 from pathlib import Path
 
-from tests.fetch_huggingface import validate_nss_downloads
+from tests.fetch_huggingface import (
+    nfru_test_assets_enabled,
+    validate_nfru_datasets,
+    validate_nss_downloads,
+)
 from tests.pkgutil_patch import apply_patch
 
 
@@ -46,6 +50,9 @@ def pytest_sessionstart(session) -> None:  # pylint: disable=unused-argument
     """Hook called after PyTest Session object is created."""
     dataset_path = Path("tests/usecases/nss/datasets")
     validate_nss_downloads(dataset_path)
+    if nfru_test_assets_enabled():
+        nfru_dataset_path = Path("tests/usecases/nfru/data/nfru_sample")
+        validate_nfru_datasets(nfru_dataset_path)
 
 
 def pytest_unconfigure(config) -> None:  # pylint: disable=unused-argument

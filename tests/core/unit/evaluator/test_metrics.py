@@ -181,9 +181,9 @@ class TestMetrics(unittest.TestCase):
 
     def test_get_metrics(self):
         """Test that get_metrics returns all our expected metrics."""
-        params = create_simple_params()
+        params = create_simple_params(usecase="nss")
 
-        metrics = get_metrics(params, is_test=False)
+        metrics = get_metrics(params, mode="train")
         self.assertEqual(len(metrics), 4)
         for metric in metrics:
             self.assertTrue(callable(metric))
@@ -193,7 +193,7 @@ class TestMetrics(unittest.TestCase):
         self.assertNotIn(TPsnrStreaming, metric_types)
         self.assertNotIn(RecPsnrStreaming, metric_types)
 
-        metrics = get_metrics(params, is_test=True)
+        metrics = get_metrics(params, mode="test")
         self.assertEqual(len(metrics), 4)
         for metric in metrics:
             self.assertTrue(callable(metric))

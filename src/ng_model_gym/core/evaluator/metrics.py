@@ -4,6 +4,7 @@
 
 import logging
 from functools import cache
+from typing import Literal
 
 import pyiqa
 import torch
@@ -11,7 +12,7 @@ from torchmetrics import Metric
 from torchmetrics.functional.image import peak_signal_noise_ratio
 from torchmetrics.image.ssim import StructuralSimilarityIndexMeasure
 
-from ng_model_gym.core.config.config_model import ConfigModel
+from ng_model_gym.core.config.config_model import ConfigModel, MetricsConfig
 from ng_model_gym.core.utils.io.cli_utils import suspend_tqdm_bar
 
 logger = logging.getLogger(__name__)
@@ -512,12 +513,28 @@ def _build_metric(metric_name: str) -> Metric:
 
 
 def _metrics_from_config(
-    params: ConfigModel | None, use_streaming: bool
+    params: ConfigModel | None,
+    mode: Literal["train", "val", "test"],
+    use_streaming: bool,
 ) -> list[Metric]:
     if params is None or params.metrics is None:
         return []
 
-    metric_names = list(params.metrics)
+    metrics_config = params.metrics
+    if isinstance(metrics_config, MetricsConfig):
+        if mode == "train":
+            metric_names = metrics_config.train
+        elif mode == "val":
+            metric_names = metrics_config.val
+        else:
+            metric_names = metrics_config.test
+    else:
+        metric_names = metrics_config
+
+    if not metric_names:
+        return []
+
+    metric_names = list(metric_names)
 
     if use_streaming:
         metric_names = [_STREAMING_METRIC_MAP.get(name, name) for name in metric_names]
@@ -534,20 +551,21 @@ def _default_metrics(use_streaming: bool) -> list[Metric]:
 
 def get_metrics(
     params: ConfigModel | None = None,
-    is_test: bool = False,
+    mode: Literal["train", "val", "test"] = "train",
 ) -> list[Metric]:
-    """Return list of metrics to use for evaluation.
+    """Return list of metrics to use for a given phase.
 
     For evaluation/test, we use the streaming versions of temporal metrics.
     """
+    recurrent_samples = (
+        getattr(params.model, "recurrent_samples", None) if params is not None else None
+    )
+    use_streaming = mode == "test" and recurrent_samples is not None
 
-    # TODO - Hardcoded NSS specific parameter (recurrent_samples) requires removal
-    recurrent_samples = getattr(params.model, "recurrent_samples", None)
-    use_streaming = is_test and recurrent_samples is not None
-    metrics_from_config = _metrics_from_config(params, use_streaming)
+    metrics_from_config = _metrics_from_config(params, mode, use_streaming)
     metrics = (
         metrics_from_config if metrics_from_config else _default_metrics(use_streaming)
     )
     metric_names = ", ".join(str(metric) for metric in metrics)
-    logger.info("Tracking metrics %s", metric_names)
+    logger.info("Tracking %s metrics %s", mode, metric_names)
     return metrics

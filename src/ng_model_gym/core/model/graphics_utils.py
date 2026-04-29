@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -212,4 +212,4 @@ def compute_jitter_tile_offset(
         jitter_hr.to(torch.int32) - torch.ones_like(jitter_hr).to(torch.int32)
     ) % torch.tensor(idx_mod, dtype=torch.int32).to(jitter.device)
 
-    return offset.to(torch.float32)  # TODO: type casting to match current slang
+    return offset.to(torch.float32)

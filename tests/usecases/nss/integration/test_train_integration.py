@@ -6,43 +6,13 @@ import subprocess
 import unittest
 from pathlib import Path
 
-from tests.usecases.nss.integration.base_integration import BaseIntegrationTest
+from tests.usecases.nss.integration.base_integration import NSSBaseIntegrationTest
 from tests.usecases.nss.unit.data.camera_cut_builders import write_camera_cut_fixture
 
 
 # pylint: disable=duplicate-code
-class TrainingIntegrationTest(BaseIntegrationTest):
+class TrainingIntegrationTest(NSSBaseIntegrationTest):
     """Tests for NSS training pipeline."""
-
-    def _assert_peak_vram_usage(
-        self, stdout: str, expected_vram_usage: int, tolerance: float
-    ) -> None:
-        """Assert vram usage does exceed expectation"""
-
-        # Extract memory used from stdout
-        stdout_lines = stdout.lower().splitlines()
-        peak_vram_usage = None
-        for line in reversed(stdout_lines):
-            if "memory used:" in line:
-                peak_vram_usage = float(line.split()[-2])
-                break
-
-        if peak_vram_usage is None:
-            self.fail("Could not find GPU memory usage in stdout")
-
-        print(f"Observed peak GPU memory usage: {peak_vram_usage:.2f} MiB")
-
-        max_vram_allowed = expected_vram_usage * (1 + tolerance)
-        self.assertLessEqual(
-            peak_vram_usage,
-            max_vram_allowed,
-            (
-                "Peak VRAM usage exceeded tolerance- "
-                f"Peak usage: {peak_vram_usage:.2f} MiB, "
-                f"Max allowance: {max_vram_allowed:.2f} MiB based on {expected_vram_usage:.2f}"
-                f" with a tolerance of {1 + tolerance}%"
-            ),
-        )
 
     def run_finetune_training_test(self):
         """E2E test of the model to finetune training."""
@@ -81,43 +51,6 @@ class TrainingIntegrationTest(BaseIntegrationTest):
         self.assertEqual(sub_proc.returncode, 0)
         self.check_log(["Fine tuning using weights nss_v0.1.0_fp32.pt"])
         return sub_proc
-
-    def test_training_raises_error_missing_dataset(self):
-        """Test train raises error if missing dataset path"""
-
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        # Override dataset paths
-        cfg_json["dataset"]["path"]["train"] = None
-        cfg_json["dataset"]["path"]["validation"] = None
-        cfg_json["dataset"]["path"]["test"] = None
-
-        self.test_cfg_path = Path(self.test_dir, "test_empty_datasets_path.json")
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(cfg_json, f)
-
-        with self.assertRaises(subprocess.CalledProcessError) as sub_proc_out:
-            subprocess.run(
-                [
-                    "ng-model-gym",
-                    f"--config-path={self.test_cfg_path}",
-                    "train",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-        exc = sub_proc_out.exception
-
-        self.assertNotEqual(
-            exc.returncode,
-            0,
-            f"Expected non zero exit code for missing dataset, got {exc.returncode}",
-        )
-
-        self.assertIn("config error", exc.stderr.lower())
 
     def test_model_train(self):
         """Run entire training pipeline."""
@@ -260,39 +193,6 @@ class TrainingIntegrationTest(BaseIntegrationTest):
             0,
             msg=f"Camera-cut training failed: {sub_proc.stderr}",
         )
-
-    def test_train_with_validation_missing_dataset(self):
-        """Test train with validation raises error if missing dataset path"""
-
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        # Override validation dataset path and perform_validate
-        cfg_json["dataset"]["path"]["validation"] = None
-        cfg_json["train"]["perform_validate"] = True
-
-        self.test_cfg_path = Path(self.test_dir, "test_validate_error.json")
-
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(cfg_json, f)
-
-        with self.assertRaises(subprocess.CalledProcessError) as sub_proc_out:
-            subprocess.run(
-                ["ng-model-gym", f"--config-path={self.test_cfg_path}", "train"],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-        exc = sub_proc_out.exception
-
-        self.assertNotEqual(
-            exc.returncode,
-            0,
-            f"Expected non zero exit code for missing dataset, got {exc.returncode}",
-        )
-
-        self.assertIn("config error", exc.stderr.lower())
 
     def test_train_no_eval_no_test_dataset(self):
         """Test train succeeds with no evaluate and no test dataset path"""

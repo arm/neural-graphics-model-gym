@@ -52,6 +52,7 @@ dependencies = [
     "typer==0.15.4",
     "ai-ml-sdk-model-converter==0.9.0",
     "pyiqa==0.1.14.1",
+    "typing-extensions~=4.4",
 ]
 
 [project.optional-dependencies]

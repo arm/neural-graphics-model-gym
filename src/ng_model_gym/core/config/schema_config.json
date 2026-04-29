@@ -1,6 +1,6 @@
 {
     "config_schema_version": {
-        "default": "3",
+        "default": "5",
         "description": "Config schema version. Used to check compatibility.",
         "type": "string"
     },
@@ -46,6 +46,42 @@
                             "description": "Number of recurrent samples",
                             "exclusiveMinimum": 1,
                             "type": "integer"
+                        }
+                    },
+                    {
+                        "name": {
+                            "const": "nfru",
+                            "type": "string"
+                        },
+                        "version": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Model version"
+                        },
+                        "model_source": {
+                            "const": "prebuilt",
+                            "type": "string"
+                        },
+                        "scale_factor": {
+                            "default": 2.0,
+                            "description": "Interpolation scale factor for the NFRU model. Only 2 (or 2.0) is currently supported.",
+                            "maximum": 2.0,
+                            "minimum": 2.0,
+                            "type": "number"
+                        },
+                        "legacy_nfru_capture_paths": {
+                            "description": "Path substrings identifying legacy NFRU captures that should use the old window stride behavior.",
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
                         }
                     }
                 ]
@@ -132,6 +168,227 @@
                 "description": "Test dataset directory path"
             }
         },
+        "colour_preprocessing": {
+            "anyOf": [
+                {
+                    "train": {
+                        "anyOf": [
+                            {
+                                "pipeline": {
+                                    "description": "Ordered colour stages. Nested lists indicate mutually exclusive stages to sample from during random-effects training.",
+                                    "items": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {},
+                                            {
+                                                "items": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {}
+                                                    ]
+                                                },
+                                                "type": "array"
+                                            }
+                                        ]
+                                    },
+                                    "type": "array"
+                                },
+                                "exposure": {
+                                    "anyOf": [
+                                        {
+                                            "type": "number"
+                                        },
+                                        {
+                                            "const": "auto",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "items": {
+                                                "type": "number"
+                                            },
+                                            "maxItems": 2,
+                                            "minItems": 2,
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "default": 2.0,
+                                    "description": "Fixed exposure, \"auto\", or a two-item range for resampling."
+                                },
+                                "auto_exposure_key_value": {
+                                    "default": 1.0,
+                                    "description": "Key value used when exposure is set to auto.",
+                                    "type": "number"
+                                },
+                                "auto_exposure_variance": {
+                                    "anyOf": [
+                                        {},
+                                        {
+                                            "type": "null"
+                                        }
+                                    ],
+                                    "default": null,
+                                    "description": "Optional per-time-index multiplier applied to auto exposure."
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Colour preprocessing applied to training data."
+                    },
+                    "validation": {
+                        "anyOf": [
+                            {
+                                "pipeline": {
+                                    "description": "Ordered colour stages. Nested lists indicate mutually exclusive stages to sample from during random-effects training.",
+                                    "items": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {},
+                                            {
+                                                "items": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {}
+                                                    ]
+                                                },
+                                                "type": "array"
+                                            }
+                                        ]
+                                    },
+                                    "type": "array"
+                                },
+                                "exposure": {
+                                    "anyOf": [
+                                        {
+                                            "type": "number"
+                                        },
+                                        {
+                                            "const": "auto",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "items": {
+                                                "type": "number"
+                                            },
+                                            "maxItems": 2,
+                                            "minItems": 2,
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "default": 2.0,
+                                    "description": "Fixed exposure, \"auto\", or a two-item range for resampling."
+                                },
+                                "auto_exposure_key_value": {
+                                    "default": 1.0,
+                                    "description": "Key value used when exposure is set to auto.",
+                                    "type": "number"
+                                },
+                                "auto_exposure_variance": {
+                                    "anyOf": [
+                                        {},
+                                        {
+                                            "type": "null"
+                                        }
+                                    ],
+                                    "default": null,
+                                    "description": "Optional per-time-index multiplier applied to auto exposure."
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Colour preprocessing applied to validation data."
+                    },
+                    "test": {
+                        "anyOf": [
+                            {
+                                "pipeline": {
+                                    "description": "Ordered colour stages. Nested lists indicate mutually exclusive stages to sample from during random-effects training.",
+                                    "items": {
+                                        "anyOf": [
+                                            {
+                                                "type": "string"
+                                            },
+                                            {},
+                                            {
+                                                "items": {
+                                                    "anyOf": [
+                                                        {
+                                                            "type": "string"
+                                                        },
+                                                        {}
+                                                    ]
+                                                },
+                                                "type": "array"
+                                            }
+                                        ]
+                                    },
+                                    "type": "array"
+                                },
+                                "exposure": {
+                                    "anyOf": [
+                                        {
+                                            "type": "number"
+                                        },
+                                        {
+                                            "const": "auto",
+                                            "type": "string"
+                                        },
+                                        {
+                                            "items": {
+                                                "type": "number"
+                                            },
+                                            "maxItems": 2,
+                                            "minItems": 2,
+                                            "type": "array"
+                                        }
+                                    ],
+                                    "default": 2.0,
+                                    "description": "Fixed exposure, \"auto\", or a two-item range for resampling."
+                                },
+                                "auto_exposure_key_value": {
+                                    "default": 1.0,
+                                    "description": "Key value used when exposure is set to auto.",
+                                    "type": "number"
+                                },
+                                "auto_exposure_variance": {
+                                    "anyOf": [
+                                        {},
+                                        {
+                                            "type": "null"
+                                        }
+                                    ],
+                                    "default": null,
+                                    "description": "Optional per-time-index multiplier applied to auto exposure."
+                                }
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "default": null,
+                        "description": "Colour preprocessing applied to test data."
+                    }
+                },
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "description": "Required lowercase colour pipeline configuration for train, validation, and test."
+        },
         "exposure": {
             "anyOf": [
                 {
@@ -183,6 +440,11 @@
             "description": "Number of batches loaded in advance by each dataloader worker. Used only if num_workers > 0",
             "minimum": 0,
             "type": "integer"
+        },
+        "align_data": {
+            "default": true,
+            "description": "Whether to align loaded dataset features to the model input set.",
+            "type": "boolean"
         },
         "extension": {
             "anyOf": [
@@ -348,7 +610,7 @@
             },
             "optimizer": {
                 "optimizer_type": {
-                    "description": "Optimizer type to use during training. Choose from: adam_w, lars_adam",
+                    "description": "Optimizer type to use during training. Choose from: adam_w, lars_adam, adam",
                     "type": "string"
                 },
                 "learning_rate": {
@@ -356,6 +618,19 @@
                     "exclusiveMinimum": 0.0,
                     "maximum": 1.0,
                     "type": "number"
+                },
+                "eps": {
+                    "anyOf": [
+                        {
+                            "exclusiveMinimum": 0.0,
+                            "type": "number"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Optional epsilon value for optimizers that support it."
                 }
             }
         },
@@ -423,7 +698,7 @@
             },
             "optimizer": {
                 "optimizer_type": {
-                    "description": "Optimizer type to use during training. Choose from: adam_w, lars_adam",
+                    "description": "Optimizer type to use during training. Choose from: adam_w, lars_adam, adam",
                     "type": "string"
                 },
                 "learning_rate": {
@@ -431,6 +706,19 @@
                     "exclusiveMinimum": 0.0,
                     "maximum": 1.0,
                     "type": "number"
+                },
+                "eps": {
+                    "anyOf": [
+                        {
+                            "exclusiveMinimum": 0.0,
+                            "type": "number"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Optional epsilon value for optimizers that support it."
                 }
             }
         },
@@ -444,7 +732,17 @@
                 }
             ],
             "default": null,
-            "description": "Loss function to use. Choose from: loss_v1"
+            "description": "Loss function to use. Choose from: loss_v1, LPIPSSpatialLoss, LPIPSSpatialLossV5"
+        },
+        "loss_args": {
+            "anyOf": [
+                {},
+                {
+                    "type": "null"
+                }
+            ],
+            "default": null,
+            "description": "Optional dictionary of arguments to pass to the loss function"
         }
     },
     "processing": {
@@ -462,10 +760,57 @@
                 "type": "array"
             },
             {
+                "train": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Metric names to instantiate during training."
+                },
+                "val": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Metric names to instantiate during validation."
+                },
+                "test": {
+                    "anyOf": [
+                        {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Metric names to instantiate during evaluation/test."
+                }
+            },
+            {
                 "type": "null"
             }
         ],
         "default": null,
-        "description": "Metric names to instantiate. Temporal metrics are replaced with streaming variants during evaluation."
+        "description": "Metric names to instantiate. Provide a list to use the same metrics for train/val/test, or an object with train/val/test lists. Temporal metrics are replaced with streaming variants during evaluation."
     }
 }

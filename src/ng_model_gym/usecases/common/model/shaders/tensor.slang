@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright 2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-FileCopyrightText: Copyright 2025-2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
 // SPDX-License-Identifier: Apache-2.0
 import custom_ops;
 
@@ -320,85 +320,175 @@ public CatmullRomSamples GetBicubic2DCatmullRomSamples(float2 uv, float2 size, i
 }
 
 [Differentiable]
-public float sample_tensor_nearest(TensorView<float> tensor, uint b, uint c, float2 uv, bool clamp_to_edge = true)
+public T sample_tensor_nearest<T : IArithmetic>(TensorView<T> tensor, uint b, uint c, float2 uv)
 {
     uint2 size = tensor_size(tensor).zw;
     float2 idx = uv * float2(size);
-    uint2 uvi = uint2(floor(idx));
-    uint4 i = uint4(b, c, uvi);
+    int2 uvi = int2(floor(idx));
+    if (any(uvi >= size) || any(uvi < 0)) {
+        return T(0);
+    }
+    uint4 i = uint4(b, c, uint2(uvi));
     return no_diff(tensor.load(i));
 }
 
 [Differentiable]
-public float2 sample_tensor_nearest(TensorView<float> tensor, uint b, uint2 c, float2 uv, bool clamp_to_edge = true)
+public vector<T, 2> sample_tensor_nearest<T : IArithmetic>(TensorView<T> tensor, uint b, vector<uint, 2> c, vector<float, 2> uv)
 {
-    return float2(
-        sample_tensor_nearest(tensor, b, c.x, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.y, uv, clamp_to_edge)
+    return vector<T, 2>(
+        sample_tensor_nearest(tensor, b, c.x, uv),
+        sample_tensor_nearest(tensor, b, c.y, uv)
     );
 }
 
 [Differentiable]
-public float3 sample_tensor_nearest(TensorView<float> tensor, uint b, uint3 c, float2 uv, bool clamp_to_edge = true)
+public vector<T, 3> sample_tensor_nearest<T : IArithmetic>(TensorView<T> tensor, uint b, vector<uint, 3> c, vector<float, 2> uv)
 {
-    return float3(
-        sample_tensor_nearest(tensor, b, c.x, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.y, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.z, uv, clamp_to_edge)
+    return vector<T, 3>(
+        sample_tensor_nearest(tensor, b, c.x, uv),
+        sample_tensor_nearest(tensor, b, c.y, uv),
+        sample_tensor_nearest(tensor, b, c.z, uv)
     );
 }
 
 
 [Differentiable]
-public float4 sample_tensor_nearest(TensorView<float> tensor, uint b, uint4 c, float2 uv, bool clamp_to_edge = true)
+public vector<T, 4> sample_tensor_nearest<T : IArithmetic>(TensorView<T> tensor, uint b, vector<uint, 4> c, vector<float, 2> uv)
 {
-    return float4(
-        sample_tensor_nearest(tensor, b, c.x, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.y, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.z, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.w, uv, clamp_to_edge),
+    return vector<T, 4>(
+        sample_tensor_nearest(tensor, b, c.x, uv),
+        sample_tensor_nearest(tensor, b, c.y, uv),
+        sample_tensor_nearest(tensor, b, c.z, uv),
+        sample_tensor_nearest(tensor, b, c.w, uv),
     );
 }
 
 [Differentiable]
-public float sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint c, float2 uv, bool clamp_to_edge = true)
+public float sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint c, float2 uv)
 {
     uint2 size = tensor_size(tensor).zw;
     float2 idx = uv * float2(size);
-    uint2 uvi = uint2(floor(idx));
-    uint4 i = uint4(b, c, uvi);
+    int2 uvi = int2(floor(idx));
+    if (any(uvi >= size) || any(uvi < 0)) {
+        return 0;
+    }
+    uint4 i = uint4(b, c, uint2(uvi));
     return tensor.load(i);
 }
 
 [Differentiable]
-public float2 sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint2 c, float2 uv, bool clamp_to_edge = true)
+public float2 sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint2 c, float2 uv)
 {
     return float2(
-        sample_tensor_nearest(tensor, b, c.x, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.y, uv, clamp_to_edge)
+        sample_tensor_nearest(tensor, b, c.x, uv),
+        sample_tensor_nearest(tensor, b, c.y, uv)
     );
 }
 
-
 [Differentiable]
-public float3 sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint3 c, float2 uv, bool clamp_to_edge = true)
+public float3 sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint3 c, float2 uv)
 {
     return float3(
-        sample_tensor_nearest(tensor, b, c.x, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.y, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.z, uv, clamp_to_edge)
+        sample_tensor_nearest(tensor, b, c.x, uv),
+        sample_tensor_nearest(tensor, b, c.y, uv),
+        sample_tensor_nearest(tensor, b, c.z, uv)
     );
 }
 
 
 [Differentiable]
-public float4 sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint4 c, float2 uv, bool clamp_to_edge = true)
+public float4 sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint4 c, float2 uv)
 {
     return float4(
-        sample_tensor_nearest(tensor, b, c.x, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.y, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.z, uv, clamp_to_edge),
-        sample_tensor_nearest(tensor, b, c.w, uv, clamp_to_edge),
+        sample_tensor_nearest(tensor, b, c.x, uv),
+        sample_tensor_nearest(tensor, b, c.y, uv),
+        sample_tensor_nearest(tensor, b, c.z, uv),
+        sample_tensor_nearest(tensor, b, c.w, uv),
+    );
+}
+
+[Differentiable]
+public T sample_tensor_nearest<T : IArithmetic>(TensorView<T> tensor, uint b, uint c, int2 uvi)
+{
+    uint2 size = tensor_size(tensor).zw;
+    if (any(uvi >= size) || any(uvi < 0)) {
+        return T(0);
+    }
+    uint4 i = uint4(b, c, uint2(uvi));
+    return no_diff(tensor.load(i));
+}
+
+[Differentiable]
+public vector<T,2> sample_tensor_nearest<T : IArithmetic>(TensorView<T> tensor, uint b, uint2 c, int2 uvi)
+{
+    return vector<T,2>(
+        sample_tensor_nearest(tensor, b, c.x, uvi),
+        sample_tensor_nearest(tensor, b, c.y, uvi)
+    );
+}
+
+[Differentiable]
+public vector<T,3> sample_tensor_nearest<T : IArithmetic>(TensorView<T> tensor, uint b, uint3 c, int2 uvi)
+{
+    return vector<T,3>(
+        sample_tensor_nearest(tensor, b, c.x, uvi),
+        sample_tensor_nearest(tensor, b, c.y, uvi),
+        sample_tensor_nearest(tensor, b, c.z, uvi)
+    );
+}
+
+
+[Differentiable]
+public vector<T,4> sample_tensor_nearest<T : IArithmetic>(TensorView<T> tensor, uint b, uint4 c, int2 uvi)
+{
+    return vector<T,4>(
+        sample_tensor_nearest(tensor, b, c.x, uvi),
+        sample_tensor_nearest(tensor, b, c.y, uvi),
+        sample_tensor_nearest(tensor, b, c.z, uvi),
+        sample_tensor_nearest(tensor, b, c.w, uvi),
+    );
+}
+
+[Differentiable]
+public float sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint c, int2 uvi)
+{
+    uint2 size = tensor_size(tensor).zw;
+    if (any(uvi >= size) || any(uvi < 0)) {
+        return 0;
+    }
+    uint4 i = uint4(b, c, uint2(uvi));
+    return tensor.load(i);
+}
+
+[Differentiable]
+public float2 sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint2 c, int2 uvi)
+{
+    return float2(
+        sample_tensor_nearest(tensor, b, c.x, uvi),
+        sample_tensor_nearest(tensor, b, c.y, uvi)
+    );
+}
+
+
+[Differentiable]
+public float3 sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint3 c, int2 uvi)
+{
+    return float3(
+        sample_tensor_nearest(tensor, b, c.x, uvi),
+        sample_tensor_nearest(tensor, b, c.y, uvi),
+        sample_tensor_nearest(tensor, b, c.z, uvi)
+    );
+}
+
+
+[Differentiable]
+public float4 sample_tensor_nearest(DiffTensorView<float> tensor, uint b, uint4 c, int2 uvi)
+{
+    return float4(
+        sample_tensor_nearest(tensor, b, c.x, uvi),
+        sample_tensor_nearest(tensor, b, c.y, uvi),
+        sample_tensor_nearest(tensor, b, c.z, uvi),
+        sample_tensor_nearest(tensor, b, c.w, uvi),
     );
 }
 

@@ -31,7 +31,7 @@ class TestNGModelEvaluator(unittest.TestCase):
         output_dir.mkdir()
 
         # Create config model using our own data
-        self.params = create_simple_params()
+        self.params = create_simple_params(usecase="nss")
         self.params.dataset.path.train = train_data_dir
         self.params.dataset.path.validation = val_data_dir
         self.params.dataset.path.test = test_data_dir
@@ -127,6 +127,17 @@ class TestNGModelEvaluator(unittest.TestCase):
             model_evaluator._run_model()
             # Ensure the model was called exactly once
             self.assertEqual(self.model.call_count, 1)
+
+    def test_test_begin_calls_evaluation_hook(self):
+        """Evaluation startup should switch the model into evaluation preprocessing."""
+        model_evaluator = NGModelEvaluator(self.model, self.params)
+        model_evaluator.prepare_datasets = Mock()
+
+        model_evaluator._test_begin()
+
+        model_evaluator.prepare_datasets.assert_called_once()
+        self.model.eval.assert_called_once()
+        self.model.on_evaluation_start.assert_called_once()
 
     def test_evaluate(self):
         """Test that evaluate() calls the necessary functions and outputs a JSON file"""

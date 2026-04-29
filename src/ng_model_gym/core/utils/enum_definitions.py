@@ -49,6 +49,8 @@ class LossFn(str, Enum):
     """Enum of supported loss functions."""
 
     LOSS_V1 = "loss_v1"
+    LPIPSSpatialLoss = "LPIPSSpatialLoss"
+    LPIPSSpatialLossV5 = "LPIPSSpatialLossV5"
 
 
 class OptimizerType(str, Enum):
@@ -56,6 +58,7 @@ class OptimizerType(str, Enum):
 
     ADAM_W = "adam_w"
     LARS_ADAM = "lars_adam"
+    ADAM = "adam"
 
 
 class ExportSpec(str, Enum):

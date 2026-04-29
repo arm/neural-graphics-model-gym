@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 from enum import Enum
+from pathlib import Path
 from typing import Dict, List, Union
 
+import safetensors
 import torch
 
 from ng_model_gym.core.utils.enum_definitions import ToneMapperMode
@@ -148,3 +150,13 @@ def move_to_device(
         return tensors.to(device)
 
     raise ValueError("Unsupported type for move_to_device")
+
+
+def generic_safetensors_reader(seq_path: Path, idx: int) -> dict:
+    """Safetensors reader to return a dictionary of tensors"""
+    data_frame = {}
+    with safetensors.safe_open(seq_path, framework="numpy", device="cpu") as f:
+        for k in f.keys():
+            data_frame[k] = torch.from_numpy(f.get_slice(k)[idx])
+
+    return data_frame

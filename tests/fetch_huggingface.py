@@ -2,6 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 import sys
 from pathlib import Path
 
@@ -13,6 +14,11 @@ if str(REPO_ROOT) not in sys.path:
 
 # pylint: disable=wrong-import-position
 from scripts.safetensors_generator.safetensor_truncate import truncate_safetensor_file
+
+
+def nfru_test_assets_enabled() -> bool:
+    """Return whether optional NFRU test asset validation is enabled."""
+    return os.getenv("NGMG_ENABLE_NFRU_TEST_ASSETS") == "1"
 
 
 def download_pretrained_nss_weights():
@@ -77,6 +83,35 @@ def validate_nss_downloads(datasets_dir):
         ) from e
 
 
+def validate_nfru_datasets(dataset_dir: Path):
+    """Validate local NFRU safetensor datasets provisioned via git-lfs."""
+    # TODO: modify once NFRU datasets are available on HuggingFace
+    # and switch to HF API for validation instead of local file checks.
+
+    try:
+        assert (
+            dataset_dir.exists() and dataset_dir.is_dir()
+        ), f"Missing NFRU dataset directory: {dataset_dir}"
+        safetensors_files = sorted(dataset_dir.glob("*.safetensors"))
+        assert safetensors_files, "No .safetensors files found for NFRU tests"
+
+        expected_file = dataset_dir / "0000.safetensors"
+        assert (
+            expected_file.exists()
+        ), "Missing expected NFRU sample file: 0000.safetensors"
+        size = expected_file.stat().st_size
+        assert (
+            size > 512
+        ), "NFRU sample file appears to be a git-lfs pointer. Run 'git lfs pull'"
+
+    except AssertionError as e:
+        raise type(e)(
+            f"{e}\n\nNFRU test asset validation is disabled by default. "
+            "Provision the NFRU test assets locally and rerun with "
+            "NGMG_ENABLE_NFRU_TEST_ASSETS=1 to re-enable this validation path."
+        ) from e
+
+
 def create_mini_safetensor_dataset(original_dataset_path: Path):
     """Create a smaller NSS dataset for quicker integration tests."""
     mini_dataset_root = original_dataset_path.parent / "mini_datasets"
@@ -114,3 +149,5 @@ if __name__ == "__main__":
     download_nss_datasets(nss_datasets_path)
     validate_nss_downloads(nss_datasets_path)
     create_mini_safetensor_dataset(nss_datasets_path)
+    if nfru_test_assets_enabled():
+        validate_nfru_datasets(Path("tests/usecases/nfru/data/nfru_sample"))

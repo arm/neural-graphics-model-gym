@@ -14,7 +14,7 @@ Once you have captured data from your game engine, and it is in the expected for
 This script can be run using the following:
 
 ```bash
-python -m scripts.safetensors_generator.safetensors_writer -src="path/to/exr/root/dir" -reader=EXRv101 -extension=exr
+python -m scripts.safetensors_generator.safetensors_writer -src="path/to/exr/root/dir" -reader=NSSv1_0_1 -extension=exr
 ```
 
 These Safetensors files can then be cropped by running the script passing in the directory containing the uncropped Safetensors as the source:
@@ -33,7 +33,7 @@ Additional optional flags:
 | `-overwrite`     | Overwrite data in destination if it already exists| `False` |
 | `-linear-truth` |  Whether the ground truth is already linear; assumes Karis TM if not| `True`  |
 | `-logging_output_dir` | Path to folder for logging output| `./output` |
-| `-reader` | Name of the data reader to use | `"EXRv101"` |
+| `-reader` | Name of the data reader to use | `"NSSv1_0_1"` |
 | `-crop_size` | Crop size in `outDims` | `256` |
 
 Please see the documentation [here](./nss_dataset_specification.md) for more details on the expected dataset format and layout.
