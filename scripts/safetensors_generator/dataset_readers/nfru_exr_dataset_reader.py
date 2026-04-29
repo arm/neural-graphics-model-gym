@@ -4,64 +4,17 @@
 
 import argparse
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 import numpy as np
 import torch
-import torchvision
-from torchvision.transforms.functional import InterpolationMode
-from typing_extensions import override
 
 from ng_model_gym.core.data import tonemap_forward
-from scripts.safetensors_generator.dataset_readers.blockmatch_v3 import BlockMatchV3
-from scripts.safetensors_generator.dataset_readers.flow_ops import (
-    upscale_and_dilate_flow,
-)
 from scripts.safetensors_generator.dataset_readers.safetensors_feature_iterator import (
     EXRDatasetReader,
 )
 from scripts.safetensors_generator.exr_utils import read_exr_torch
 from scripts.safetensors_generator.fsr2_methods import depth_to_view_space_params
-
-
-class CalcOpticalFlow(torch.nn.Module):
-    """Wrapper for the BlockMatchV3 optical flow algorithm"""
-
-    def __init__(self):
-        super().__init__()
-        self._flow_model = BlockMatchV3()
-        self._model_name = "blockmatch_v3"
-
-    def get_model_name(self) -> str:
-        """Returns the name of the optical flow algorithm"""
-        return self._model_name
-
-    @override
-    def forward(
-        self,
-        img_t: torch.Tensor,
-        img_tm1: torch.Tensor,
-        input_mv: Optional[torch.Tensor] = None,
-    ) -> torch.Tensor:
-        """Calculate optical flow between two images"""
-
-        if input_mv is None:
-            batch, _, height, width = img_t.shape
-            input_mv = torch.zeros(
-                (batch, 2, height, width), dtype=img_t.dtype, device=img_t.device
-            )
-        else:
-            input_mv = input_mv.to(device=img_t.device, dtype=img_t.dtype)
-
-        self._flow_model.to(img_t.device)
-
-        result = self._flow_model(
-            {"img_t": img_t, "img_tm1": img_tm1, "input_mv": input_mv}
-        )
-        if isinstance(result, dict):
-            return result["output"]
-
-        return result
 
 
 class NFRUEXRDatasetReader(EXRDatasetReader):
@@ -190,8 +143,6 @@ class NFRUEXRDatasetReader(EXRDatasetReader):
         # Assume fixed scaling of 2.0
         self.scale_str = "x2"
 
-        self.of_model = CalcOpticalFlow()
-
     def __iter__(self):
         # Dataset Binaries
         image_dirs = [
@@ -213,10 +164,6 @@ class NFRUEXRDatasetReader(EXRDatasetReader):
 
         # Globals
         self.dtype = torch.float16
-
-        # Buffers
-        self.rgb_buffer = [None] * 5  # m2, m1, t, p1, p2
-        self.prev_features = {}
 
         self.unique_seq_id = self.make_unique_seq_id(self.max_frames)
 
@@ -293,158 +240,14 @@ class NFRUEXRDatasetReader(EXRDatasetReader):
         out_features["ViewProj"] = view_proj
         return out_features
 
-    @staticmethod
-    def _calc_flow_new_names(
-        img_t: torch.Tensor,
-        img_tm1: torch.Tensor,
-        img_tp1: torch.Tensor,
-        mv_t_fxx_p1: torch.Tensor,
-        mv_t_fxx_m1: torch.Tensor,
-        of_model: Callable,
-        dtype=torch.float16,
-        fps: str = "f30",
-    ):
-        # NOTE: Maximum allowed (absolute) displacement on the y/x directions
-        MAX_DISPLACEMENT = 1000
-
-        # Filter out any invalid values (only when MVs are supplied): under
-        # threshold, no NaNs, no infinities
-
-        mv_t_fxx_p1_invalid_mask = torch.logical_not(
-            torch.logical_and(
-                torch.abs(mv_t_fxx_p1) <= MAX_DISPLACEMENT, torch.isfinite(mv_t_fxx_p1)
-            )
-        )
-        mv_t_fxx_m1_invalid_mask = torch.logical_not(
-            torch.logical_and(
-                torch.abs(mv_t_fxx_m1) <= MAX_DISPLACEMENT, torch.isfinite(mv_t_fxx_m1)
-            )
-        )
-
-        mv_t_fxx_p1 = torch.where(
-            torch.any(mv_t_fxx_p1_invalid_mask, dim=1, keepdims=True), 0.0, mv_t_fxx_p1
-        )
-        mv_t_fxx_m1 = torch.where(
-            torch.any(mv_t_fxx_m1_invalid_mask, dim=1, keepdims=True), 0.0, mv_t_fxx_m1
-        )
-
-        ret = {}
-        height, width = torch.floor_divide(img_t.shape[2], 2), torch.floor_divide(
-            img_t.shape[3], 2
-        )
-
-        def _upsample_if_needed(flow: torch.Tensor) -> torch.Tensor:
-            flow_h, flow_w = flow.shape[2], flow.shape[3]
-            if (height == flow_h) and (width == flow_w):
-                return flow
-
-            # NOTE: Scale is to half of the size of rgb (e.g. to low res)
-            scale = torch.reshape(
-                torch.stack([height / flow_h, width / flow_w]), (1, 2, 1, 1)
-            ).to(flow.dtype)
-            flow_up = torchvision.transforms.Resize(
-                size=(height, width), interpolation=InterpolationMode.NEAREST
-            )(flow)
-            flow_up *= scale
-
-            return flow_up
-
-        input_mv_t_fxx_m1 = mv_t_fxx_m1
-        input_mv_t_fxx_p1 = mv_t_fxx_p1
-
-        of_model_name = of_model.get_model_name()
-        ret[f"flow_{{}}_{fps}_m1@{of_model_name}"] = _upsample_if_needed(
-            of_model(img_tm1, img_t, input_mv=input_mv_t_fxx_m1),
-        ).to(dtype)
-        # vvvv this is the default direction for nfru
-        ret[f"flow_{{}}_{fps}_p1@{of_model_name}"] = _upsample_if_needed(
-            of_model(img_tp1, img_t, input_mv=input_mv_t_fxx_p1),
-        ).to(dtype)
-
-        return ret
-
-    def _calculate_optical_flow(self, out_features):
-        # Flow Calculation
-        depth = out_features["depth"]
-        rgb = out_features["rgb_reinhard"]
-
-        # NOTE: Since we have inverted mvs to align with game engine conventions
-        # we inverse synthetic mv direction back to be the same direction as blockmatch expects
-        sy_t_f30_m1 = -out_features["sy_{}_f30_m1"].to(torch.float32)
-        sy_t_f30_p1 = -out_features["sy_{}_f30_p1"].to(torch.float32)
-        sy_t_f60_m1 = -out_features["sy_{}_f60_m1"].to(torch.float32)
-        sy_t_f60_p1 = -out_features["sy_{}_f60_p1"].to(torch.float32)
-
-        of_model_name = self.of_model.get_model_name()
-        combined_flow_l = {
-            key: torch.zeros_like(sy_t_f30_m1, dtype=self.dtype)
-            for key in (
-                f"flow_{{}}_f30_m1@{of_model_name}",
-                f"flow_{{}}_f30_p1@{of_model_name}",
-            )
-        }
-        combined_flow_h = {
-            key: torch.zeros_like(sy_t_f30_m1, dtype=self.dtype)
-            for key in (
-                f"flow_{{}}_f60_m1@{of_model_name}",
-                f"flow_{{}}_f60_p1@{of_model_name}",
-            )
-        }
-
-        sy_t_f30_m1 = upscale_and_dilate_flow(sy_t_f30_m1, depth).to(self.dtype)
-        sy_t_f30_p1 = upscale_and_dilate_flow(sy_t_f30_p1, depth).to(self.dtype)
-        sy_t_f60_m1 = upscale_and_dilate_flow(sy_t_f60_m1, depth).to(self.dtype)
-        sy_t_f60_p1 = upscale_and_dilate_flow(sy_t_f60_p1, depth).to(self.dtype)
-
-        combined_mv_hints_l = {
-            "dilated_sy_{}_f30_m1": sy_t_f30_m1,
-            "dilated_sy_{}_f30_p1": sy_t_f30_p1,
-        }
-
-        # High frequency
-        if self.count > 0 and self.count < self.max_frames - 1:
-            _, rgb_m1 = self._read_rgb(self.count - 1)
-            _, rgb_p1 = self._read_rgb(self.count + 1)
-            combined_flow_h = self._calc_flow_new_names(
-                rgb,
-                rgb_m1,
-                rgb_p1,
-                mv_t_fxx_p1=sy_t_f60_p1,
-                mv_t_fxx_m1=sy_t_f60_m1,
-                of_model=self.of_model,
-                dtype=self.dtype,
-                fps="f60",
-            )
-
-        # Low frequency
-        if self.count > 1 and self.count < self.max_frames - 2:
-            _, rgb_m1 = self._read_rgb(self.count - 2)
-            _, rgb_p1 = self._read_rgb(self.count + 2)
-            combined_flow_l = self._calc_flow_new_names(
-                rgb,
-                rgb_m1,
-                rgb_p1,
-                mv_t_fxx_p1=sy_t_f30_p1,
-                mv_t_fxx_m1=sy_t_f30_m1,
-                of_model=self.of_model,
-                dtype=self.dtype,
-                fps="f30",
-            )
-        return combined_flow_l, combined_flow_h, combined_mv_hints_l
-
     def _read_rgb(self, count):
-        current_count_offset = count - self.count + 2
-        if self.rgb_buffer[current_count_offset] is not None:
-            return self.rgb_buffer[current_count_offset]
         rgb_linear = read_exr_torch(
             self.seq_data["ground_truth"][count], dtype=np.float32, channels="RGB"
         )
         rgb_reinhard = tonemap_forward(rgb_linear * self.exposure, mode="reinhard").to(
             dtype=self.dtype
         )
-        result = (rgb_linear, rgb_reinhard)
-        self.rgb_buffer[current_count_offset] = result
-        return result
+        return rgb_linear, rgb_reinhard
 
     def _read_lf_mv(self, count):
         if count % 2 != 0:
@@ -511,10 +314,6 @@ class NFRUEXRDatasetReader(EXRDatasetReader):
         out_features["mv_{}_f60_m1"] = unpack_and_scale_flow(mv_nfru_raw_hf)
 
         out_features |= self._calculate_synthetic_mvs(out_features)
-        out_of_l, out_of_h, out_mv_hints_l = self._calculate_optical_flow(out_features)
-        out_features |= out_of_l
-        out_features |= out_of_h
-        out_features |= out_mv_hints_l
 
         # Add additional MetaData features
 
@@ -582,10 +381,5 @@ class NFRUEXRDatasetReader(EXRDatasetReader):
         # pylint: enable=duplicate-code
 
         self.count += 1
-
-        self.prev_features = out_features
-
-        self.rgb_buffer.pop(0)
-        self.rgb_buffer.append(None)
 
         return [(out_filepath, out_features)]

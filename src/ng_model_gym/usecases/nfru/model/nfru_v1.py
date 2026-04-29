@@ -16,10 +16,6 @@ from ng_model_gym.core.model.base_ng_model import BaseNGModel, QATQuantizationPr
 from ng_model_gym.core.model.graphics_utils import normalize_mvs
 from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.model.shaders.slang_utils import load_slang_module, SlangOutput
-from ng_model_gym.usecases.nfru.model.blockmatch_v311 import (
-    BlockMatchV311,
-    upscale_and_dilate_flow,
-)
 from ng_model_gym.usecases.nfru.model.constants import (
     _DEFAULT_SCALE_FACTOR,
     _FLOW_DOWNSAMPLE_SCALE,
@@ -31,6 +27,10 @@ from ng_model_gym.usecases.nfru.model.constants import (
     _RANDOM_SEED_MAX,
 )
 from ng_model_gym.usecases.nfru.model.nfru_v1_ne import NFRUAutoEncoder
+from ng_model_gym.usecases.nfru.model.optical_flow.blockmatch_v311 import (
+    BlockMatchV311,
+    upscale_and_dilate_flow,
+)
 from ng_model_gym.usecases.nfru.utils.colour_pipeline import build_colour_pipeline
 from ng_model_gym.usecases.nfru.utils.constants import (
     _BITS_EXP,

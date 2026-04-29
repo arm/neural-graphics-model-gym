@@ -17,7 +17,7 @@ import imageio.v3 as iio
 import numpy as np
 import torch
 
-from scripts.optical_flow.blockmatch_v32 import BlockMatchV32
+from ng_model_gym.usecases.nfru.model.optical_flow import BlockMatchV32
 
 
 def _parse_args() -> argparse.Namespace:

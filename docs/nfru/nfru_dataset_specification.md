@@ -22,6 +22,11 @@ This document specifies data that must be captured from your game engine of choi
 
 A [script included within this repository](../../scripts/safetensors_generator/safetensors_writer.py) transforms this NFRU data into a Safetensors file which can be used by Model Gym's training feature.
 
+This capture format does not require a separate offline optical-flow generation
+step. The EXR-to-safetensors conversion derives synthetic motion-vector tensors
+from the captured inputs, while NFRU training computes optical flow on demand
+instead of reading persisted `flow_*` tensors from the generated safetensors.
+
 ## Terminology
 
 - **Sequence** – a contiguous range of frames within a capture that contains no camera cuts.
@@ -45,6 +50,10 @@ At the root of the dataset, you will find:
 - `x2`: Directories containing images, etc. captured at a 2x (50%) resolution. For example, for a ground truth resolution of 1080p, the input images in this directory should be captured at 540p. These directories contains `depth`, `motion_m1` and `motion_m2` subdirectories (see "images" section below for more details).
 
 `ground_truth`, `x2/depth`, `x2/motion_m1` and `x2/motion_m2` all contain a single subdirectory for each capture contained in the dataset. Each per-capture subdirectory contains numbered `.exr` images representing the frames making up the capture. `x2/motion_m2` only contains frame for even indexes as it represents motion across two 60 FPS frames.
+
+No additional optical-flow capture directories are required. The safetensors
+writer consumes only the files described here and does not persist offline
+blockmatch flow outputs in the generated dataset.
 
 ```
 <DATASET PATH>/
