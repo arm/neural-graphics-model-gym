@@ -41,14 +41,6 @@
 #endif
 
 /*
-    Enable v5 dynamic mask
-    Default: True
-*/
-#ifndef NEW_DYNAMIC_MASK
-    #define NEW_DYNAMIC_MASK 0 // CHANGE: 0 by default for training
-#endif
-
-/*
     Enable debug texture dumping
     Default: False
 */
@@ -96,25 +88,13 @@
     #define HALF_MIN 0.00006103515625
 #endif
 
-
-#if NEW_DYNAMIC_MASK
-    #ifndef MV_SIMILARITY_NOISE_THRESHOLD
-        #define MV_SIMILARITY_NOISE_THRESHOLD 1.0
-    #endif
-
-    #ifndef MV_SIMILARITY_THRESHOLD
-        #define MV_SIMILARITY_THRESHOLD 0.3
-    #endif
-#else
-    #ifndef MV_SIMILARITY_NOISE_THRESHOLD
-        #define MV_SIMILARITY_NOISE_THRESHOLD 0.001
-    #endif
-
-    #ifndef MV_SIMILARITY_THRESHOLD
-        #define MV_SIMILARITY_THRESHOLD 0.01
-    #endif
+#ifndef MV_SIMILARITY_NOISE_THRESHOLD
+    #define MV_SIMILARITY_NOISE_THRESHOLD 0.001
 #endif
 
+#ifndef MV_SIMILARITY_THRESHOLD
+    #define MV_SIMILARITY_THRESHOLD 0.01
+#endif
 
 #ifndef MAX_VAL
     #define MAX_VAL 1023.0
