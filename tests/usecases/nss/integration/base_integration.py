@@ -61,7 +61,8 @@ class NSSBaseIntegrationTest(BaseGPUMemoryTest):
         # integration-test dataset
         self.cfg_json["dataset"]["path"]["train"] = self.train_data_dir
         self.cfg_json["dataset"]["path"]["test"] = self.test_data_dir
-        self.cfg_json["dataset"]["path"]["validation"] = ""
+        # Notice the use of "test" data for both "test" and "validation"
+        self.cfg_json["dataset"]["path"]["validation"] = self.test_data_dir
         self.cfg_json["output"][
             "export_frame_png"
         ] = False  # Speed up integration tests

@@ -15,6 +15,8 @@ from ng_model_gym.core.data.dataset_registry import DATASET_REGISTRY, get_datase
 
 logger = logging.getLogger(__name__)
 
+_TRACE_MODE_DESCRIPTION = "trace mode (for FP32/PTQ export)"
+
 
 def seed_worker(worker_id):  # pylint: disable=unused-argument
     """
@@ -66,6 +68,57 @@ def get_dataset(
     return dataset
 
 
+def _get_dataloader_batch_size(
+    configured_batch_size: int,
+    dataset_size: int,
+    loader_mode: DataLoaderMode,
+    trace_mode: bool,
+):
+    """
+    Gets the batch size that should be used for DataLoader objects with
+    specified attributes.
+
+    Args:
+        configured_batch_size: Batch size from user configuration (assumed
+           positive). Throws ValueError if the configured batch size is out of
+           range.
+        dataset_size: Length of the dataset about to be loaded.
+        loader_mode: Dataloader setting - TRAIN, VALIDATION or TEST.
+        trace_mode: Whether the related dataloader returned is for tracing at
+            export. Should be False for QAT.
+    """
+    if loader_mode == DataLoaderMode.TEST:
+        if trace_mode:
+            raise ValueError(
+                "TEST dataloader mode cannot be used "
+                f"together with {_TRACE_MODE_DESCRIPTION}."
+            )
+
+        batch_size = 1
+    elif configured_batch_size <= dataset_size:
+        batch_size = configured_batch_size
+    else:
+        raise ValueError(
+            f"Batch size ({configured_batch_size}) is larger "
+            "than the dataset. Reduce batch size to "
+            f"{dataset_size} or less."
+        )
+
+    if trace_mode and batch_size == 1:
+        # Avoid 0/1 Specialization Problem in PT2 Export
+        raise ValueError(
+            f"In {_TRACE_MODE_DESCRIPTION}, the batch size must be 2 or more."
+        )
+
+    if batch_size != configured_batch_size:
+        logger.warning(
+            f"Using batch size of {batch_size} "
+            f"(configured batch size = {configured_batch_size})"
+        )
+
+    return batch_size
+
+
 def get_dataloader(
     config_params: ConfigModel,
     num_workers=1,
@@ -79,25 +132,31 @@ def get_dataloader(
         config_params: Configuration parameters.
         num_workers: Number of workers for the DataLoader to use.
         prefetch_factor: How many batches each worker should try to preload.
-        loader_mode: What mode the dataloader should be set to.
+        loader_mode: Dataloader setting to apply - TRAIN, VALIDATION or TEST.
         trace_mode: Whether the dataloader returned is for tracing at export.
             Should be False for QAT.
 
     Returns:
         PyTorch DataLoader object ready to produce data as configured by passed in parameters.
     """
-
     dataset = get_dataset(config_params, loader_mode)
+    dataset_size = len(dataset)
+
+    if dataset_size <= 0:
+        raise ValueError("Cannot process empty dataset.")
+
+    batch_size = _get_dataloader_batch_size(
+        config_params.train.batch_size, dataset_size, loader_mode, trace_mode
+    )
+
+    messages = ["Loading data"]
 
     if trace_mode:
-        logger.debug(
-            "Loading data in trace mode with batch_size of 2 (for FP32/PTQ export)"
-        )
-        batch_size = 2  # Avoid 0/1 Specialization Problem in PT2 Export
-    else:
-        batch_size = (
-            1 if loader_mode == DataLoaderMode.TEST else config_params.train.batch_size
-        )
+        messages.append(f"in {_TRACE_MODE_DESCRIPTION}")
+
+    messages.append(f"with a batch size of {batch_size}")
+
+    logger.debug(" ".join(messages))
 
     # Shuffle only when training.
     shuffle = loader_mode == DataLoaderMode.TRAIN

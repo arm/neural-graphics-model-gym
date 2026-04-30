@@ -302,7 +302,7 @@ def executorch_vgf_export(
 
         if params.dataset.path.train is None:
             raise ValueError(
-                "Config error: No path specified for the train dataset."
+                "Config error: No path specified for the train dataset. "
                 "This is required for exporting a QAT model to a VGF file."
             )
 
@@ -310,13 +310,13 @@ def executorch_vgf_export(
     else:
         params.model_train_eval_mode = TrainEvalMode.FP32
 
-        if params.dataset.path.test is None:
+        if params.dataset.path.validation is None:
             raise ValueError(
-                "Config error: No path specified for the test dataset."
+                "Config error: No path specified for the validation dataset. "
                 "This is required for exporting an FP32 model to a VGF file."
             )
 
-        loader_mode = DataLoaderMode.TEST
+        loader_mode = DataLoaderMode.VAL
 
     is_dynamic_input = params.output.export.dynamic_shape
     static_input_shape = params.output.export.vgf_static_input_shape
