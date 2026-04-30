@@ -17,6 +17,11 @@ This script can be run for NFRU using the following:
 python -m scripts.safetensors_generator.safetensors_writer -src="path/to/exr/root/dir" -reader=NFRUv2_2 -extension=exr
 ```
 
+No offline optical-flow preprocessing is required before running the writer.
+`NFRUv2_2` writes captured NFRU inputs, metadata, and synthetic motion-vector
+tensors into the safetensors output. Optical flow is computed during NFRU
+training, so the writer no longer persists `flow_*` or `dilated_sy_*` tensors.
+
 ## Common flags
 
 | Flag        | Description | Default |

@@ -6,7 +6,7 @@ import unittest
 
 import torch
 
-from ng_model_gym.usecases.nfru.model.blockmatch_v311 import (
+from ng_model_gym.usecases.nfru.model.optical_flow.blockmatch_v311 import (
     BlockMatchV311,
     BlockMatchV311Config,
     ExtractSearchWindows,

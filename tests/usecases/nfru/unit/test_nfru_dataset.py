@@ -39,7 +39,6 @@ NFRU_SAMPLE_FILE = NFRU_SAMPLE_DIR / "0000.safetensors"
 NFRU_GOLDEN_OUTPUT_PATH = Path(
     "tests/usecases/nfru/unit/data/nfru_v1_golden_values/dataloader_output_fp32.pt"
 )
-_LEGACY_NFRU_OPTIONAL_FLOW_KEY = "flow_m1_f30_p1@blockmatch_v3"
 
 
 def _build_nfru_config(
@@ -602,9 +601,12 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
         golden_x = dict(golden_x)
         golden_x.pop("seq", None)
         self.assertNotIn(NFRU_OPTIONAL_FLOW_KEY, data)
-        # We compute flow at runtime so remove from goldens for comparison
-        golden_x.pop(NFRU_OPTIONAL_FLOW_KEY, None)
-        golden_x.pop(_LEGACY_NFRU_OPTIONAL_FLOW_KEY, None)
+        # Flow is recomputed at runtime, so ignore any precomputed flow goldens.
+        precomputed_flow_keys = [
+            key for key in tuple(golden_x) if key.startswith("flow_m1_f30_p1@")
+        ]
+        for key in precomputed_flow_keys:
+            golden_x.pop(key, None)
 
         self.assertEqual(set(data.keys()), set(golden_x.keys()))
         for key in data:

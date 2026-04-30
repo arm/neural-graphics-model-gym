@@ -8,10 +8,12 @@ This folder contains example and implementation scripts for BlockMatch-based opt
 
 ## Example usage
 
-From the root directory run the example with explicit image paths:
+After installing the package into your environment (for example with `pip install .`
+or from `hatch shell`), run the example from the repository root with explicit
+image paths:
 
 ```bash
-python scripts/optical_flow/optical_flow_example.py \
+python scripts/optical_flow_example/optical_flow_example.py \
   --img-tm1 path/to/frame_tm1.png \
   --img-t path/to/frame_t.png \
   --out path/to/optical_flow_output.npy

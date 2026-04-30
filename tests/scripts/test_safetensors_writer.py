@@ -480,12 +480,7 @@ class TestNFRUSafetensorsWriter(unittest.TestCase):
 
     @classmethod
     def _trim_nfru_fixture_to_frame_count(cls, src_root: Path, frame_count: int):
-        """
-        Keep only the first `frame_count` frames in a copied NFRU fixture.
-
-        Metadata-focused tests can run on one frame, while motion-vector tests
-        keep at least five frames so center-frame temporal features are valid.
-        """
+        """Keep only the first `frame_count` frames in a copied NFRU fixture."""
         metadata_path = src_root / "0000.json"
         with open(metadata_path, "r", encoding="utf-8") as metadata_file:
             metadata = json.load(metadata_file)
@@ -509,11 +504,7 @@ class TestNFRUSafetensorsWriter(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """
-        Build two reusable class fixtures:
-        - 1-frame fixture for fast metadata assertions.
-        - 5-frame fixture for center-frame motion/flow assertions.
-        """
+        """Build a reusable 1-frame fixture for fast NFRU writer assertions."""
         super().setUpClass()
         cls._fixtures_tmp_root = Path(tempfile.mkdtemp())
 
@@ -532,16 +523,6 @@ class TestNFRUSafetensorsWriter(unittest.TestCase):
         cls._one_frame_frame_zero = generic_safetensors_reader(
             cls._one_frame_output_path, 0
         )
-
-        cls._five_frame_src = cls._fixtures_tmp_root / "nfru_src_five_frame"
-        shutil.copytree(source_root, cls._five_frame_src)
-        cls._trim_nfru_fixture_to_frame_count(cls._five_frame_src, frame_count=5)
-
-        cls._five_frame_args = cls._make_writer_args(
-            src=cls._five_frame_src, dst=cls._fixtures_tmp_root / "five_frame_dst"
-        )
-        generic_safetensors_writer(cls._five_frame_args)
-        cls._five_frame_output_path = cls._five_frame_args.dst_root / "0000.safetensors"
 
     @classmethod
     def tearDownClass(cls):
@@ -633,104 +614,43 @@ class TestNFRUSafetensorsWriter(unittest.TestCase):
                     f"(Reference: {test_ref}), Test Skipped"
                 )
 
-    def test_output_contains_valid_optical_flow(self):
-        """
-        Center frame in a 5-frame fixture should contain valid computed flow.
-
-        Frame 0 is edge-padded by design; frame 2 has sufficient neighbors for
-        both f60 (+/-1) and f30 (+/-2) temporal flow computation.
-        """
+    def test_output_omits_offline_flow_and_dilated_hint_tensors(self):
+        """NFRU writer should not persist removed offline flow or dilated hint tensors."""
         self.assertTrue(
-            self._five_frame_output_path.exists(),
-            msg=f"{self._five_frame_output_path} failed to be created.",
+            self._one_frame_output_path.exists(),
+            msg=f"{self._one_frame_output_path} failed to be created.",
         )
 
-        edge_data = generic_safetensors_reader(self._five_frame_output_path, 0)
-        data = generic_safetensors_reader(self._five_frame_output_path, 2)
-        flow_tensor_names = [
+        data = generic_safetensors_reader(self._one_frame_output_path, 0)
+        removed_tensor_names = [
             "flow_{}_f30_m1@blockmatch_v3",
             "flow_{}_f30_p1@blockmatch_v3",
             "flow_{}_f60_m1@blockmatch_v3",
             "flow_{}_f60_p1@blockmatch_v3",
+            "dilated_sy_{}_f30_m1",
+            "dilated_sy_{}_f30_p1",
         ]
 
-        for tensor_name in flow_tensor_names:
+        for tensor_name in removed_tensor_names:
+            self.assertNotIn(
+                tensor_name,
+                data,
+                msg=f"Removed offline tensor '{tensor_name}' should not be written.",
+            )
+
+        retained_synthetic_motion_names = [
+            "sy_{}_f30_m1",
+            "sy_{}_f30_p1",
+            "sy_{}_f60_m1",
+            "sy_{}_f60_p1",
+        ]
+
+        for tensor_name in retained_synthetic_motion_names:
             self.assertIn(
                 tensor_name,
                 data,
-                msg=f"Missing optical-flow tensor '{tensor_name}' in output.",
+                msg=f"Missing retained synthetic motion tensor '{tensor_name}'.",
             )
-            flow_tensor = data[tensor_name]
-            self.assertEqual(
-                flow_tensor.dtype,
-                torch.float16,
-                msg=f"Unexpected dtype for optical-flow tensor '{tensor_name}'.",
-            )
-            self.assertEqual(
-                flow_tensor.ndim,
-                3,
-                msg=f"Unexpected rank for optical-flow tensor '{tensor_name}'.",
-            )
-            self.assertEqual(
-                flow_tensor.shape[0],
-                2,
-                msg=f"Optical-flow tensor '{tensor_name}' must have 2 channels.",
-            )
-            self.assertGreater(flow_tensor.shape[1], 0)
-            self.assertGreater(flow_tensor.shape[2], 0)
-            self.assertTrue(
-                torch.isfinite(flow_tensor).all(),
-                msg=f"Optical-flow tensor '{tensor_name}' contains non-finite values.",
-            )
-            self.assertGreater(
-                torch.max(torch.abs(flow_tensor)).item(),
-                0.0,
-                msg=f"Optical-flow tensor '{tensor_name}' should not be all zeros on center frame.",
-            )
-            self.assertFalse(
-                torch.allclose(edge_data[tensor_name], flow_tensor),
-                msg=(
-                    f"Optical-flow tensor '{tensor_name}' should differ between "
-                    "edge frame and center frame."
-                ),
-            )
-
-    def test_output_contains_dilated_motion_hints(self):
-        """Center frame should persist low-frequency dilated synthetic MV hints."""
-        self.assertTrue(
-            self._five_frame_output_path.exists(),
-            msg=f"{self._five_frame_output_path} failed to be created.",
-        )
-
-        data = generic_safetensors_reader(self._five_frame_output_path, 2)
-        hint_pairs = [
-            ("sy_{}_f30_m1", "dilated_sy_{}_f30_m1"),
-            ("sy_{}_f30_p1", "dilated_sy_{}_f30_p1"),
-        ]
-
-        for raw_name, dilated_name in hint_pairs:
-            self.assertIn(
-                raw_name,
-                data,
-                msg=f"Missing raw motion-hint tensor '{raw_name}'.",
-            )
-            self.assertIn(
-                dilated_name,
-                data,
-                msg=f"Missing dilated motion-hint tensor '{dilated_name}'.",
-            )
-
-            raw_hint = data[raw_name]
-            dilated_hint = data[dilated_name]
-
-            self.assertEqual(dilated_hint.dtype, torch.float16)
-            self.assertEqual(dilated_hint.ndim, 3)
-            self.assertEqual(dilated_hint.shape[0], 2)
-            self.assertTrue(torch.isfinite(dilated_hint).all())
-            self.assertGreater(torch.max(torch.abs(dilated_hint)).item(), 0.0)
-
-            self.assertEqual(dilated_hint.shape[1], raw_hint.shape[1] * 2)
-            self.assertEqual(dilated_hint.shape[2], raw_hint.shape[2] * 2)
 
     def test_inverse_y_metadata_changes_written_viewproj(self):
         """Toggling JSON InverseY must update InverseY and ViewProj tensors."""
