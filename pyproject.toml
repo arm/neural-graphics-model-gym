@@ -3,14 +3,18 @@
 # SPDX-License-Identifier: Apache-2.0
 
 [build-system]
-requires = ["hatchling>=1.18", "packaging>=24.0", "versioningit>=3.3.0"]
+requires = [
+    "hatchling>=1.18",
+    "hatch-fancy-pypi-readme>=25.1.0,<26",
+    "packaging>=24.0",
+    "versioningit>=3.3.0",
+]
 build-backend = "hatchling.build"
 
 [project]
 name = "ng-model-gym"
-dynamic = ["version"]
+dynamic = ["version", "readme"]
 description = "Neural Graphics Model Gym for training and evaluating neural graphics models."
-readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10, <3.13"
 authors = [
@@ -97,6 +101,32 @@ distance-dirty = "{base_version}+{rev}.dirty"
 [tool.hatch.metadata]
 allow-direct-references = true
 
+[tool.hatch.metadata.hooks.fancy-pypi-readme]
+content-type = "text/markdown"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.fragments]]
+path = "README.md"
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\[!(NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]'
+replacement = '**\1**:'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = 'href="https://github\.com/arm/neural-graphics-model-gym/blob/main/LICENSE\.md"'
+replacement = 'href="https://github.com/arm/neural-graphics-model-gym/blob/v$HFPR_VERSION/LICENSE.md"'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = 'src="docs/ng-model-gym-cli-hero-img\.png"'
+replacement = 'src="https://raw.githubusercontent.com/arm/neural-graphics-model-gym/v$HFPR_VERSION/docs/ng-model-gym-cli-hero-img.png"'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\(\./docs/([^\)\s]+)\s*\)'
+replacement = '](https://github.com/arm/neural-graphics-model-gym/blob/v$HFPR_VERSION/docs/\1)'
+
+[[tool.hatch.metadata.hooks.fancy-pypi-readme.substitutions]]
+pattern = '\]\((?:\./)?(CONTRIBUTING|LICENSE|SECURITY)\.md\)'
+replacement = '](https://github.com/arm/neural-graphics-model-gym/blob/v$HFPR_VERSION/\1.md)'
+
 [tool.hatch.build.targets.wheel]
 packages = [
     "src/ng_model_gym"
@@ -104,7 +134,9 @@ packages = [
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "src/ng_model_gym"
+    "README.md",
+    "src/ng_model_gym",
+    "version.py",
 ]
 
 [project.scripts]
