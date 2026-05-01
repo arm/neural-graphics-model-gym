@@ -55,6 +55,7 @@ class ApiIntegrationTest(NSSBaseIntegrationTest):
         # Set an export directory under the project output folder
         repo_root = Path(__file__).resolve().parents[4]
         output_root = repo_root / "output"
+        output_root.mkdir(parents=True, exist_ok=True)
 
         with tempfile.TemporaryDirectory(dir=output_root) as tmp_dir:
             export_dir = Path(tmp_dir) / "export" / "vgf"
