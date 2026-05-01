@@ -18,7 +18,7 @@ from ng_model_gym.core.config.config_model import ConfigModel, TrainingConfig
 from ng_model_gym.core.data.data_utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.evaluator.metrics import get_metrics
-from ng_model_gym.core.loss.losses import LossV1, LPIPSSpatialLoss, LPIPSSpatialLossV5
+from ng_model_gym.core.loss.losses import LossV1, LPIPSSpatialLossV1
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.checkpoint_loader import (
     latest_checkpoint_in_dir,
@@ -533,12 +533,9 @@ def get_loss_fn(params: ConfigModel, device: torch.device):
 
     if loss_name == LossFn.LOSS_V1:
         return LossV1(params.model.recurrent_samples, device)
-    if loss_name == LossFn.LPIPSSpatialLoss:
+    if loss_name == LossFn.LPIPS_SPATIAL_LOSS_V1:
         loss_args = params.train.loss_args if hasattr(params.train, "loss_args") else {}
-        return LPIPSSpatialLoss(loss_args, device)
-    if loss_name == LossFn.LPIPSSpatialLossV5:
-        loss_args = params.train.loss_args if hasattr(params.train, "loss_args") else {}
-        return LPIPSSpatialLossV5(loss_args, device)
+        return LPIPSSpatialLossV1(loss_args, device)
 
     # Defensive (all enums should be handled above)
     raise ValueError(f"No implementation for loss function {loss_name}")
