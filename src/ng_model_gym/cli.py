@@ -163,8 +163,8 @@ def download_cli(
         str,
         typer.Argument(
             help=(
-                "Model filename to download (e.g. nss_v0.1.0_fp32.pt) or a "
-                "model reference (e.g. hf://Org/Repo/filename.pt)"
+                "Model identifier to download "
+                "(e.g. @neural-super-sampling/nss_v0.1.0_fp32.pt)"
             )
         ),
     ],
