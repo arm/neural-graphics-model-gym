@@ -9,7 +9,7 @@ from ng_model_gym.api import do_evaluate, do_training
 from ng_model_gym.core.utils.enum_definitions import ProfilerType, TrainEvalMode
 from ng_model_gym.core.utils.logging_utils import logging_config
 from tests.base_gpu_test import BaseGPUMemoryTest
-from tests.testing_utils import create_simple_params
+from tests.testing_utils import clear_loggers, create_simple_params
 
 
 class ApiCoreIntegrationTest(BaseGPUMemoryTest):
@@ -29,8 +29,10 @@ class ApiCoreIntegrationTest(BaseGPUMemoryTest):
         )
 
     def tearDown(self):
-        shutil.rmtree(self.tmp_dir, ignore_errors=True)
         super().tearDown()
+
+        clear_loggers()
+        shutil.rmtree(self.tmp_dir, ignore_errors=True)
 
     def test_logging_config_no_mutation(self):
         """logging_config should not modify the config."""
