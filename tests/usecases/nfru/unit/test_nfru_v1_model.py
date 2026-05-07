@@ -16,7 +16,7 @@ from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from ng_model_gym.usecases.nfru.model.nfru_v1 import m
-from ng_model_gym.usecases.nfru.model.nfru_v1_ne import NFRUAutoEncoder
+from ng_model_gym.usecases.nfru.model.nfru_v1_nn import NFRUAutoEncoder
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
 

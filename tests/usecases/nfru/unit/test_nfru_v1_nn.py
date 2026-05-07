@@ -7,7 +7,7 @@ from pathlib import Path
 
 import torch
 
-from ng_model_gym.usecases.nfru.model.nfru_v1_ne import NFRUAutoEncoder
+from ng_model_gym.usecases.nfru.model.nfru_v1_nn import NFRUAutoEncoder
 
 _GOLDEN_ROOT = Path(__file__).resolve().parent / "data" / "nfru_v1_golden_values"
 

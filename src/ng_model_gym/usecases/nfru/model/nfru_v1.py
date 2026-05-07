@@ -26,7 +26,7 @@ from ng_model_gym.usecases.nfru.model.constants import (
     _QAT_FAKE_QUANT_EPS,
     _RANDOM_SEED_MAX,
 )
-from ng_model_gym.usecases.nfru.model.nfru_v1_ne import NFRUAutoEncoder
+from ng_model_gym.usecases.nfru.model.nfru_v1_nn import NFRUAutoEncoder
 from ng_model_gym.usecases.nfru.model.optical_flow.blockmatch_v311 import (
     BlockMatchV311,
     upscale_and_dilate_flow,
