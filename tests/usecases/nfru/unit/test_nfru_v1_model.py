@@ -15,7 +15,6 @@ from torch import nn
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
-from ng_model_gym.usecases.nfru.model.nfru_v1 import m
 from ng_model_gym.usecases.nfru.model.nfru_v1_nn import NFRUAutoEncoder
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
@@ -317,11 +316,6 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
         self.assertEqual(calls["count"], 1)
         self.assertEqual(processed_gt.device, ground_truth.device)
         self.assertEqual(processed_gt.dtype, torch.float32)
-
-    def test_dynamic_mask_selector_uses_reference_default(self) -> None:
-        """Dynamic mask selector should use the v1 reference default."""
-        network = self.model.network
-        self.assertIs(network._get_dynamic_mask_fn(), m.calculate_previous_dynamic_mask)
 
     def test_model_hooks_switch_colour_pipeline_by_split(self) -> None:
         """Explicit lifecycle hooks should select the colour pipeline by split."""

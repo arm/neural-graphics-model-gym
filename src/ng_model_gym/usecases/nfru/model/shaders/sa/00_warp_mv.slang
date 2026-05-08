@@ -193,11 +193,7 @@ public void warp_mv(WARP_MV_PARAMS(DECL))
     // 0 == Valid vector to scatter
     uint8_t dynamic_mask_m1 = uint8_t(sample_tensor_nearest(g.b._DynamicMask, batch, uint(0), output_pixel).r);
     uint8_t dynamic_mask_p1 = uint8_t(
-#if NEW_DYNAMIC_MASK
-        dynamic_mask_v5(cm_p1_f30_m1 * float2(g.pc._OutputDims), mv_p1_f30_m1 * float2(g.pc._OutputDims), MV_SIMILARITY_THRESHOLD, MV_SIMILARITY_NOISE_THRESHOLD) > 0.0
-#else
-        dynamic_mask_v4(cm_p1_f30_m1, mv_p1_f30_m1, MV_SIMILARITY_THRESHOLD, MV_SIMILARITY_NOISE_THRESHOLD) > 0.0
-#endif
+        dynamic_mask(cm_p1_f30_m1, mv_p1_f30_m1, MV_SIMILARITY_THRESHOLD, MV_SIMILARITY_NOISE_THRESHOLD) > 0.0
     );
 
     // Save dynamic mask to feedback for next set of frames

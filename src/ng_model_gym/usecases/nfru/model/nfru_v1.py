@@ -202,7 +202,6 @@ class NFRUv1Core(nn.Module):
         self.flow_method = _FLOW_METHOD
         self.dynamic_flow = True
         self.of_540 = False
-        self.new_dynamic_mask = False
         self.shader_accurate = shader_accurate
         self.scale_factor = scale_factor
 
@@ -463,7 +462,7 @@ class NFRUv1Core(nn.Module):
         dims_540 = [depth_m1.shape[2], depth_m1.shape[3]]
         dims_270 = [flow_xx_f30_xx.shape[2], flow_xx_f30_xx.shape[3]]
 
-        func_dynamic_mask = self._get_dynamic_mask_fn()
+        func_dynamic_mask = m.calculate_previous_dynamic_mask
         in_dynamic_mask = func_dynamic_mask(
             tv_depth=depth_m1,
             tv_mv_m1_f30_m3=mv_m1_f30_m3,
@@ -529,10 +528,3 @@ class NFRUv1Core(nn.Module):
             "coeffs": self.coeff_softmax(learnt_params),
             "output_mfg": output_mfg,
         }
-
-    def _get_dynamic_mask_fn(self):
-        return (
-            m.calculate_previous_dynamic_mask_v5
-            if self.new_dynamic_mask
-            else m.calculate_previous_dynamic_mask
-        )
