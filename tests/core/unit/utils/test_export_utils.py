@@ -64,11 +64,11 @@ class MockNSS(BaseNGModel):
         return {"foo": "bar"}
 
 
-class MockNFRUDynamicModel(nn.Module):
+class MockNFRUDynamicModel(BaseNGModel):
     """Minimal module wrapper using the NFRU dynamic export shape contract."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, params):
+        super().__init__(params)
         self.autoencoder = nn.Conv2d(16, 16, kernel_size=1)
 
     def get_neural_network(self):
@@ -386,7 +386,7 @@ class TestExportUtils(unittest.TestCase):
         """Dynamic NFRU export requires even heights and widths."""
         params = make_params(self.tmp_path)
         params.model = SimpleNamespace(name="NFRU", version="1")
-        model = MockNFRUDynamicModel()
+        model = MockNFRUDynamicModel(params)
 
         accepted_input = (torch.rand(1, 16, 4, 6),)
         _export_module_to_vgf(
