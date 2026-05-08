@@ -5,7 +5,7 @@ SPDX-License-Identifier: Apache-2.0
 <h1 align="center">Neural Graphics Model Gym</h1>
 <p align="center">
 <a href="https://huggingface.co/Arm/neural-super-sampling"><img alt="Model Card" src="https://img.shields.io/badge/Hugging%20Face-neural%20super%20sampling-orange?logo=huggingface"></a>
-<a href="https://hub.docker.com/repository/docker/armlimited/neural-graphics-model-gym"><img alt="Docker Hub" src="https://img.shields.io/docker/v/armlimited/neural-graphics-model-gym?label=Docker%20Hub&color=blue&logo=Docker"></a>
+<a href="https://hub.docker.com/r/armlimited/neural-graphics-model-gym"><img alt="Docker Hub" src="https://img.shields.io/docker/v/armlimited/neural-graphics-model-gym?label=Docker%20Hub&color=blue&logo=Docker"></a>
 <a href="https://pypi.org/project/ng-model-gym"><img alt="PyPI" src="https://img.shields.io/pypi/v/ng-model-gym?label=PyPI&color=teal&logo=pypi"></a>
 <a href="https://github.com/arm/neural-graphics-model-gym/blob/main/LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-Apache%20License%202.0-green"></a>
 <img alt="Python versions" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-slategray?logo=python">
