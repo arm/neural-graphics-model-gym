@@ -217,7 +217,7 @@ def _export_module_to_vgf(
         and params.output.export.vgf_static_input_shape
     ):
         model_forward_input = tuple(
-            torch.rand(n, c, h, w)
+            torch.rand(n, c, h, w).to(memory_format=torch.channels_last)
             for n, c, h, w in params.output.export.vgf_static_input_shape
         )
         logger.info("Tracing and exporting model with config-provided static shape")
