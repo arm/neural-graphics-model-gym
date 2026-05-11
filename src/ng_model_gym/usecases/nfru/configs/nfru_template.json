@@ -71,7 +71,7 @@
         "seed": 123456,
         "perform_validate": false,
         "validate_frequency": 1,
-        "loss_fn": "LPIPSSpatialLoss",
+        "loss_fn": "lpips_spatial_loss_v1",
         "loss_args": {
             "alpha": 0.1
         },
