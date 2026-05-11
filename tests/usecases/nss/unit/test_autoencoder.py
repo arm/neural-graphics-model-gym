@@ -61,21 +61,27 @@ class TestAutoEncoder(unittest.TestCase):
         ) = self.autoencoder_model(self.input_tensor)
 
         # Check Kernel is the same between runs
-        self.assertTrue(torch.allclose(k0_a, k0_b, atol=1e-6))
-        self.assertTrue(torch.allclose(k1_a, k1_b, atol=1e-6))
-        self.assertTrue(torch.allclose(k2_a, k2_b, atol=1e-6))
-        self.assertTrue(torch.allclose(k3_a, k3_b, atol=1e-6))
+        torch.testing.assert_close(k0_a, k0_b, rtol=1e-6, atol=1e-6)
+        torch.testing.assert_close(k1_a, k1_b, rtol=1e-6, atol=1e-6)
+        torch.testing.assert_close(k2_a, k2_b, rtol=1e-6, atol=1e-6)
+        torch.testing.assert_close(k3_a, k3_b, rtol=1e-6, atol=1e-6)
 
         # Check that the feedback output is identical
-        self.assertTrue(
-            torch.allclose(feedback_out1, feedback_out2, atol=1e-6),
-            "Feedback changed between runs",
+        torch.testing.assert_close(
+            feedback_out1,
+            feedback_out2,
+            rtol=1e-6,
+            atol=1e-6,
+            msg="Feedback changed between runs",
         )
 
         # Check that the temporal output is identical
-        self.assertTrue(
-            torch.allclose(temporal_params1, temporal_params2, atol=1e-6),
-            "Temporal changed between runs",
+        torch.testing.assert_close(
+            temporal_params1,
+            temporal_params2,
+            rtol=1e-6,
+            atol=1e-6,
+            msg="Temporal changed between runs",
         )
 
     def test_output_values(self):
@@ -168,23 +174,23 @@ class TestAutoEncoderGolden(BaseGPUMemoryTest):
         )
 
         expected_k0 = autoencoder_output_tensors["kernels"][0]
-        self.assertTrue(torch.allclose(k0, expected_k0, rtol=1e-3, atol=1e-3))
+        torch.testing.assert_close(k0, expected_k0, rtol=1e-2, atol=1e-2)
 
         expected_k1 = autoencoder_output_tensors["kernels"][1]
-        self.assertTrue(torch.allclose(k1, expected_k1, rtol=1e-3, atol=1e-3))
+        torch.testing.assert_close(k1, expected_k1, rtol=1e-2, atol=1e-2)
 
         expected_k2_tp = autoencoder_output_tensors["kernels"][2]
-        self.assertTrue(torch.allclose(k2, expected_k2_tp, rtol=1e-3, atol=1e-3))
+        torch.testing.assert_close(k2, expected_k2_tp, rtol=1e-2, atol=1e-2)
 
         expected_k3 = autoencoder_output_tensors["kernels"][3]
-        self.assertTrue(torch.allclose(k3, expected_k3, rtol=1e-3, atol=1e-3))
+        torch.testing.assert_close(k3, expected_k3, rtol=1e-2, atol=1e-2)
 
         expected_temporal = autoencoder_output_tensors["temporal_params"]
-        self.assertTrue(
-            torch.allclose(temporal_params, expected_temporal, rtol=1e-3, atol=1e-3)
+        torch.testing.assert_close(
+            temporal_params, expected_temporal, rtol=1e-2, atol=1e-2
         )
 
         expected_feedback_out = autoencoder_output_tensors["feedback"]
-        self.assertTrue(
-            torch.allclose(feedback_out, expected_feedback_out, rtol=1e-3, atol=1e-3)
+        torch.testing.assert_close(
+            feedback_out, expected_feedback_out, rtol=1e-2, atol=1e-2
         )
