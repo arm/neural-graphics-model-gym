@@ -6,12 +6,22 @@ import platform
 import sys
 from pathlib import Path
 
+from ng_model_gym.core.utils.logging_utils import filter_warnings, WARNING_FILTERS
 from tests.fetch_huggingface import (
     nfru_test_assets_enabled,
     validate_nfru_datasets,
     validate_nss_downloads,
 )
 from tests.pkgutil_patch import apply_patch
+
+filter_warnings()
+
+
+def warning_filter_to_pytest(warning_filter: dict) -> str:
+    """Convert a Python warnings filter dictionary to pytest's string format."""
+    category = warning_filter["category"].__name__
+    module = warning_filter.get("module", "")
+    return f"{warning_filter['action']}:{warning_filter['message']}:{category}:{module}"
 
 
 class _FastTestState:
@@ -36,6 +46,12 @@ def pytest_addoption(parser) -> None:
 
 def pytest_configure(config) -> None:
     """Configuration hook, called after command-line options get parsed."""
+    filter_warnings()
+    for warning_filter in WARNING_FILTERS:
+        config.addinivalue_line(
+            "filterwarnings", warning_filter_to_pytest(warning_filter)
+        )
+
     # Apply patch for Python 3.10 before running tests.
     if sys.version_info[:2] == (3, 10):
         apply_patch()
