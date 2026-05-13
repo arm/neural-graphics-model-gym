@@ -132,7 +132,7 @@ class LPIPSSpatialLossV1(torch.nn.Module):
 
         self.alpha = float(self.loss_args["alpha"])
         self.device = device
-        self.l1_loss = torch.nn.L1Loss(reduce=False)
+        self.l1_loss = torch.nn.L1Loss(reduction="none")
         self.lpips_loss = lpips.LPIPS().to(self.device)
 
     def forward(self, y_true: torch.Tensor, y_pred: TensorData) -> torch.Tensor:
