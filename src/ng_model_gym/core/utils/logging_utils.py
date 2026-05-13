@@ -15,6 +15,114 @@ from ng_model_gym.core.utils.io.file_utils import create_directory
 
 logger = logging.getLogger(__name__)
 
+WARNING_FILTERS = [
+    {
+        "action": "ignore",
+        "message": (
+            r"`torch\.jit\.script` is deprecated\. "
+            r"Please switch to `torch\.compile` or `torch\.export`\."
+        ),
+        "category": DeprecationWarning,
+        "module": r"torch\.jit\._script",
+    },
+    {
+        "action": "ignore",
+        "message": (
+            r"`torch\.jit\.script_method` is deprecated\. "
+            r"Please switch to `torch\.compile` or `torch\.export`\."
+        ),
+        "category": DeprecationWarning,
+        "module": r"torch\.jit\._script",
+    },
+    {
+        "action": "ignore",
+        "message": r"read_text is deprecated\. Use files\(\) instead\..*",
+        "category": DeprecationWarning,
+        "module": r"executorch\.exir\.dialects\.edge\._ops",
+    },
+    {
+        "action": "ignore",
+        "message": r"open_text is deprecated\. Use files\(\) instead\..*",
+        "category": DeprecationWarning,
+        "module": r"importlib\.resources\._legacy",
+    },
+    {
+        "action": "ignore",
+        "message": r"This API is experimental and subject to change without notice\.",
+        "category": Warning,
+        "module": r"executorch\.extension\.pybindings\.portable_lib",
+    },
+    {
+        "action": "ignore",
+        "message": r"builtin type SwigPyPacked has no __module__ attribute",
+        "category": DeprecationWarning,
+    },
+    {
+        "action": "ignore",
+        "message": r"builtin type SwigPyObject has no __module__ attribute",
+        "category": DeprecationWarning,
+    },
+    {
+        "action": "ignore",
+        "message": r"builtin type swigvarlink has no __module__ attribute",
+        "category": DeprecationWarning,
+    },
+    {
+        "action": "ignore",
+        "message": r"invalid escape sequence.*",
+        "category": SyntaxWarning,
+        "module": r".*torchao.*quantization.*quant_api.*",
+    },
+    {
+        "action": "ignore",
+        "message": r"The parameter 'pretrained' is deprecated.*",
+        "category": UserWarning,
+        "module": r"torchvision\.models\._utils",
+    },
+    {
+        "action": "ignore",
+        "message": (
+            r"Arguments other than a weight enum or `None` "
+            r"for 'weights' are deprecated.*"
+        ),
+        "category": UserWarning,
+        "module": r"torchvision\.models\._utils",
+    },
+    {
+        "action": "ignore",
+        "message": r"TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included.*",
+        "category": UserWarning,
+        "module": r"torch\.utils\.cpp_extension",
+    },
+    {
+        "action": "ignore",
+        "message": r"pkg_resources is deprecated as an API.*",
+        "category": UserWarning,
+        "module": r"slangtorch\.slangtorch",
+    },
+    {
+        "action": "ignore",
+        "message": r"pkg_resources is deprecated as an API.*",
+        "category": UserWarning,
+        "module": r"executorch\.exir\.dialects\.edge\._ops",
+    },
+    {
+        "action": "ignore",
+        "message": (
+            r"To copy construct from a tensor, it is recommended to use "
+            r"sourceTensor\.detach\(\)\.clone\(\)*"
+        ),
+        "category": UserWarning,
+        "module": r"executorch\.backends\.arm\.quantizer\.quantization_config",
+    },
+    {
+        "action": "ignore",
+        "message": r"erase_node*",
+        "category": UserWarning,
+        "module": r"torch\.fx\.graph",
+    },
+]
+
 
 def logging_config(
     params: ConfigModel,
@@ -65,57 +173,8 @@ def log_gpu_torch():
 
 def filter_warnings() -> None:
     """Filter warnings from logging."""
-    warnings.filterwarnings(
-        "ignore",
-        message=r"The parameter 'pretrained' is deprecated.*",
-        category=UserWarning,
-        module=r"torchvision\.models\._utils",
-    )
-
-    warnings.filterwarnings(
-        "ignore",
-        message=r"Arguments other than a weight enum or `None` for 'weights' are deprecated.*",
-        category=UserWarning,
-        module=r"torchvision\.models\._utils",
-    )
-
-    warnings.filterwarnings(
-        "ignore",
-        message=r"TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included.*",
-        category=UserWarning,
-        module=r"torch\.utils\.cpp_extension",
-    )
-
-    warnings.filterwarnings(
-        "ignore",
-        message=r"pkg_resources is deprecated as an API.*",
-        category=UserWarning,
-        module=r"slangtorch\.slangtorch",
-    )
-
-    warnings.filterwarnings(
-        "ignore",
-        message=r"pkg_resources is deprecated as an API.*",
-        category=UserWarning,
-        module=r"executorch\.exir\.dialects\.edge\._ops",
-    )
-
-    warnings.filterwarnings(
-        "ignore",
-        message=(
-            r"To copy construct from a tensor, it is recommended to use "
-            r"sourceTensor\.detach\(\)\.clone\(\)*"
-        ),
-        category=UserWarning,
-        module=r"executorch\.backends\.arm\.quantizer\.quantization_config",
-    )
-
-    warnings.filterwarnings(
-        "ignore",
-        message=r"erase_node*",
-        category=UserWarning,
-        module=r"torch\.fx\.graph",
-    )
+    for warning_filter in WARNING_FILTERS:
+        warnings.filterwarnings(**warning_filter)
 
 
 def setup_logging(
