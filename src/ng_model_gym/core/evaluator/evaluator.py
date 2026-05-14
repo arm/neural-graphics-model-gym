@@ -38,6 +38,7 @@ class NGModelEvaluator:
         self.y_true = None
         self.y_pred = None
         self.results = {}
+        self.num_evaluated_batches = 0
 
         for metric in self.metrics:
             metric.to(self.model.device)
@@ -68,6 +69,7 @@ class NGModelEvaluator:
 
         # Run evaluation.
         for self.idx, (self.x_in, self.y_true) in evaluate_pbar:
+            self.num_evaluated_batches += 1
             # Ensure input data and ground truth are on the same device as the model.
             self.x_in, self.y_true = self.model.on_before_batch_transfer(
                 (self.x_in, self.y_true)
@@ -111,6 +113,9 @@ class NGModelEvaluator:
 
         This will be the running average and not the metric value on the current batch.
         """
+        if self.num_evaluated_batches == 0:
+            return ""
+
         results = self.get_results()
 
         metric_string = " ".join(
@@ -134,6 +139,7 @@ class NGModelEvaluator:
     def _test_begin(self):
         """Called before evaluation begins."""
         self.prepare_datasets()
+        self.num_evaluated_batches = 0
         create_directory(self.out_dir)
         if self.export_png_dir:
             logger.warning(
@@ -146,6 +152,10 @@ class NGModelEvaluator:
 
     def _test_end(self):
         """Called after whole dataset has been evaluated."""
+        if self.num_evaluated_batches == 0:
+            logger.warning(
+                "Evaluation dataloader is empty; no evaluation metrics were computed."
+            )
         metric_string = self._get_results_string()
         logger.info("-------------- Evaluation Complete --------------")
         logger.info(metric_string)
