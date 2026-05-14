@@ -186,6 +186,38 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
         description="Upscale parameter for the NSS model. Note, for now only 2x is supported in this version",
     )
     recurrent_samples: int = Field(gt=1, description="Number of recurrent samples")
+    quality: Optional[Literal["high", "mid", "low"]] = Field(
+        default=None,
+        description=(
+            "NSS v1 quality mode. Only high is supported in the train/eval-first "
+            "release; mid and low are planned follow-up work."
+        ),
+    )
+    normalize_lr_motion: Optional[bool] = Field(
+        default=None,
+        description=(
+            "Whether NSS dataset loading normalizes low-resolution motion vectors. "
+            "If omitted, NSS v0.1 keeps the legacy normalized default and NSS v1 "
+            "preserves raw low-resolution motion."
+        ),
+    )
+    gt_history_augmentation: bool = Field(
+        default=False,
+        description=(
+            "Enable NSS v1 training-time recurrent history augmentation. "
+            "When enabled, the first recurrent frame can initialize history "
+            "from ground truth instead of the reset history buffer."
+        ),
+    )
+    gt_history_augmentation_chance: float = Field(
+        default=30.0,
+        ge=0.0,
+        le=100.0,
+        description=(
+            "Percent chance per batch element of replacing first-frame recurrent "
+            "history with ground truth when gt_history_augmentation is enabled."
+        ),
+    )
 
 
 class NFRUModelSettings(PrebuiltModelSettingsBase):

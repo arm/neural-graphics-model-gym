@@ -26,9 +26,12 @@ class TestMemoryLogDecorator(unittest.TestCase):
         # Check that we logged some info
         with self.assertLogs(logging.getLogger(), level="DEBUG") as al:
             placeholder(1)
-        s = "The function [placeholder] used 0.00 MiB (RAM CPU)."
         output = al.output
-        self.assertTrue(
-            any(s in msg for msg in output),
-            f"'Could not found {s}' log messages: {output}",
+        expected_message = (
+            r"The function \[placeholder\] used -?\d+\.\d{2} MiB \(RAM CPU\)\."
+        )
+        self.assertRegex(
+            "\n".join(output),
+            expected_message,
+            f"Could not find memory usage log in messages: {output}",
         )

@@ -40,6 +40,23 @@ class TemplateInfo:
     source: Path
 
 
+def _get_template_key_and_name(data: dict) -> Tuple[str, str]:
+    """Return the normalized lookup key and display name for a config template."""
+    model = data.get("model", {})
+    model_name = str(model.get("name")).strip()
+
+    if model.get("model_source") == "custom":
+        return "custom", "custom"
+
+    model_key = model_name.lower()
+    model_version = str(model.get("version", "")).strip()
+    if model_version and model_version != "1":
+        version_suffix = f"_v{model_version}"
+        return f"{model_key}{version_suffix}", f"{model_name}{version_suffix}"
+
+    return model_key, model_name
+
+
 def _discover_config_templates() -> Dict[str, List[TemplateInfo]]:
     """Discover config templates under usecases and core config."""
     templates: Dict[str, List[TemplateInfo]] = {}
@@ -62,13 +79,10 @@ def _discover_config_templates() -> Dict[str, List[TemplateInfo]]:
                 logger.debug(f"Skipping config without a model.name entry: {json_file}")
                 continue
 
-            if data.get("model").get("model_source") == "custom":
-                model_name = "custom"
-
-            model_key = str(model_name).strip().lower()
+            model_key, display_name = _get_template_key_and_name(data)
 
             info = TemplateInfo(
-                model_name=str(model_name),
+                model_name=display_name,
                 json_data=data,
                 source=json_file,
             )
@@ -150,7 +164,7 @@ def generate_config_file(
 
     default_config: dict = copy.deepcopy(matching[0].json_data)
 
-    model_name = default_config.get("model", {}).get("name") or selected_config_template
+    model_name = matching[0].model_name
     file_name = model_name.lower()
     if (
         selected_config_template == "custom"

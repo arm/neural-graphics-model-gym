@@ -2,6 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import unittest
+from unittest.mock import patch
 
 import torch
 
@@ -33,6 +34,22 @@ class TestDenseWarp(unittest.TestCase):
             layer = DenseWarp(interpolation=interp)
             warped_frame = layer([frame, flow_vectors])
             self.assertEqual(warped_frame.shape, (batch_size, channels, height, width))
+
+    def test_bilinear_paths_do_not_use_explicit_gather_helpers(self):
+        """Bilinear DenseWarp paths should avoid explicit gather helpers."""
+        frame = torch.rand((1, 1, 4, 4))
+        flow_vectors = torch.rand((1, 2, 4, 4))
+
+        with patch(
+            "ng_model_gym.core.model.dense_warp_utils.interpolate_bilinear",
+            side_effect=AssertionError("old bilinear gather backend was called"),
+        ), patch(
+            "ng_model_gym.core.model.dense_warp_utils.interpolate_bilinear_w_zero_pad",
+            side_effect=AssertionError("old bilinear gather backend was called"),
+        ):
+            for interp in ("bilinear", "bilinear_oob_zero"):
+                warped_frame = DenseWarp(interpolation=interp)([frame, flow_vectors])
+                self.assertEqual(warped_frame.shape, frame.shape)
 
     def test_forward_value_oob_zero(self):
         """Test the DenseWarp 'forward' method returns correct tensor

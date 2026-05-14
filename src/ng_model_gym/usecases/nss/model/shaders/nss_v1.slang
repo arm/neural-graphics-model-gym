@@ -1,0 +1,47 @@
+// SPDX-FileCopyrightText: Copyright 2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
+// SPDX-License-Identifier: Apache-2.0
+
+// Quality selection ---------------------------------------------------------------------------
+#ifndef NSS_QUALITY_LOW
+#define NSS_QUALITY_LOW 0
+#endif // !NSS_QUALITY_LOW
+#ifndef NSS_QUALITY_MEDIUM
+#define NSS_QUALITY_MEDIUM 1
+#endif // !NSS_QUALITY_MEDIUM
+#ifndef NSS_QUALITY_HIGH
+#define NSS_QUALITY_HIGH 2
+#endif // !NSS_QUALITY_HIGH
+
+#ifndef NSS_QUALITY
+#define NSS_QUALITY NSS_QUALITY_HIGH
+#endif // !NSS_QUALITY
+
+#define NSS_QUALITY_IS_LOW    (NSS_QUALITY == NSS_QUALITY_LOW)
+#define NSS_QUALITY_IS_MEDIUM (NSS_QUALITY == NSS_QUALITY_MEDIUM)
+#define NSS_QUALITY_IS_HIGH   (NSS_QUALITY == NSS_QUALITY_HIGH)
+
+#ifndef NSS_PREPROCESS_HALF_RES_INPUT
+#define NSS_PREPROCESS_HALF_RES_INPUT (NSS_QUALITY_IS_LOW)
+#endif // !NSS_PREPROCESS_HALF_RES_INPUT
+#ifndef NSS_DEPTH_SCATTER_QUARTER_RES_INPUT
+#define NSS_DEPTH_SCATTER_QUARTER_RES_INPUT (NSS_QUALITY_IS_LOW)
+#endif // !NSS_DEPTH_SCATTER_QUARTER_RES_INPUT
+#ifndef NSS_USE_SPARSE_2X2_FILTER
+#define NSS_USE_SPARSE_2X2_FILTER (NSS_QUALITY_IS_LOW)
+#endif // !NSS_USE_SPARSE_2X2_FILTER
+#ifndef NSS_USE_HISTORY_CATMULL
+#define NSS_USE_HISTORY_CATMULL (!NSS_QUALITY_IS_LOW)
+#endif // !NSS_USE_HISTORY_CATMULL
+#ifndef NSS_PACKED_NEAREST_OFFSET_QUAD
+#define NSS_PACKED_NEAREST_OFFSET_QUAD (NSS_QUALITY_IS_LOW)
+#endif // !NSS_PACKED_NEAREST_OFFSET_QUAD
+#ifndef FILTER_COLOUR_KERNEL_SZ
+#define FILTER_COLOUR_KERNEL_SZ 9
+#endif // !FILTER_COLOUR_KERNEL_SZ
+#ifndef SHADER_ACCURATE
+#define SHADER_ACCURATE 1
+#endif // !SHADER_ACCURATE
+
+import "nss_v1/depth_scatter";
+import "nss_v1/pre_process";
+import "nss_v1/post_process";

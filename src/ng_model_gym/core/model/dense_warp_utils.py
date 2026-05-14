@@ -300,14 +300,14 @@ def dense_image_warp(
 
     _, _, height, width = image.shape
     flow_y, flow_x = torch.split(flow, split_size_or_sections=1, dim=1)
-    flow_xy = torch.concat([flow_x, flow_y], dim=1)
+    flow_xy = torch.concat([flow_x, flow_y], dim=1).to(dtype=image.dtype)
 
     grid_y, grid_x = torch.meshgrid(
         torch.arange(0, height, device=flow.device),
         torch.arange(0, width, device=flow.device),
         indexing="ij",
     )
-    stacked_grid = torch.stack([grid_x, grid_y], dim=0).float()
+    stacked_grid = torch.stack([grid_x, grid_y], dim=0).to(dtype=image.dtype)
     query_points_on_grid = stacked_grid.unsqueeze(0) - flow_xy
 
     return resampler(

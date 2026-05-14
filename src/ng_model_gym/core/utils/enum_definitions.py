@@ -49,6 +49,7 @@ class LossFn(str, Enum):
     """Enum of supported loss functions."""
 
     LOSS_V0_1 = "loss_v0_1"
+    LOSS_V1 = "loss_v1"
     LPIPS_SPATIAL_LOSS_V1 = "lpips_spatial_loss_v1"
 
 

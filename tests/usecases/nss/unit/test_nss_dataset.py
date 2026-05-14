@@ -115,6 +115,25 @@ class TestNSSDataset(unittest.TestCase):
                 torch.equal(tensor, expected_tensor), f"Tensors {key} not equal"
             )
 
+    def test_nss_v1_leaves_low_res_motion_unnormalized_by_default(self):
+        """NSS v1 keeps raw low-res motion by default."""
+
+        params = create_simple_params(
+            usecase="nss_v1", dataset_path=Path("tests/usecases/nss/datasets/train")
+        )
+        params.model.recurrent_samples = 4
+        params.dataset.gt_augmentation = False
+
+        dataset = NSSDataset(params, DataLoaderMode.TRAIN)
+        x, _ = dataset[0]
+
+        with safe_open(dataset.captures[0], framework="pt", device="cpu") as f:
+            expected_motion_lr = f.get_slice("motion_lr")[
+                0 : params.model.recurrent_samples
+            ].to(torch.float32)
+
+        torch.testing.assert_close(x["motion_lr"], expected_motion_lr)
+
     def test_missing_exposure_field(self):
         """Test handling of missing exposure field in Safetensors file"""
         # Create a new Safetensors file without exposure field for testing

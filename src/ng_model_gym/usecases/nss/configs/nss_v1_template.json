@@ -1,0 +1,92 @@
+{
+    "config_schema_version": "5",
+    "model": {
+        "name": "NSS",
+        "model_source": "prebuilt",
+        "version": "1",
+        "scale": 2.0,
+        "recurrent_samples": 16,
+        "quality": "high",
+        "normalize_lr_motion": false,
+        "gt_history_augmentation": false,
+        "gt_history_augmentation_chance": 30.0
+    },
+    "dataset": {
+        "name": "NSS",
+        "version": "1",
+        "path": {
+            "train": "<PATH/TO/TRAIN_DATA_DIR>",
+            "validation": "<PATH/TO/VALIDATION_DATA_DIR>",
+            "test": "<PATH/TO/TEST_DATA_DIR>"
+        },
+        "exposure": 2,
+        "tonemapper": "reinhard",
+        "health_check": false,
+        "gt_augmentation": true,
+        "num_workers": 4,
+        "prefetch_factor": 1
+    },
+    "output": {
+        "dir": "./output",
+        "export_frame_png": false,
+        "tensorboard_output_dir": "./tensorboard-logs/nss-v1",
+        "export": {
+            "dynamic_shape": true,
+            "vgf_output_dir": "./output/vgf/nss-v1"
+        }
+    },
+    "metrics": [
+        "PSNR",
+        "tPSNR",
+        "RecPSNR",
+        "SSIM"
+    ],
+    "train": {
+        "batch_size": 8,
+        "seed": 123456,
+        "perform_validate": true,
+        "validate_frequency": 1,
+        "loss_fn": "loss_v1",
+        "loss_args": {
+            "temporal_reg_weight": 0.7,
+            "alpha_reg_weight": 0.0001,
+            "temporal_reg_channels": 1,
+            "min_weight": 0.1
+        },
+        "fp32": {
+            "number_of_epochs": 15,
+            "checkpoints": {
+                "dir": "./output/checkpoints/nss-v1/fp32"
+            },
+            "lr_scheduler": {
+                "type": "cosine_annealing",
+                "warmup_percentage": 0.05,
+                "min_lr": 2e-4
+            },
+            "optimizer": {
+                "optimizer_type": "lars_adam",
+                "learning_rate": "2e-3",
+                "eps": 1e-7
+            }
+        },
+        "qat": {
+            "number_of_epochs": 2,
+            "checkpoints": {
+                "dir": "./output/checkpoints/nss-v1/qat"
+            },
+            "lr_scheduler": {
+                "type": "cosine_annealing",
+                "warmup_percentage": 0.05,
+                "min_lr": 1e-5
+            },
+            "optimizer": {
+                "optimizer_type": "lars_adam",
+                "learning_rate": "2e-3",
+                "eps": 1e-7
+            }
+        }
+    },
+    "processing": {
+        "shader_accurate": true
+    }
+}
