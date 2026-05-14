@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+import json
 import shutil
 import tempfile
 import unittest
@@ -31,7 +32,7 @@ class TestNGModelEvaluator(unittest.TestCase):
         output_dir.mkdir()
 
         # Create config model using our own data
-        self.params = create_simple_params(usecase="nss")
+        self.params = create_simple_params(usecase="nss", output_dir=str(output_dir))
         self.params.dataset.path.train = train_data_dir
         self.params.dataset.path.validation = val_data_dir
         self.params.dataset.path.test = test_data_dir
@@ -141,13 +142,24 @@ class TestNGModelEvaluator(unittest.TestCase):
 
     def test_evaluate(self):
         """Test that evaluate() calls the necessary functions and outputs a JSON file"""
+        sample_input = {"seq": torch.tensor([1])}
+        sample_target = torch.rand((1, 1, 3, 256, 256))
 
         with patch(
-            "ng_model_gym.core.evaluator.evaluator.get_dataloader", return_value=[]
+            "ng_model_gym.core.evaluator.evaluator.get_dataloader",
+            return_value=[(sample_input, sample_target)],
         ):
             # Stub the model to return a dict with the expected output key
-            predicted = torch.rand((1, 32, 3, 256, 256))
+            predicted = torch.rand((1, 1, 3, 256, 256))
             self.model.return_value = {"output": predicted}
+            self.model.on_before_batch_transfer.return_value = (
+                sample_input,
+                sample_target,
+            )
+            self.model.on_after_batch_transfer.return_value = (
+                sample_input,
+                sample_target,
+            )
 
             model_evaluator = NGModelEvaluator(self.model, self.params)
 
@@ -166,3 +178,62 @@ class TestNGModelEvaluator(unittest.TestCase):
             )
             expected_results_json = all_results_json - existing_results
             self.assertTrue(expected_results_json)
+            self.assertEqual(len(expected_results_json), 1)
+
+            with next(iter(expected_results_json)).open(encoding="utf-8") as json_file:
+                results = json.load(json_file)
+
+            self.assertEqual(
+                set(results.keys()),
+                {"PSNR", "tPSNRStreaming", "recPSNRStreaming", "SSIM"},
+            )
+            for metric_name, metric_results in results.items():
+                self.assertIn("0", metric_results)
+                if metric_name == "tPSNRStreaming":
+                    # A single-frame sequence has no temporal frame pair, so tPSNR is NaN
+                    # internally and is serialized to JSON as null.
+                    self.assertIsNone(metric_results["0"])
+                else:
+                    self.assertIsInstance(metric_results["0"], float)
+
+    def test_evaluate_empty_dataloader_warns_and_outputs_json(self):
+        """Test that evaluate() handles an empty dataloader and outputs a JSON file."""
+
+        with patch(
+            "ng_model_gym.core.evaluator.evaluator.get_dataloader", return_value=[]
+        ):
+            model_evaluator = NGModelEvaluator(self.model, self.params)
+
+            existing_results = set(
+                Path(self.params.output.dir).glob("eval_metrics_*.json")
+            )
+
+            with self.assertLogs(
+                "ng_model_gym.core.evaluator.evaluator", level="WARNING"
+            ) as logs:
+                model_evaluator.evaluate()
+
+            self.assertIn(
+                "Evaluation dataloader is empty; no evaluation metrics were computed.",
+                logs.output[0],
+            )
+
+            expected_results_logfile = Path(self.params.output.dir, "results.log")
+            self.assertTrue(expected_results_logfile.exists())
+
+            all_results_json = set(
+                Path(self.params.output.dir).glob("eval_metrics_*.json")
+            )
+            expected_results_json = all_results_json - existing_results
+            self.assertTrue(expected_results_json)
+            self.assertEqual(len(expected_results_json), 1)
+
+            with next(iter(expected_results_json)).open(encoding="utf-8") as json_file:
+                results = json.load(json_file)
+
+            self.assertEqual(
+                set(results.keys()),
+                {"PSNR", "tPSNRStreaming", "recPSNRStreaming", "SSIM"},
+            )
+            for metric_results in results.values():
+                self.assertEqual(metric_results, {})
