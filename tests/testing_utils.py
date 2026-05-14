@@ -36,6 +36,43 @@ TEST_PARAMS_PRESETS = {
             "prefetch_factor": 1,
         },
     },
+    "nss_v1": {
+        "model": {
+            "name": "NSS",
+            "model_source": "prebuilt",
+            "version": "1",
+            "scale": 2.0,
+            "recurrent_samples": 16,
+            "quality": "high",
+            "normalize_lr_motion": False,
+            "gt_history_augmentation": False,
+            "gt_history_augmentation_chance": 30.0,
+        },
+        "dataset": {
+            "name": "NSS",
+            "version": "1",
+            "path": {
+                "train": "",
+                "validation": "",
+                "test": "",
+            },
+            "exposure": 2,
+            "tonemapper": "reinhard",
+            "health_check": True,
+            "gt_augmentation": True,
+            "num_workers": 0 if platform.system() == "Windows" else 4,
+            "prefetch_factor": 1,
+        },
+        "train": {
+            "loss_fn": "loss_v1",
+            "loss_args": {
+                "temporal_reg_weight": 0.7,
+                "alpha_reg_weight": 0.0001,
+                "temporal_reg_channels": 1,
+                "min_weight": 0.1,
+            },
+        },
+    },
     "nfru": {
         "model": {
             "name": "NFRU",
@@ -115,6 +152,7 @@ def create_simple_params(
 
     model = copy.deepcopy(usecase_preset["model"])
     dataset = copy.deepcopy(usecase_preset["dataset"])
+    train_overrides = copy.deepcopy(usecase_preset.get("train", {}))
 
     dataset["path"] = {
         "train": dataset_path,
@@ -171,6 +209,8 @@ def create_simple_params(
         },
         "metrics": ["PSNR", "tPSNR", "RecPSNR", "SSIM"],
     }
+
+    default_params["train"].update(train_overrides)
 
     # Create output and checkpoint directories
     # Output dir

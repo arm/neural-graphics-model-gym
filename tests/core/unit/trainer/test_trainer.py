@@ -12,7 +12,7 @@ from unittest.mock import Mock
 import torch
 from torch import nn, optim
 
-from ng_model_gym.core.loss import LossV0_1
+from ng_model_gym.core.loss import LossV0_1, LossV1
 from ng_model_gym.core.optimizers import LARS
 from ng_model_gym.core.trainer import get_loss_fn, get_optimizer_type, Trainer
 from ng_model_gym.core.utils.enum_definitions import (
@@ -404,6 +404,37 @@ class TestLossFnFactory(unittest.TestCase):
         params.train.loss_fn = LossFn.LOSS_V0_1.value
         loss_obj = get_loss_fn(params, torch.device("cpu"))
         self.assertIsInstance(loss_obj, LossV0_1)
+
+    def test_get_loss_fn_with_valid_loss_v1(self):
+        """Test get_loss_fn() returns LossV1 when requested"""
+        params = create_simple_params(usecase="nss")
+        params.train.loss_fn = LossFn.LOSS_V1.value
+        params.train.loss_args = {
+            "temporal_reg_weight": 0.1,
+            "alpha_reg_weight": 0.2,
+            "temporal_reg_channels": 3,
+            "min_weight": 0.4,
+        }
+        device = torch.device("cpu")
+
+        loss_obj = get_loss_fn(params, device)
+
+        self.assertIsInstance(loss_obj, LossV1)
+        self.assertEqual(loss_obj.recurrent_samples, params.model.recurrent_samples)
+        self.assertEqual(loss_obj.device, device)
+        self.assertEqual(loss_obj.loss_args, params.train.loss_args)
+
+    def test_get_loss_fn_with_loss_v1_default_loss_args(self):
+        """Test get_loss_fn() defaults LossV1 loss_args to an empty dict"""
+        params = create_simple_params(usecase="nss")
+        params.train.loss_fn = LossFn.LOSS_V1.value
+        device = torch.device("cpu")
+
+        loss_obj = get_loss_fn(params, device)
+
+        self.assertIsInstance(loss_obj, LossV1)
+        self.assertIsNone(params.train.loss_args)
+        self.assertEqual(loss_obj.loss_args, {})
 
     def test_get_loss_fn_raises_exception(self):
         params = create_simple_params(usecase="nss")

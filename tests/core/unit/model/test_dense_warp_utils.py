@@ -340,6 +340,23 @@ class TestBilinearOobZero(unittest.TestCase):
         )
         self.assertTrue(torch.allclose(output, expected_output, atol=1e-6))
 
+    def test_bilinear_oob_zero_preserves_mixed_precision_dtype(self):
+        """Test bilinear_oob_zero with mixed precision tensors."""
+        for dtype in (torch.float16, torch.bfloat16):
+            with self.subTest(dtype=dtype):
+                image = torch.arange(1, 10, dtype=dtype).reshape(1, 1, 3, 3)
+                flow = torch.zeros((1, 2, 3, 3), dtype=dtype)
+
+                output = bilinear_oob_zero(image, flow)
+
+                self.assertEqual(output.dtype, dtype)
+                torch.testing.assert_close(
+                    output.to(torch.float32),
+                    image.to(torch.float32),
+                    atol=2e-2,
+                    rtol=0.0,
+                )
+
     def test_bilinear_oob_zero_mix(self):
         """Test the bilinear_oob_zero."""
         b, h, w, c, f = (2, 3, 3, 2, 2)

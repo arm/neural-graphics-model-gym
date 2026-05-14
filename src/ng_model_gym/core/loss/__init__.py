@@ -2,4 +2,4 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
-from .losses import LossV0_1
+from .losses import LossV0_1, LossV1

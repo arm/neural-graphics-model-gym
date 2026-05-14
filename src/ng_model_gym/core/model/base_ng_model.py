@@ -60,6 +60,8 @@ class BaseNGModel(nn.Module, ABC):
         * Accept 'params' as as argument to the constructor
 
     Optionally:
+        * Implement `validate_export_supported` if export support is conditional
+          or unsupported
         * Implement `define_dynamic_export_model_input` if wanting to export a dynamic model
         * For recurrent models, override `init_history_buffers` and `create_padding_policy`
         * To include extra metadata during export, override `get_additional_constants`
@@ -113,6 +115,15 @@ class BaseNGModel(nn.Module, ABC):
             neural_network (nn.Module): Neural network to set.
         """
         raise NotImplementedError
+
+    def validate_export_supported(self, export_type: object) -> None:
+        """Temporary NSS v1 export guard fixture until NSS v1 export is supported.
+
+        TODO: remove this temporary fixture once NSS v1 export support is implemented.
+        """
+
+        # Unused in the default implementation; kept for subclass linting.
+        del export_type
 
     def define_dynamic_export_model_input(self) -> Tuple[Any, ...]:
         """

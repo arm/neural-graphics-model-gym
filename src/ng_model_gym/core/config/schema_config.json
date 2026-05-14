@@ -46,6 +46,47 @@
                             "description": "Number of recurrent samples",
                             "exclusiveMinimum": 1,
                             "type": "integer"
+                        },
+                        "quality": {
+                            "anyOf": [
+                                {
+                                    "enum": [
+                                        "high",
+                                        "mid",
+                                        "low"
+                                    ],
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "NSS v1 quality mode. Only high is supported in the train/eval-first release; mid and low are planned follow-up work."
+                        },
+                        "normalize_lr_motion": {
+                            "anyOf": [
+                                {
+                                    "type": "boolean"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Whether NSS dataset loading normalizes low-resolution motion vectors. If omitted, NSS v0.1 keeps the legacy normalized default and NSS v1 preserves raw low-resolution motion."
+                        },
+                        "gt_history_augmentation": {
+                            "default": false,
+                            "description": "Enable NSS v1 training-time recurrent history augmentation. When enabled, the first recurrent frame can initialize history from ground truth instead of the reset history buffer.",
+                            "type": "boolean"
+                        },
+                        "gt_history_augmentation_chance": {
+                            "default": 30.0,
+                            "description": "Percent chance per batch element of replacing first-frame recurrent history with ground truth when gt_history_augmentation is enabled.",
+                            "maximum": 100.0,
+                            "minimum": 0.0,
+                            "type": "number"
                         }
                     },
                     {
@@ -750,7 +791,7 @@
                 }
             ],
             "default": null,
-            "description": "Loss function to use. Choose from: loss_v0_1, lpips_spatial_loss_v1"
+            "description": "Loss function to use. Choose from: loss_v0_1, loss_v1, lpips_spatial_loss_v1"
         },
         "loss_args": {
             "anyOf": [

@@ -337,6 +337,11 @@ def executorch_vgf_export(
     model = model.to("cpu")
     model.eval()
 
+    if not isinstance(model, BaseNGModel):
+        raise ValueError(f"model type: {type(model)} , is not valid")
+
+    model.validate_export_supported(export_type)
+
     dataloader = get_dataloader(
         params,
         num_workers=params.dataset.num_workers,
@@ -360,9 +365,6 @@ def executorch_vgf_export(
     # tree_map is an internal torch util to traverse containers with tensors
     model_forward_input = tree_map(to_cpu, model_forward_input)
     model_forward_input = tree_map(to_channels_last, model_forward_input)
-
-    if not isinstance(model, BaseNGModel):
-        raise ValueError(f"model type: {type(model)} , is not valid")
 
     model_key = get_model_key(params.model.name, params.model.version)
 

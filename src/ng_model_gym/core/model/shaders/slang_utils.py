@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from functools import lru_cache
 from importlib.resources import files
 from numbers import Number
-from typing import Callable, Dict, Optional, Union
+from typing import Any, Callable, Dict, Optional, Union
 
 import joblib
 import slangtorch
@@ -21,28 +21,88 @@ from .slang_function_wrapper import convert_slang_wrapped_function
 logger = logging.getLogger(__name__)
 
 
-@lru_cache(maxsize=1)
-def load_slang_module(shader_dir, shader_file, autograd=False):
+def _normalise_slang_defines(
+    defines: Optional[Dict[str, object]],
+) -> tuple[tuple[str, object], ...]:
+    """Convert optional Slang defines into a cacheable tuple."""
+
+    if not defines:
+        return ()
+
+    normalised = []
+    for name, value in defines.items():
+        define_value = value if isinstance(value, (str, Number)) else str(value)
+        normalised.append((str(name), define_value))
+
+    return tuple(sorted(normalised))
+
+
+def _normalise_include_paths(
+    include_paths: Optional[Sequence[object]],
+) -> tuple[str, ...]:
+    """Convert include paths into a cacheable tuple."""
+
+    if not include_paths:
+        return ()
+
+    return tuple(str(path) for path in include_paths)
+
+
+@lru_cache(maxsize=None)
+def _load_slang_module_cached(
+    shader_dir: str,
+    shader_file: str,
+    autograd: bool,
+    defines: tuple[tuple[str, object], ...],
+    include_paths: tuple[str, ...],
+):
+    """Load and cache a Slang module for a unique compile configuration."""
+
+    shader_path = files(shader_dir) / shader_file
+    load_kwargs: Dict[str, Any] = {
+        "skipNinjaCheck": True,  # Use cache
+        "verbose": False,
+    }
+    if defines:
+        load_kwargs["defines"] = dict(defines)
+    if include_paths:
+        load_kwargs["includePaths"] = list(include_paths)
+
+    module = slangtorch.loadModule(shader_path, **load_kwargs)
+    if autograd:
+        return convert_slang_wrapped_function(module)
+
+    return module
+
+
+def load_slang_module(
+    shader_dir,
+    shader_file,
+    autograd=False,
+    defines: Optional[Dict[str, object]] = None,
+    include_paths: Optional[Sequence[object]] = None,
+):
     """
     Load a Slang module from the specified shader path and file.
+
+    Optional compile-time `defines` and `include_paths` are forwarded to
+    `slangtorch.loadModule()`.
 
     If autograd=True, Autograd functions are auto-generated.
     See SlangOutput for more details.
     """
-    shader_path = files(shader_dir) / shader_file
+    normalised_defines = _normalise_slang_defines(defines)
+    normalised_include_paths = _normalise_include_paths(include_paths)
 
     def _load_slang_module():
         """Wrapped implementation without logging"""
-        module = slangtorch.loadModule(
-            shader_path,
-            skipNinjaCheck=True,  # Use cache
-            verbose=False,
+        return _load_slang_module_cached(
+            shader_dir,
+            shader_file,
+            autograd,
+            normalised_defines,
+            normalised_include_paths,
         )
-
-        if autograd:
-            return convert_slang_wrapped_function(module)
-
-        return module
 
     if not is_invoked_cli():
         logger.info("Loading Slang shaders...")

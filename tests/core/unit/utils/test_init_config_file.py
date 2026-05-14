@@ -70,11 +70,51 @@ class TestGeneratingConfigFile(unittest.TestCase):
 
         self.assertEqual(config_path.name, "nss_config.json")
 
+    def test_generate_nss_config_file_uses_v1_template(self):
+        """Test generating the default NSS config uses the v1 template."""
+        config_path, _ = generate_config_file("NSS", self.output_path)
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+
+        self.assertEqual(config_path.name, "nss_config.json")
+        self.assertEqual(config_data["model"]["version"], "1")
+        self.assertEqual(config_data["model"]["quality"], "high")
+        self.assertFalse(config_data["model"]["normalize_lr_motion"])
+        self.assertFalse(config_data["model"]["gt_history_augmentation"])
+        self.assertEqual(config_data["model"]["gt_history_augmentation_chance"], 30.0)
+        self.assertEqual(config_data["train"]["loss_fn"], "loss_v1")
+        self.assertEqual(
+            config_data["train"]["loss_args"],
+            {
+                "temporal_reg_weight": 0.7,
+                "alpha_reg_weight": 0.0001,
+                "temporal_reg_channels": 1,
+                "min_weight": 0.1,
+            },
+        )
+
+    def test_generate_nss_v0_1_config_file(self):
+        """Test generating the legacy NSS v0.1 config template."""
+        config_path, _ = generate_config_file("NSS_v0.1", self.output_path)
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config_data = json.load(f)
+
+        self.assertEqual(config_path.name, "nss_v0.1_config.json")
+        self.assertEqual(config_data["model"]["version"], "0.1")
+
     def test_nss_in_template_list(self):
         """Test list config templates includes nss"""
         templates = list_config_templates()
 
         self.assertIn("NSS", templates)
+
+    def test_nss_v0_1_in_template_list(self):
+        """Test list config templates includes legacy NSS v0.1."""
+        templates = list_config_templates()
+
+        self.assertIn("NSS_v0.1", templates)
 
     def test_nfru_in_template_list(self):
         """Test list config templates includes nfru"""
