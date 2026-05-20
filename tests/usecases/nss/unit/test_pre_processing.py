@@ -28,9 +28,6 @@ class TestPreProcess(BaseGPUMemoryTest):
 
         self.device = torch.device("cuda")
 
-        self.preprocess = PreProcessV1()
-        self.shader_acc_preprocess = PreProcessV1_ShaderAccurate()
-
         self.batch_size = batch_size = 4
 
         colour_linear = torch.rand(batch_size, 3, 64, 64)
@@ -85,7 +82,7 @@ class TestPreProcess(BaseGPUMemoryTest):
 
     def test_fwd_pass_returns_values(self):
         """Test forward pass can run and return some values."""
-        input_tensor, derivative, depth_dilated = self.preprocess.apply(
+        input_tensor, derivative, depth_dilated = PreProcessV1.apply(
             self.inputs["colour_linear"],
             self.inputs["history"],
             self.inputs["motion"],
@@ -109,7 +106,7 @@ class TestPreProcess(BaseGPUMemoryTest):
 
     def test_shader_acc_fwd_pass_returns_values(self):
         """Test shader accurate forward pass can run and return some values."""
-        input_tensor, derivative, depth_dilated = self.shader_acc_preprocess.apply(
+        input_tensor, derivative, depth_dilated = PreProcessV1_ShaderAccurate.apply(
             self.inputs["colour_linear"],
             self.inputs["history"],
             self.inputs["motion_lr"],
@@ -227,7 +224,7 @@ class TestPreprocessGolden(BaseGPUMemoryTest):
             weights_only=True,
         )
 
-        input_tensor, derivative, depth_dilated = PreProcessV1().apply(
+        input_tensor, derivative, depth_dilated = PreProcessV1.apply(
             preprocess_input["colour_linear"],
             preprocess_input["history"],
             preprocess_input["motion"],
@@ -288,7 +285,7 @@ class TestShaderAccPreprocessGolden(BaseGPUMemoryTest):
             weights_only=True,
         )
 
-        input_tensor, derivative, depth_dilated = PreProcessV1_ShaderAccurate().apply(
+        input_tensor, derivative, depth_dilated = PreProcessV1_ShaderAccurate.apply(
             preprocess_input["colour_linear"],
             preprocess_input["history"],
             preprocess_input["motion_lr"],
