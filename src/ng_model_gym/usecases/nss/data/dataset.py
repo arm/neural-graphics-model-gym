@@ -340,7 +340,7 @@ class NSSDataset(Dataset):
             # single sequence.
             return [(0, seq_length)]
         camera_cut_slice = safetensor_file.get_slice("camera_cut")
-        camera_cut_tensor = torch.tensor(camera_cut_slice[:], dtype=torch.bool)
+        camera_cut_tensor = camera_cut_slice[:].detach().clone().bool()
         flags = camera_cut_tensor.view(camera_cut_tensor.shape[0], -1)[:, 0]
         sequences: List[Tuple[int, int]] = []
         start = 0
