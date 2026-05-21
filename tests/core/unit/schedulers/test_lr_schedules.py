@@ -48,6 +48,7 @@ class TestLRScheduleFunctions(unittest.TestCase):
         for _ in range(train_size):
             if lr_sched.get_last_lr()[0] not in torch_lr_produced:
                 torch_lr_produced.append(lr_sched.get_last_lr()[0])
+            optimizer.step()
             lr_sched.step()
 
         # Golden cosine annealing scheduler values - length is 34
@@ -125,6 +126,7 @@ class TestLRScheduleFunctions(unittest.TestCase):
 
         old_lr = lr_sched.get_last_lr()[0]
         for _ in range(train_size * epochs):
+            optimizer.step()
             lr_sched.step()
             if (lr_sched.last_epoch % decay_step_size) == 0:
                 new_lr = lr_sched.get_last_lr()[0]
