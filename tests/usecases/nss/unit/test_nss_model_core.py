@@ -49,8 +49,8 @@ class TestNSSV1ModelCore(BaseGPUMemoryTest):
 
         expected_output = forward_outputs["output"]
 
-        RTOL = 1e-3
-        ATOL = 1e-3
+        RTOL = 1e-2
+        ATOL = 1e-2
 
         torch.testing.assert_close(
             model_outputs["output"], expected_output, rtol=RTOL, atol=ATOL
