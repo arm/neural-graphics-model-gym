@@ -14,7 +14,7 @@ from tests.testing_utils import create_simple_params
 # pylint: disable=unsubscriptable-object
 
 
-class TestNN(nn.Module):
+class _TestNN(nn.Module):
     """Test NN"""
 
     def __init__(self):
@@ -25,12 +25,12 @@ class TestNN(nn.Module):
         return x
 
 
-class TestNGModel(BaseNGModel):
+class _TestNGModel(BaseNGModel):
     """Test NGModel"""
 
     def __init__(self, params):
         super().__init__(params)
-        self.network = TestNN()
+        self.network = _TestNN()
         self.trigger_bad_preprocessing = False
 
     def get_neural_network(self) -> nn.Module:
@@ -59,7 +59,7 @@ class TestModelTracer(unittest.TestCase):
 
     def test_tracer_captures_input_tensor(self):
         """Test tracer captures single input tensor"""
-        model = TestNGModel(self.params)
+        model = _TestNGModel(self.params)
         t1 = torch.randn(2, 4)
 
         traced_data: Tuple[Any, ...] = model_tracer(model, t1)
@@ -76,7 +76,7 @@ class TestModelTracer(unittest.TestCase):
 
     def test_tracer_captures_dict_tensor_input(self):
         """Test tracer captures Dict[str, torch.Tensor]"""
-        model = TestNGModel(self.params)
+        model = _TestNGModel(self.params)
 
         t1 = torch.randn(2, 4)
         t2 = torch.randn(3, 4)
@@ -108,7 +108,7 @@ class TestModelTracer(unittest.TestCase):
 
     def test_tracer_raise_missing_input_data(self):
         """Test ValueError is raised if tracer input data is None"""
-        model = TestNGModel(self.params)
+        model = _TestNGModel(self.params)
         model.trigger_bad_preprocessing = True
 
         invalid_input_data = None
@@ -118,7 +118,7 @@ class TestModelTracer(unittest.TestCase):
 
     def test_tracer_raise_missing_bad_forward_input(self):
         """Test ValueError is raised if model forward input is somehow None"""
-        model = TestNGModel(self.params)
+        model = _TestNGModel(self.params)
         model.trigger_bad_preprocessing = True
         t1 = torch.randn(2, 4)
 
