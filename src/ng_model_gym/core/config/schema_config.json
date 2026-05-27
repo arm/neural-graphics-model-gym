@@ -82,6 +82,24 @@
                                 "type": "string"
                             },
                             "type": "array"
+                        },
+                        "dynamic_mask_is_runtime_accurate": {
+                            "default": false,
+                            "description": "Whether to use runtime-accurate dynamic masks in NFRU preprocessing and motion-vector warping.",
+                            "type": "boolean"
+                        },
+                        "mv_similarity_threshold": {
+                            "anyOf": [
+                                {
+                                    "minimum": 0.0,
+                                    "type": "number"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "default": null,
+                            "description": "Motion-vector similarity threshold used by NFRU dynamic masks. Defaults to a value specific to the selected dynamic mask implementation."
                         }
                     }
                 ]

@@ -88,13 +88,6 @@
     #define HALF_MIN 0.00006103515625
 #endif
 
-#ifndef MV_SIMILARITY_NOISE_THRESHOLD
-    #define MV_SIMILARITY_NOISE_THRESHOLD 0.001
-#endif
-
-#ifndef MV_SIMILARITY_THRESHOLD
-    #define MV_SIMILARITY_THRESHOLD 0.01
-#endif
 
 #ifndef MAX_VAL
     #define MAX_VAL 1023.0

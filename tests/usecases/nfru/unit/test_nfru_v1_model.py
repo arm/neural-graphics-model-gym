@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 from unittest.mock import Mock
 
 import torch
@@ -15,6 +15,7 @@ from torch import nn
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
+from ng_model_gym.usecases.nfru.model.nfru_v1 import m, NFRUv1Core
 from ng_model_gym.usecases.nfru.model.nfru_v1_nn import NFRUAutoEncoder
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
@@ -27,11 +28,19 @@ _OUTPUT_ATOL = 2e-3
 _OUTPUT_RTOL = 1e-3
 _SWAP_COEFF_ATOL = 2e-3
 _SWAP_COEFF_RTOL = 5e-3
+# Minimum difference in comparisons used in dynamic mask tests
+_DYNAMIC_MASK_MIN_DELTA = 1e-6
 
 
 @unittest.skip("NFRU CI/assets disabled for now")
 class TestNFRUV1Model(BaseGPUMemoryTest):
-    """Regression tests for the NFRU v1 model using recorded golden data."""
+    """
+    Regression tests for the NFRU v1 model using recorded golden data.
+
+    The model is implemented in classes NFRUv1 and NFRUv1Core and uses Slang
+    shaders from src/ng_model_gym/usecases/nfru/model/shaders/nfru_v1_sa.slang
+    ("m", below).
+    """
 
     def setUp(self) -> None:
         super().setUp()
@@ -78,7 +87,12 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
         )
 
     def _build_model(
-        self, batch_size: int, autoencoder_state: Dict[str, torch.Tensor]
+        self,
+        batch_size: int,
+        autoencoder_state: Dict[str, torch.Tensor],
+        *,
+        dynamic_mask_is_runtime_accurate: bool = False,
+        mv_similarity_threshold: Optional[float] = None,
     ) -> None:
         """Create a fresh NFRU model instance configured for the given batch size."""
         params = create_simple_params(usecase="nfru")
@@ -86,6 +100,10 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
 
         params_dict["dataset"]["health_check"] = False
         params_dict["train"]["batch_size"] = batch_size
+        params_dict["model"][
+            "dynamic_mask_is_runtime_accurate"
+        ] = dynamic_mask_is_runtime_accurate
+        params_dict["model"]["mv_similarity_threshold"] = mv_similarity_threshold
 
         params = ConfigModel.model_validate(params_dict)
         params.model_train_eval_mode = TrainEvalMode.FP32
@@ -113,7 +131,6 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
         network.flow_method = reference["flow_method"]
         network.scale_factor = int(reference["scale_factor"])
         network.shader_accurate = bool(reference["shader_accurate"])
-        network.new_dynamic_mask = bool(reference.get("new_dynamic_mask", False))
 
     def _prepare_inputs(
         self, reference: Dict[str, torch.Tensor]
@@ -124,6 +141,25 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
             key: tensor.to(self.device) if isinstance(tensor, torch.Tensor) else tensor
             for key, tensor in inputs.items()
         }
+
+    def _forward_with_dynamic_mask_config(
+        self,
+        *,
+        dynamic_mask_is_runtime_accurate: bool,
+        mv_similarity_threshold: Optional[float],
+    ) -> Dict[str, torch.Tensor]:
+        """Run a full forward pass with a specific dynamic-mask configuration."""
+        # Replace any earlier model (e.g., the model built in setUp())
+        self._build_model(
+            batch_size=1,
+            autoencoder_state=self.autoencoder_state,
+            dynamic_mask_is_runtime_accurate=dynamic_mask_is_runtime_accurate,
+            mv_similarity_threshold=mv_similarity_threshold,
+        )
+        inputs = self._prepare_inputs(self.forward_reference)
+        self._reset_rng()
+        with torch.no_grad():
+            return self.model(inputs)
 
     def _reset_rng(self) -> None:
         """Reset CPU and CUDA random number generator state before stochastic forward passes."""
@@ -219,6 +255,50 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
                 rtol=_OUTPUT_RTOL,
                 atol=_OUTPUT_ATOL,
             )
+
+    def test_forward_pass_dynamic_mask_config_affects_output(self) -> None:
+        """
+        Exercise dynamic-mask settings through the full NFRU forward path. We
+        compare two runs of `NFRUv1Core.forward()` against each other. This
+        allows us to use a much lower "delta" value when comparing floating
+        point numbers than we use in other tests here.
+        """
+        zero_threshold_outputs = self._forward_with_dynamic_mask_config(
+            dynamic_mask_is_runtime_accurate=False,
+            mv_similarity_threshold=0.0,
+        )
+        non_zero_threshold_outputs = self._forward_with_dynamic_mask_config(
+            dynamic_mask_is_runtime_accurate=False,
+            mv_similarity_threshold=0.1,
+        )
+        non_zero_threshold_runtime_accurate_outputs = (
+            self._forward_with_dynamic_mask_config(
+                dynamic_mask_is_runtime_accurate=True,
+                mv_similarity_threshold=0.1,
+            )
+        )
+
+        # Check that the structure of the output is the appropriate
+        self._assert_output_shapes(zero_threshold_outputs)
+        self._assert_output_shapes(non_zero_threshold_outputs)
+        self._assert_output_shapes(non_zero_threshold_runtime_accurate_outputs)
+
+        def compare_outputs(
+            first: Dict[str, torch.Tensor], second: Dict[str, torch.Tensor], msg=None
+        ):
+            output_delta = (first["output"] - second["output"]).abs().max().item()
+            self.assertGreater(output_delta, _DYNAMIC_MASK_MIN_DELTA, msg)
+
+        compare_outputs(
+            zero_threshold_outputs,
+            non_zero_threshold_outputs,
+            "changing the similarity threshold does not change the output",
+        )
+        compare_outputs(
+            non_zero_threshold_outputs,
+            non_zero_threshold_runtime_accurate_outputs,
+            "changing the dynamic mask algorithm does not change the output",
+        )
 
     def test_set_neural_network_swaps_autoencoder(self) -> None:
         """Ensure set_neural_network injects the provided module into the forward path."""
@@ -433,3 +513,65 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
             key: value.to(self.device) if isinstance(value, torch.Tensor) else value
             for key, value in state_dict.items()
         }
+
+
+class TestNFRUV1DynamicMaskConfig(unittest.TestCase):
+    """Tests for NFRU dynamic mask configuration."""
+
+    def test_get_previous_dynamic_mask_fn(self) -> None:
+        """
+        Test that the correct previous dynamic mask function is returned for
+        each value of the parameters.
+        """
+        for runtime_accurate, expected_function in [
+            (False, m.calculate_previous_dynamic_mask),
+            (True, m.calculate_previous_dynamic_mask_runtime_accurate),
+        ]:
+            with self.subTest(
+                runtime_accurate=runtime_accurate,
+                expected_function=expected_function,
+            ):
+                self.assertIs(
+                    NFRUv1Core._get_previous_dynamic_mask_fn(runtime_accurate),
+                    expected_function,
+                )
+
+    def test_get_mv_similarity_threshold(self) -> None:
+        """
+        Check default similarity thresholds for different dynamic mask
+        functions and different user-specified thresholds.
+        """
+        for runtime_accurate, configured_threshold, expected_threshold in [
+            (False, None, 0.01),
+            (False, 0.7, 0.7),
+            (True, None, 0.3),
+            (True, 0.8, 0.8),
+        ]:
+            with self.subTest(
+                runtime_accurate=runtime_accurate,
+                configured_threshold=configured_threshold,
+                expected_threshold=expected_threshold,
+            ):
+                self.assertEqual(
+                    NFRUv1Core._get_mv_similarity_threshold(
+                        configured_threshold,
+                        runtime_accurate,
+                    ),
+                    expected_threshold,
+                )
+
+    def test_get_default_mv_similarity_noise_threshold(self) -> None:
+        """
+        Check default noise thresholds for different dynamic mask functions.
+        """
+        for runtime_accurate, expected_threshold in [(False, 0.001), (True, 1.0)]:
+            with self.subTest(
+                runtime_accurate=runtime_accurate,
+                expected_threshold=expected_threshold,
+            ):
+                self.assertEqual(
+                    NFRUv1Core._get_default_mv_similarity_noise_threshold(
+                        runtime_accurate,
+                    ),
+                    expected_threshold,
+                )
