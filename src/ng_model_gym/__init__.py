@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 # noinspection PyUnresolvedReferences
 __all__ = [
+    "__version__",
     "load_config_file",
     "generate_config_file",
     "logging_config",
@@ -20,7 +21,6 @@ __all__ = [
     "ExportType",
     "ProfilerType",
 ]
-
 
 if TYPE_CHECKING:
     from ng_model_gym.api import (
@@ -41,9 +41,15 @@ if TYPE_CHECKING:
         print_config_options,
     )
     from ng_model_gym.core.utils.logging_utils import logging_config
+
+    __version__: str
 else:
 
-    def __getattr__(attr):
+    def __getattr__(attr):  # pylint: disable=too-many-branches
+        if attr == "__version__":
+            from ng_model_gym._version import get_version
+
+            return get_version()
         if attr == "do_training":
             from ng_model_gym.api import do_training
 
