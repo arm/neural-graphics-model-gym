@@ -91,7 +91,7 @@ source = "versioningit"
 default-version = "0.0.0"
 
 [tool.versioningit.tag2version]
-method = { module = "version", value = "normalise_tag" }
+method = { module = "build_version", value = "normalise_tag" }
 
 [tool.versioningit.format]
 distance = "{base_version}+{rev}" # ahead of the tag, append the commit hash
@@ -136,7 +136,7 @@ packages = [
 include = [
     "README.md",
     "src/ng_model_gym",
-    "version.py",
+    "build_version.py",
 ]
 
 [project.scripts]

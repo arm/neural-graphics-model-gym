@@ -377,13 +377,11 @@ def version_callback(value: bool):
     """Get current version"""
 
     if value:
-        from importlib.metadata import (  # pylint: disable=import-outside-toplevel
-            version,
+        from ng_model_gym._version import (  # pylint: disable=import-outside-toplevel
+            get_version,
         )
 
-        __version__ = version("ng_model_gym")
-
-        print(f"Version: {__version__}")
+        print(f"Version: {get_version()}")
         raise typer.Exit()
 
 
