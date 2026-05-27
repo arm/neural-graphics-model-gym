@@ -47,6 +47,10 @@ _SHADER_DIR = "ng_model_gym.usecases.nfru.model.shaders"
 _SHADER_FILE = "nfru_v1_sa.slang"
 _FLOW_METHOD = "blockmatch_v311"
 _REQUIRED_COLOUR_SPLITS = ("train", "validation", "test")
+_MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK = 0.01
+_MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK_RUNTIME_ACCURATE = 0.3
+_MV_SIMILARITY_NOISE_THRESHOLD_DYNAMIC_MASK = 0.001
+_MV_SIMILARITY_NOISE_THRESHOLD_DYNAMIC_MASK_RUNTIME_ACCURATE = 1.0
 
 m = load_slang_module(_SHADER_DIR, _SHADER_FILE, autograd=True)
 
@@ -115,6 +119,10 @@ class NFRUv1(BaseNGModel):
             device=self.device,
             scale_factor=self.params.model.scale_factor,
             shader_accurate=self.params.processing.shader_accurate,
+            dynamic_mask_is_runtime_accurate=(
+                self.params.model.dynamic_mask_is_runtime_accurate
+            ),
+            mv_similarity_threshold=self.params.model.mv_similarity_threshold,
         )
         self.quant_params = self.network.quant_params
 
@@ -196,12 +204,24 @@ class NFRUv1Core(nn.Module):
         ),
         scale_factor: int = _DEFAULT_SCALE_FACTOR,
         shader_accurate: bool = False,
+        dynamic_mask_is_runtime_accurate: bool = False,
+        mv_similarity_threshold: Optional[float] = None,
     ):
+        """If mv_similarity_threshold isn't supplied, a default will be used."""
         super().__init__()
         self.device = device
         self.flow_method = _FLOW_METHOD
         self.dynamic_flow = True
         self.of_540 = False
+        self.dynamic_mask_is_runtime_accurate = dynamic_mask_is_runtime_accurate
+        self.mv_similarity_threshold = self._get_mv_similarity_threshold(
+            mv_similarity_threshold, dynamic_mask_is_runtime_accurate
+        )
+        self.mv_similarity_noise_threshold = (
+            self._get_default_mv_similarity_noise_threshold(
+                dynamic_mask_is_runtime_accurate
+            )
+        )
         self.shader_accurate = shader_accurate
         self.scale_factor = scale_factor
 
@@ -296,6 +316,9 @@ class NFRUv1Core(nn.Module):
             in_motion_mat_m1p1=motion_mat_tm1,
             in_motion_mat_p1m1=motion_mat_tp1,
             in_timestep=scale,
+            in_dynamic_mask_is_runtime_accurate=self.dynamic_mask_is_runtime_accurate,
+            in_mv_similarity_threshold=self.mv_similarity_threshold,
+            in_mv_similarity_noise_threshold=self.mv_similarity_noise_threshold,
             out_constructors={
                 "out_packed_mv": SlangOutput(
                     shape=(batch, 1, *out_dims),
@@ -462,11 +485,15 @@ class NFRUv1Core(nn.Module):
         dims_540 = [depth_m1.shape[2], depth_m1.shape[3]]
         dims_270 = [flow_xx_f30_xx.shape[2], flow_xx_f30_xx.shape[3]]
 
-        func_dynamic_mask = m.calculate_previous_dynamic_mask
-        in_dynamic_mask = func_dynamic_mask(
+        func_previous_dynamic_mask = self._get_previous_dynamic_mask_fn(
+            self.dynamic_mask_is_runtime_accurate
+        )
+        in_dynamic_mask = func_previous_dynamic_mask(
             tv_depth=depth_m1,
             tv_mv_m1_f30_m3=mv_m1_f30_m3,
             tv_motion_mat_tm1=motion_mat_m3,
+            mv_similarity_threshold=float(self.mv_similarity_threshold),
+            mv_similarity_noise_threshold=float(self.mv_similarity_noise_threshold),
             out_constructors={
                 "tv_dynamic_mask_p1": SlangOutput(
                     shape=depth_m1.shape, device=str(depth_m1.device)
@@ -528,3 +555,34 @@ class NFRUv1Core(nn.Module):
             "coeffs": self.coeff_softmax(learnt_params),
             "output_mfg": output_mfg,
         }
+
+    @staticmethod
+    def _get_previous_dynamic_mask_fn(dynamic_mask_is_runtime_accurate: bool):
+        return (
+            m.calculate_previous_dynamic_mask_runtime_accurate
+            if dynamic_mask_is_runtime_accurate
+            else m.calculate_previous_dynamic_mask
+        )
+
+    @staticmethod
+    def _get_mv_similarity_threshold(
+        configured_mv_similarity_threshold: float,
+        dynamic_mask_is_runtime_accurate: bool,
+    ) -> float:
+        return (
+            configured_mv_similarity_threshold
+            if configured_mv_similarity_threshold is not None
+            else _MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK_RUNTIME_ACCURATE
+            if dynamic_mask_is_runtime_accurate
+            else _MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK
+        )
+
+    @staticmethod
+    def _get_default_mv_similarity_noise_threshold(
+        dynamic_mask_is_runtime_accurate: bool,
+    ) -> float:
+        return (
+            _MV_SIMILARITY_NOISE_THRESHOLD_DYNAMIC_MASK_RUNTIME_ACCURATE
+            if dynamic_mask_is_runtime_accurate
+            else _MV_SIMILARITY_NOISE_THRESHOLD_DYNAMIC_MASK
+        )

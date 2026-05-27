@@ -12,18 +12,21 @@ import "warp_flow_common";
 // ─────────────────────────────────────────────────────────────────────────────
 // Argument plumbing
 // ─────────────────────────────────────────────────────────────────────────────
-#define WARP_MV_PARAMS(X)                     \
-    X(TensorView<float>, in_depth),           \
-    X(TensorView<float>, in_depth_m1),        \
-    X(TensorView<float>, in_motion),          \
-    X(TensorView<float>, in_dynamic_mask),    \
-    X(TensorView<float>, in_motion_mat_m1p1), \
-    X(TensorView<float>, in_motion_mat_p1m1), \
-    X(no_diff float,     in_timestep),        \
-    X(TensorView<int>,   out_packed_mv),      \
-    X(TensorView<float>, out_dynamic_mask),   \
-    X(TensorView<float>, out_holes_t),        \
-    X(TensorView<float>, out_holes_tm1)       \
+#define WARP_MV_PARAMS(X)                                      \
+    X(TensorView<float>, in_depth),                            \
+    X(TensorView<float>, in_depth_m1),                         \
+    X(TensorView<float>, in_motion),                           \
+    X(TensorView<float>, in_dynamic_mask),                     \
+    X(TensorView<float>, in_motion_mat_m1p1),                  \
+    X(TensorView<float>, in_motion_mat_p1m1),                  \
+    X(no_diff float,     in_timestep),                         \
+    X(no_diff bool,      in_dynamic_mask_is_runtime_accurate), \
+    X(no_diff float,     in_mv_similarity_threshold),          \
+    X(no_diff float,     in_mv_similarity_noise_threshold),    \
+    X(TensorView<int>,   out_packed_mv),                       \
+    X(TensorView<float>, out_dynamic_mask),                    \
+    X(TensorView<float>, out_holes_t),                         \
+    X(TensorView<float>, out_holes_tm1)                        \
 
 #define DECL(type, name) type name
 #define NAME_ONLY(_, name) name
@@ -52,6 +55,9 @@ struct PushConsts {
     float2   _InvOutputDims;
     float    _InvOutputArea;
     float    _Timestep;
+    bool     _DynamicMaskIsRuntimeAccurate;
+    float    _MvSimilarityThreshold;
+    float    _MvSimilarityNoiseThreshold;
 };
 
 
@@ -82,12 +88,15 @@ Globals makeGlobals(WARP_MV_PARAMS(DECL), uint batch)
     const float4x4 motion_mat_p1m1 = tensor_to_float4x4(in_motion_mat_p1m1, batch);
 
     // push constants
-    g.pc._MotionMatM1P1     = motion_mat_m1p1;
-    g.pc._MotionMatP1M1     = motion_mat_p1m1;
-    g.pc._OutputDims        = out_dims;
-    g.pc._InvOutputDims     = rcp(float2(out_dims));
-    g.pc._InvOutputArea     = rcp(float(out_dims.x * out_dims.y));
-    g.pc._Timestep          = in_timestep;
+    g.pc._MotionMatM1P1                  = motion_mat_m1p1;
+    g.pc._MotionMatP1M1                  = motion_mat_p1m1;
+    g.pc._OutputDims                     = out_dims;
+    g.pc._InvOutputDims                  = rcp(float2(out_dims));
+    g.pc._InvOutputArea                  = rcp(float(out_dims.x * out_dims.y));
+    g.pc._Timestep                       = in_timestep;
+    g.pc._DynamicMaskIsRuntimeAccurate = in_dynamic_mask_is_runtime_accurate;
+    g.pc._MvSimilarityThreshold          = in_mv_similarity_threshold;
+    g.pc._MvSimilarityNoiseThreshold     = in_mv_similarity_noise_threshold;
 
     return g;
 }
@@ -192,14 +201,33 @@ public void warp_mv(WARP_MV_PARAMS(DECL))
     // 1 == Invalid vector
     // 0 == Valid vector to scatter
     uint8_t dynamic_mask_m1 = uint8_t(sample_tensor_nearest(g.b._DynamicMask, batch, uint(0), output_pixel).r);
-    uint8_t dynamic_mask_p1 = uint8_t(
-        dynamic_mask(cm_p1_f30_m1, mv_p1_f30_m1, MV_SIMILARITY_THRESHOLD, MV_SIMILARITY_NOISE_THRESHOLD) > 0.0
-    );
+
+    float dynamic_mask_p1_value = 0.0;
+
+    if (g.pc._DynamicMaskIsRuntimeAccurate) {
+        dynamic_mask_p1_value =
+            dynamic_mask_runtime_accurate(
+                cm_p1_f30_m1 * float2(g.pc._OutputDims),
+                mv_p1_f30_m1 * float2(g.pc._OutputDims),
+                g.pc._MvSimilarityThreshold,
+                g.pc._MvSimilarityNoiseThreshold
+            );
+    } else {
+        dynamic_mask_p1_value =
+            dynamic_mask(
+                cm_p1_f30_m1,
+                mv_p1_f30_m1,
+                g.pc._MvSimilarityThreshold,
+                g.pc._MvSimilarityNoiseThreshold
+            );
+    }
+
+    uint8_t dynamic_mask_p1 = uint8_t(dynamic_mask_p1_value > 0.0);
 
     // Save dynamic mask to feedback for next set of frames
     WriteDynamicMask(g, batch, output_pixel, dynamic_mask_p1 + uint8_t(cm_p1_f30_m1_mask));
 
-    // Dont scatter invalid mvs
+    // Don't scatter invalid mvs
     if (dynamic_mask_m1 + uint8_t(cm_m1_f30_p1_mask) > 0) return;
 
     // Normalise depth before scattering

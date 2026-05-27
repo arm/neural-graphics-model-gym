@@ -5,7 +5,9 @@
         "model_source": "prebuilt",
         "version": "1",
         "scale_factor": 2.0,
-        "legacy_nfru_capture_paths": []
+        "legacy_nfru_capture_paths": [],
+        "dynamic_mask_is_runtime_accurate": false,
+        "mv_similarity_threshold": null
     },
     "dataset": {
         "name": "NFRU",

@@ -202,6 +202,22 @@ class NFRUModelSettings(PrebuiltModelSettingsBase):
         default_factory=list,
         description="Path substrings identifying legacy NFRU captures that should use the old window stride behavior.",
     )
+    dynamic_mask_is_runtime_accurate: bool = Field(
+        default=False,
+        description=(
+            "Whether to use runtime-accurate dynamic masks "
+            "in NFRU preprocessing and motion-vector warping."
+        ),
+    )
+    mv_similarity_threshold: Optional[float] = Field(
+        default=None,
+        ge=0.0,
+        description=(
+            "Motion-vector similarity threshold used by NFRU dynamic masks. "
+            "Defaults to a value specific to the selected dynamic mask "
+            "implementation."
+        ),
+    )
 
     @field_validator("scale_factor", mode="before")
     @classmethod

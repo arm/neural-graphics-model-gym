@@ -114,6 +114,14 @@ float2 quantise(float2 x) {
     return float2(q) / c;
 }
 
+float dynamic_mask_runtime_accurate(float2 a, float2 b, float eps, float tau) {
+    a = quantise(a);
+    b = quantise(b);
+    float diff = length(a - b);
+    float max_len = max(max(length(a), length(b)), tau);
+    return max_len < tau ? 0.0f : float(diff >= eps);
+}
+
 float dynamic_mask(float2 a, float2 b, float eps, float tau)
 {
     float diff = length(a - b);
