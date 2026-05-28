@@ -297,7 +297,7 @@ class TestNSSSafetensorsWriter(unittest.TestCase):
             output_path = output_root / f"{self.seq_path}.safetensors"
             with safe_open(output_path, framework="pt") as written:
                 self.assertIn("camera_cut", list(written.keys()))
-                tensor = written.get_tensor("camera_cut").view(-1)
+                tensor = written.get_tensor("camera_cut").view(-1).clone()
                 self.assertEqual(tensor.dtype, torch.bool)
                 self.assertGreaterEqual(tensor.shape[0], 1)
                 self.assertLessEqual(tensor.shape[0], len(flags))
