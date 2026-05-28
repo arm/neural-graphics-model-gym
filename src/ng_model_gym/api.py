@@ -173,10 +173,18 @@ def do_training(
 
     if params.train.perform_validate:
         # Return best model ckpt path (as measured by validation results)
-        return trainer.best_model_save_path
+        model_save_path = trainer.best_model_save_path
+    else:
+        # Return final ckpt path if no validation was executed
+        model_save_path = trainer.latest_model_save_path
 
-    # Return final ckpt path if no validation was executed
-    return trainer.latest_model_save_path
+    # Release training allocations before optional evaluation in the same process.
+    trainer = None
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
+        torch.cuda.empty_cache()
+
+    return model_save_path
 
 
 @memory_log_decorator

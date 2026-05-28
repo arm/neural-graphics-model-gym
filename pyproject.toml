@@ -209,7 +209,6 @@ disable = [
 features = ["dev"]
 dev-mode = true
 installer = "uv"
-path = "venv-default"
 
 [tool.uv]
 prerelease = "allow"
@@ -229,7 +228,6 @@ torchvision = [
 
 [tool.hatch.envs.test]
 template = "default"
-path = "venv-test"
 
 [tool.hatch.envs.test.env-vars]
 DEFAULT_USECASE="nss"
@@ -238,48 +236,46 @@ PYTHONIOENCODING = "utf-8"
 
 [tool.hatch.envs.test.scripts]
 # Download test data
-download = "python tests/fetch_huggingface.py"
+download                        = "python tests/fetch_huggingface.py"
 
 # Test
-unit-core = "python -m pytest tests/core/unit tests/scripts"                                                                # core unit tests
-unit-usecase = "python -m pytest tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit"                                   # usecase specific unit tests, specified usecase
-unit-usecase-all = "python -m pytest tests/usecases/*/unit"                                                                 # usecase specific unit tests, all usecases
-unit = ["unit-core", "unit-usecase-all"]
+unit-core                       = "python -m pytest tests/core/unit tests/scripts"                                                                                                   # core unit tests
+unit-usecase                    = "python -m pytest tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit"                                          # usecase specific unit tests, specified usecase
+unit-usecase-all                = "python -m scripts.utils.run_usecase_tests unit"                                                                         # usecase specific unit tests, all usecases
+unit                            = ["unit-core", "unit-usecase-all"]
 
-integration-core = "python -m pytest tests/core/integration"                                                                # core integration tests
-integration-usecase = "python -m pytest tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"                     # usecase specific integration tests, specified usecase
-integration-usecase-all = "python -m pytest tests/usecases/*/integration"                                                   # usecase specific integration tests, all usecases
-integration = ["integration-core", "integration-usecase-all"]
+integration-core                = "python -m pytest tests/core/integration"                                                                                                   # core integration tests
+integration-usecase             = "python -m pytest tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"                            # usecase specific integration tests, specified usecase
+integration-usecase-all         = "python -m scripts.utils.run_usecase_tests integration"                                                           # usecase specific integration tests, all usecases
+integration                     = ["integration-core", "integration-usecase-all"]
 
-integration-usecase-fast = "python -m pytest --fast-test tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"    # usecase specific integration tests, specified usecase, fast test
-integration-usecase-all-fast = "python -m pytest --fast-test tests/usecases/*/integration"                                  # usecase specific integration tests, all usecases, fast test
-integration-fast = ["integration-core", "integration-usecase-all-fast"]
+integration-usecase-fast        = "python -m pytest --fast-test tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration"     # usecase specific integration tests, specified usecase, fast test
+integration-usecase-all-fast    = "python -m scripts.utils.run_usecase_tests integration --fast-test"                                    # usecase specific integration tests, all usecases, fast test
+integration-fast                = ["integration-core", "integration-usecase-all-fast"]
 
-export = "python -m pytest tests/core/export"
+export                          = "python -m pytest tests/core/export"
 
-test = ["unit", "integration", "export"]
+test                            = [ "unit", "integration", "export" ]
 
 # Coverage
-coverage-check = [
-  "python -c \"print('\\nCreating testing coverage report\\n')\"",
-  """
-  python -m pytest \
-    --cov=ng_model_gym \
-    --cov-report=term \
-    --cov-report=json:coverage.json \
-    --cov-report=html:coverage_html \
-    --fast-test \
-    tests/core/unit \
-    tests/core/integration \
-    tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/unit \
-    tests/usecases/{env:USECASE:{env:DEFAULT_USECASE}}/integration \
-    tests/core/export \
-    tests/scripts \
-  """
-]
+coverage-check                  = [ "python -c \"print('\\nCreating testing coverage report\\n')\"",
+                                    """
+                                    python -m pytest \
+                                        --cov=ng_model_gym \
+                                        --cov-report=term \
+                                        --cov-report=json:coverage.json \
+                                        --cov-report=html:coverage_html \
+                                        --fast-test \
+                                        tests/core/unit \
+                                        tests/core/integration \
+                                        tests/usecases \
+                                        tests/core/export \
+                                        tests/scripts \
+                                    """
+                                ]
 
 [tool.hatch.envs.default.scripts]
-clean                   = "python -m scripts.utils.clean"
+clean                           = "python -m scripts.utils.clean"
 
 [tool.hatch.envs.static-analysis]
 skip-install = true
@@ -287,25 +283,25 @@ features = ["static-analysis"]
 
 [tool.hatch.envs.static-analysis.scripts]
 # Security and compliance checks
-bandit-check            = [ "python -c \"print('\\nRunning security checks\\n')\"",
-                            "python -m bandit --configfile=pyproject.toml -r -f=html -o=report.html ." ]
-blocklint               =   "python -m scripts.utils.run_blocklint"
-copyright               = [ "python -c \"print('\\nRunning copyright header check on all files\\n')\"",
-                            "python -m reuse lint" ]
+bandit-check                    = [ "python -c \"print('\\nRunning security checks\\n')\"",
+                                    "python -m bandit --configfile=pyproject.toml -r -f=html -o=report.html ." ]
+blocklint                       =   "python -m scripts.utils.run_blocklint"
+copyright                       = [ "python -c \"print('\\nRunning copyright header check on all files\\n')\"",
+                                    "python -m reuse lint" ]
 
 # Format
-format                  = [ "python -c \"print('\\nFormatting files with black, isort and autoflake\\n')\"",
-                            "python -m autoflake --remove-unused-variables --remove-all-unused-imports --ignore-init-module-imports --recursive --in-place .",
-                            "python -m isort .",
-                            "python -m black src/ scripts/ tests/" ]
+format                          = [ "python -c \"print('\\nFormatting files with black, isort and autoflake\\n')\"",
+                                    "python -m autoflake --remove-unused-variables --remove-all-unused-imports --ignore-init-module-imports --recursive --in-place .",
+                                    "python -m isort .",
+                                    "python -m black src/ scripts/ tests/" ]
 
 # Lint
-lint                    =   "python -m scripts.utils.run_pylint --src"
-lint-test               =   "python -m scripts.utils.run_pylint --test --disable=invalid-name"
-lint-all                =   "python -m scripts.utils.run_pylint"
+lint                            =   "python -m scripts.utils.run_pylint --src"
+lint-test                       =   "python -m scripts.utils.run_pylint --test --disable=invalid-name"
+lint-all                        =   "python -m scripts.utils.run_pylint"
 
 
-# Hatch environmment for testing across all supported Python versions
+# Hatch environment for testing across all supported Python versions
 [tool.hatch.envs.test-matrix]
 template = "test"
 matrix-name-format = "py{value}"

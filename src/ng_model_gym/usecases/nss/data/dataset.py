@@ -379,7 +379,10 @@ class NSSDataset(Dataset):
         with safetensors.safe_open(capture_path, framework="pt", device="cpu") as f:
             for k in f.keys():
                 if k in self.features_to_read:
-                    data_frame[k] = f.get_slice(k)[start:stop]
+                    # Clone slices so tensors are decoupled from the underlying safetensors
+                    # memory map. This avoids Windows file-lock issues when temporary
+                    # safetensor fixtures are cleaned up at test teardown.
+                    data_frame[k] = f.get_slice(k)[start:stop].detach().clone()
             if "motion_lr" not in data_frame:
                 data_frame["motion_lr"] = (
                     F.interpolate(
