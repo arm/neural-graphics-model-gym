@@ -52,12 +52,8 @@ class ApiIntegrationTest(NSSBaseIntegrationTest):
         """do_export should not modify the config and produce output files."""
         # Train a model to generate a checkpoint to read from in export
         do_training(self.config, TrainEvalMode.FP32, ProfilerType.DISABLED)
-        # Set an export directory under the project output folder
-        repo_root = Path(__file__).resolve().parents[4]
-        output_root = repo_root / "output"
-        output_root.mkdir(parents=True, exist_ok=True)
 
-        with tempfile.TemporaryDirectory(dir=output_root) as tmp_dir:
+        with tempfile.TemporaryDirectory() as tmp_dir:
             export_dir = Path(tmp_dir) / "export" / "vgf"
             model_file = Path("tests/usecases/nss/weights/nss_v0.1.0_fp32.pt")
             self.config.output.export.vgf_output_dir = export_dir

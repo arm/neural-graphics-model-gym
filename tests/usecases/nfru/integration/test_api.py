@@ -39,11 +39,6 @@ class ApiIntegrationTest(NFRUBaseIntegrationTest):
 
         self.MODEL_FILE = Path("tests/usecases/nfru/weights/nfru_v1_fp32.pt")
 
-    def _get_output_root(self):
-        """Gets a directory for exports, without checking that it exists"""
-        repo_root = Path(__file__).resolve().parents[4]
-        return repo_root / "output"
-
     def test_do_training_no_mutation(self):
         """do_training should not modify the config and return a model."""
         self.config.model_train_eval_mode = TrainEvalMode.FP32
@@ -73,7 +68,7 @@ class ApiIntegrationTest(NFRUBaseIntegrationTest):
         Check that do_export() doesn't change its inputs and does create an
         output file. Configure self.config as necessary before calling.
         """
-        with tempfile.TemporaryDirectory(dir=self._get_output_root()) as tmp_dir:
+        with tempfile.TemporaryDirectory() as tmp_dir:
             export_dir = Path(tmp_dir) / "export" / "vgf"
             self.config.output.export.vgf_output_dir = export_dir
 

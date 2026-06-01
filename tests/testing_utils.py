@@ -1,13 +1,10 @@
 # SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-import atexit
 import copy
 import logging
 import platform
-import shutil
 import tempfile
-from pathlib import Path
 
 import numpy as np
 
@@ -129,13 +126,6 @@ def create_simple_params(
     # own path for these fields.
     temp_dir = tempfile.mkdtemp()
 
-    vgf_output_tmp_dir = Path(
-        tempfile.mkdtemp(prefix="tmp-test-", dir=Path(".").resolve())
-    )
-    atexit.register(shutil.rmtree, vgf_output_tmp_dir, ignore_errors=True)
-
-    export_dir = vgf_output_tmp_dir / "vgf"
-
     default_params = {
         "model": model,
         "processing": {"shader_accurate": False},
@@ -145,7 +135,7 @@ def create_simple_params(
             "export_frame_png": False,
             "tensorboard_output_dir": temp_dir,
             "export": {
-                "vgf_output_dir": str(export_dir),
+                "vgf_output_dir": temp_dir,
                 "dynamic_shape": True,
             },
         },
