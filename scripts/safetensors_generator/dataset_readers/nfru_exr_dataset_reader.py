@@ -38,7 +38,7 @@ class NFRUEXRDatasetReader(EXRDatasetReader):
                 :, 0:1, ...
             ]
             / 2.0,
-            inverted=torch.tensor(False, dtype=torch.bool),
+            inverted=data["ReverseZ"],
         ).squeeze()
         return depth_params
 
@@ -199,6 +199,22 @@ class NFRUEXRDatasetReader(EXRDatasetReader):
 
     def _calculate_synthetic_mvs(self, out_features):
         mv = out_features["mv_{}_f30_m1"]
+
+        # pylint: disable=duplicate-code
+        reverse_z = self.metadata["ReverseZ"]
+        out_features["ReverseZ"] = torch.tensor(reverse_z, dtype=torch.bool).reshape(
+            (1, 1)
+        )
+        depth_raw = self._read_depth(self.count).to(torch.float32)
+        if reverse_z:
+            # Invert depth
+            depth_raw = 1.0 - depth_raw
+            out_features["depth"] = depth_raw
+        else:
+            # Depth is usable as-is, **should not be inverted**
+            out_features["depth"] = depth_raw
+        # pylint: enable=duplicate-code
+
         depth = out_features["depth"]
         out_features = {}
         # NOTE: Frame-rate agnostic naming convention
@@ -286,13 +302,13 @@ class NFRUEXRDatasetReader(EXRDatasetReader):
         out_features["exposure"] = torch.log(exposure).to(torch.float32).reshape(1)
 
         # Read EXR Data for current frame
-        depth = self._read_depth(self.count)
+        depth_raw = self._read_depth(self.count)
         mv_nfru_raw = self._read_lf_mv(self.count)
         mv_nfru_raw_hf = read_exr_torch(
             self.seq_data["x2/motion_m1"][self.count], dtype=np.float32, channels="RGBA"
         )
 
-        out_features["depth"] = depth
+        out_features["depth"] = depth_raw
 
         viewProj = self._read_view_proj(
             self.metadata["Frames"][self.count]["ViewProjection"]
