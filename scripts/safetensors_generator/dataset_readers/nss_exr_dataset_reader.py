@@ -55,7 +55,9 @@ class NSSEXRDatasetReader(EXRDatasetReader):
             infinite=make_image_like(data["infinite_zFar"]).to(torch.bool),
             renderSizeWidth=make_image_like(data["render_size"])[:, 1:2, ...],
             renderSizeHeight=make_image_like(data["render_size"])[:, 0:1, ...],
-            inverted=data["ReverseZ"],
+            inverted=torch.tensor(
+                False, dtype=torch.bool
+            ),  # Depth tensor from caller is forward order normalised
         ).squeeze()
         return depth_params
 
@@ -185,7 +187,7 @@ class NSSEXRDatasetReader(EXRDatasetReader):
         out_features["motion_lr"] = process_motion(mv_lr_raw)
         out_features["motion"] = process_motion(mv_raw)
 
-        reverse_z = self.metadata["ReverseZ"]
+        reverse_z = self.metadata.get("ReverseZ", False)
         out_features["ReverseZ"] = torch.tensor(reverse_z, dtype=torch.bool).reshape(
             (1, 1)
         )
@@ -202,6 +204,17 @@ class NSSEXRDatasetReader(EXRDatasetReader):
         if not self.args.linear_truth:
             truth_raw = tonemap_inverse(truth_raw, mode="karis")
         out_features["ground_truth_linear"] = truth_raw
+
+        # Old-style datasets included a single near/far plane value
+        far_plane = self.metadata.get("FarPlane")
+        near_plane = self.metadata.get("NearPlane")
+
+        # When not contained inside of per-frame we pre-populate
+        if frame_meta_data.get("CameraFarPlane") is None and far_plane is not None:
+            frame_meta_data["CameraFarPlane"] = far_plane
+
+        if frame_meta_data.get("CameraNearPlane") is None and near_plane is not None:
+            frame_meta_data["CameraNearPlane"] = near_plane
 
         # Depth planes
         out_features["infinite_zFar"] = torch.tensor(
@@ -253,10 +266,16 @@ class NSSEXRDatasetReader(EXRDatasetReader):
         # Convert scale factor to relevant index
         scale_idx = self.metadata["UpscalingRatiosIndices"][f"x{self.scale_str}_index"]
 
+        # Determine jitter key (backward compatibility with old specs)
+        if "NormalizedPerRatioJitter" in frame_meta_data.keys():  # latest
+            jitter_key = "NormalizedPerRatioJitter"
+        elif "QuantisedPerRatioJitter" in frame_meta_data.keys():  # old
+            jitter_key = "QuantisedPerRatioJitter"
+
         # Jitter Offsets
         x, y = (
-            frame_meta_data["NormalizedPerRatioJitter"][scale_idx]["X"],
-            frame_meta_data["NormalizedPerRatioJitter"][scale_idx]["Y"],
+            frame_meta_data[jitter_key][scale_idx]["X"],
+            frame_meta_data[jitter_key][scale_idx]["Y"],
         )
         jitter = torch.tensor([y, x], dtype=torch.float32).reshape((1, 2, 1, 1))
         out_features["jitter"] = jitter * render_size.reshape((1, 2, 1, 1))

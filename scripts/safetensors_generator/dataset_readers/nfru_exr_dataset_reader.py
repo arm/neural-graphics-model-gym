@@ -201,7 +201,7 @@ class NFRUEXRDatasetReader(EXRDatasetReader):
         mv = out_features["mv_{}_f30_m1"]
 
         # pylint: disable=duplicate-code
-        reverse_z = self.metadata["ReverseZ"]
+        reverse_z = self.metadata.get("ReverseZ", False)
         out_features["ReverseZ"] = torch.tensor(reverse_z, dtype=torch.bool).reshape(
             (1, 1)
         )
