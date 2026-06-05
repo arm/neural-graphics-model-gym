@@ -21,6 +21,7 @@ from scripts.safetensors_generator.dataset_readers import (
     NSSEXRDatasetReader,
 )
 from scripts.safetensors_generator.exr_utils import read_exr_torch
+from scripts.safetensors_generator.fsr2_methods import depth_to_view_space_params
 from scripts.safetensors_generator.safetensors_writer import (
     generic_safetensors_writer,
     GrowingTensorBuffer,
@@ -94,6 +95,47 @@ class TestNSSSafetensorsWriter(unittest.TestCase):
     def _writer_output_root(args: argparse.Namespace) -> Path:
         """Mirror SafetensorsWriter dst layout."""
         return Path(args.dst) / Path(args.src).name
+
+    def _write_metadata_variant_frame_zero(self, mutate_metadata):
+        """Write a temporary metadata variant and return frame zero."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            src = Path(tmp_dir) / "src"
+            dst = Path(tmp_dir) / "dst"
+            shutil.copytree(self.args.src, src)
+
+            metadata_path = src / f"{self.seq_path}.json"
+            with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+
+            mutate_metadata(metadata)
+
+            with open(metadata_path, "w", encoding="utf-8") as metadata_file:
+                json.dump(metadata, metadata_file, indent=2)
+
+            args = self._clone_args()
+            args.src = src
+            args.dst = dst
+            generic_safetensors_writer(args)
+
+            output_path = (
+                self._writer_output_root(args) / f"{self.seq_path}.safetensors"
+            )
+            return generic_safetensors_reader(output_path, 0)
+
+    @staticmethod
+    def _expected_forward_projection_depth_params(written):
+        """Depth params are derived from forward projection metadata."""
+        make_image_like = lambda t: t.reshape(1, -1).unsqueeze(-1).unsqueeze(-1)
+        expected = depth_to_view_space_params(
+            zNear=make_image_like(written["zNear"]),
+            zFar=make_image_like(written["zFar"]),
+            FovY=make_image_like(written["FovY"]),
+            infinite=make_image_like(written["infinite_zFar"]).to(torch.bool),
+            renderSizeWidth=make_image_like(written["render_size"])[:, 1:2, ...],
+            renderSizeHeight=make_image_like(written["render_size"])[:, 0:1, ...],
+            inverted=torch.tensor(False, dtype=torch.bool),
+        )
+        return expected.to(torch.float32).squeeze().reshape_as(written["depth_params"])
 
     def test_compare_saved_tensors(self):
         """Test tensor values, dtype and shape are preserved."""
@@ -231,53 +273,40 @@ class TestNSSSafetensorsWriter(unittest.TestCase):
         self.assertEqual(colour_h, math.ceil(self.args.crop_size / scale))
         self.assertEqual(colour_w, math.ceil(self.args.crop_size / scale))
 
-    def test_reverse_z_depth_is_inverted(self):
-        """Ensure ReverseZ datasets store inverted depth."""
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            tmp_dir_path = Path(tmp_dir)
-            reverse_src = tmp_dir_path / "reverse_z_src"
-            shutil.copytree(self.args.src, reverse_src)
-
-            metadata_path = reverse_src / f"{self.seq_path}.json"
-            with open(metadata_path, "r", encoding="utf-8") as src_file:
-                metadata = json.load(src_file)
-            metadata["ReverseZ"] = True
-            with open(metadata_path, "w", encoding="utf-8") as dst_file:
-                json.dump(metadata, dst_file, indent=2)
-
-            reverse_args = argparse.Namespace(**vars(self.args))
-            reverse_args.src = reverse_src
-            reverse_args.dst = tmp_dir_path / "reverse_z_dst"
-            reverse_args.dst.mkdir(parents=True, exist_ok=True)
-            reverse_args.dst_root = reverse_args.dst / Path(reverse_args.src.parts[-1])
-
-            generic_safetensors_writer(reverse_args)
-
-            depth_exr_path = sorted(
-                (reverse_src / "x2" / "depth" / self.seq_path).glob("*.exr")
-            )[0]
-            original_depth = read_exr_torch(
+    def test_reverse_z_depth_and_depth_params_use_reference_projection(self):
+        """ReverseZ flips depth, but depth_params stay forward-projection based."""
+        depth_exr_path = sorted(
+            (self.args.src / "x2" / "depth" / self.seq_path).glob("*.exr")
+        )[0]
+        original_depth = (
+            read_exr_torch(
                 depth_exr_path,
                 dtype=np.float32,
                 channels="R",
-            ).to(torch.float32)
-            expected_depth = 1.0 - original_depth
+            )
+            .to(torch.float32)
+            .squeeze(0)
+        )
 
-            output_safetensors = reverse_args.dst_root / f"{self.seq_path}.safetensors"
-            self.assertTrue(
-                output_safetensors.exists(),
-                msg=f"{output_safetensors} was not created for ReverseZ dataset.",
-            )
+        for reverse_z in (False, True):
+            with self.subTest(reverse_z=reverse_z):
 
-            written = generic_safetensors_reader(output_safetensors, 0)
-            self.assertTrue(
-                bool(written["ReverseZ"].item()),
-                msg="ReverseZ flag not persisted in written safetensors.",
-            )
-            self.assertTrue(
-                torch.allclose(written["depth"], expected_depth, atol=1e-6),
-                msg="Depth tensor was not inverted for ReverseZ dataset.",
-            )
+                def set_reverse_z(metadata, reverse_z=reverse_z):
+                    metadata["ReverseZ"] = reverse_z
+
+                written = self._write_metadata_variant_frame_zero(set_reverse_z)
+                expected_depth = 1.0 - original_depth if reverse_z else original_depth
+
+                self.assertEqual(bool(written["ReverseZ"].item()), reverse_z)
+                torch.testing.assert_close(
+                    written["depth"], expected_depth, rtol=0, atol=1e-6
+                )
+                torch.testing.assert_close(
+                    written["depth_params"],
+                    self._expected_forward_projection_depth_params(written),
+                    rtol=0,
+                    atol=1e-6,
+                )
 
     def test_camera_cut_tensor_persisted(self):
         """Writer copies CameraCut flags from JSON into the uncropped safetensor tensor."""
