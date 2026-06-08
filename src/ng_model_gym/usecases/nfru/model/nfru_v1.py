@@ -27,8 +27,8 @@ from ng_model_gym.usecases.nfru.model.constants import (
     _RANDOM_SEED_MAX,
 )
 from ng_model_gym.usecases.nfru.model.nfru_v1_nn import NFRUAutoEncoder
-from ng_model_gym.usecases.nfru.model.optical_flow.blockmatch_v311 import (
-    BlockMatchV311,
+from ng_model_gym.usecases.nfru.model.optical_flow.blockmatch_v321 import (
+    BlockMatchV321,
     upscale_and_dilate_flow,
 )
 from ng_model_gym.usecases.nfru.utils.colour_pipeline import build_colour_pipeline
@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 _SHADER_DIR = "ng_model_gym.usecases.nfru.model.shaders"
 _SHADER_FILE = "nfru_v1_sa.slang"
-_FLOW_METHOD = "blockmatch_v311"
+_FLOW_METHOD = "blockmatch_v321"
 _REQUIRED_COLOUR_SPLITS = ("train", "validation", "test")
 _MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK = 0.01
 _MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK_RUNTIME_ACCURATE = 0.3
@@ -236,7 +236,7 @@ class NFRUv1Core(nn.Module):
         self.set_colour_pipeline("train")
         self._validate_scale_factor()
 
-        self.dynamic_flow_model = BlockMatchV311()
+        self.dynamic_flow_model = BlockMatchV321()
         self.flow_downsampler = DownSampling2D()
         self.flow_upsampler = UpSampling2D(
             size=_FLOW_RESIZE_FACTOR, interpolation=_NEAREST_INTERPOLATION
@@ -282,7 +282,9 @@ class NFRUv1Core(nn.Module):
                 input_mv = upscale_and_dilate_flow(
                     inputs["sy_m1_f30_p1"], depth_m1, scale=1.0
                 ).contiguous()
-                flow_result = self.dynamic_flow_model(rgb_p1, rgb_m1, input_mv)
+                flow_result = self.dynamic_flow_model(
+                    {"img_t": rgb_p1, "img_tm1": rgb_m1, "input_mv": input_mv}
+                )["output"]
                 flow_xx_f30_xx = (
                     self.flow_upsampler(flow_result) * _FLOW_RESIZE_FACTOR
                 ).contiguous()

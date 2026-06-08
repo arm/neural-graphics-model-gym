@@ -2,7 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
-"""Minimal example for running BlockMatchV32 optical flow on two frames.
+"""Minimal example for running BlockMatchV321 optical flow on two frames.
 
 Expects two RGB images specified via --img-tm1 (t-1) and --img-t (t).
 The script builds an all-zero MV hint field, runs the model, and returns a
@@ -17,7 +17,7 @@ import imageio.v3 as iio
 import numpy as np
 import torch
 
-from ng_model_gym.usecases.nfru.model.optical_flow import BlockMatchV32
+from ng_model_gym.usecases.nfru.model.optical_flow import BlockMatchV321
 
 
 def _parse_args() -> argparse.Namespace:
@@ -47,11 +47,11 @@ def main():
         "last_bm_level": 2,
         "performance_mode": "medium",
         "mv_hints": False,
-        "din_sr": True,
+        "mean_flow_l1_norm_hint": 0.0,
     }
 
     # Initialize the model with the chosen flow parameters.
-    bm = BlockMatchV32(flow_params=flow_params)
+    bm = BlockMatchV321(flow_params=flow_params)
 
     # Load RGB frames from disk (t-1 and t).
     img_tm1 = iio.imread(args.img_tm1)

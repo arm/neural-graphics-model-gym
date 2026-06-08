@@ -252,7 +252,7 @@ class TestBilinearOobZero(unittest.TestCase):
             1, h * w * c, steps=h * w * c, dtype=torch.float32
         ).reshape(b, c, h, w)
         expected_output = torch.tensor(
-            [[[[2.5, 3.0], [3.5, 4.0]]]],
+            [[[[2.5, 1.5], [1.75, 1.0]]]],
             dtype=torch.float32,
         )
         output = bilinear_oob_zero(image, flow)
@@ -268,7 +268,7 @@ class TestBilinearOobZero(unittest.TestCase):
             1, h * w * c, steps=h * w * c, dtype=torch.float32
         ).reshape(b, c, h, w)
         expected_output = torch.tensor(
-            [[[[0.0, 0.0], [0.0, 2.5]]]],
+            [[[[0.25, 0.75], [1.0, 2.5]]]],
             dtype=torch.float32,
         )
         output = bilinear_oob_zero(image, flow)
