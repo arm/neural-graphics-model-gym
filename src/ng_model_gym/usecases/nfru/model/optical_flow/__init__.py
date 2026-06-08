@@ -4,20 +4,16 @@
 
 """Optical-flow helpers and reference implementations for NFRU."""
 
-from .blockmatch_v32 import BlockMatchV32
-from .blockmatch_v311 import (
+from .blockmatch_v321 import (
     ArgMinCentered,
-    BlockMatchV311,
-    BlockMatchV311Config,
+    BlockMatchV321,
     ExtractSearchWindows,
     upscale_and_dilate_flow,
 )
 
 __all__ = [
     "ArgMinCentered",
-    "BlockMatchV311",
-    "BlockMatchV311Config",
-    "BlockMatchV32",
+    "BlockMatchV321",
     "ExtractSearchWindows",
     "upscale_and_dilate_flow",
 ]

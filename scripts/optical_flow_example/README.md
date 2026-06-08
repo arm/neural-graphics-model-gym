@@ -20,6 +20,6 @@ python scripts/optical_flow_example/optical_flow_example.py \
 ```
 
 The script loads the two RGB frames, builds an all-zero motion-vector hint
-field, runs `BlockMatchV32`, and saves the optical flow output to disk as a
+field, runs `BlockMatchV321`, and saves the optical flow output to disk as a
 NumPy `.npy` file at the path provided by `--out` (default:
 `optical_flow_output.npy`).

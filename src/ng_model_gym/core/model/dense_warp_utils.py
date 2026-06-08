@@ -5,6 +5,7 @@
 #
 # Note: Portions of this file are based on code contributed to TensorFlow
 import torch
+import torch.nn.functional as F
 
 
 def interpolate_bilinear_w_zero_pad(
@@ -258,76 +259,74 @@ def interpolate_bilinear(
     return interp.permute(0, 2, 1)  # Change shape to [batch_size, channels, N]
 
 
-def dense_image_warp(image: torch.Tensor, flow: torch.Tensor) -> torch.Tensor:
-    """Replicates API and functionality of:
-    https://www.tensorflow.org/addons/api_docs/python/tfa/image/dense_image_warp
-    Resamples input data at user defined coordinates.
+def resampler(
+    image: torch.Tensor,
+    warp: torch.Tensor,
+    clamp_to_edge: bool = False,
+    interpolation: str = "bilinear",
+) -> torch.Tensor:
+    """Resample image values at dense warp coordinates."""
 
-    It is expected that image and flow are in NCHW format.
-    """
+    padding = "border" if clamp_to_edge else "zeros"
+    grid = warp + 0.5
+    grid = grid.permute(0, 2, 3, 1)
+    _, _, height, width = image.shape
+    u, v = torch.split(grid, split_size_or_sections=1, dim=-1)
+    v = ((v / height) * 2.0) - 1.0
+    u = ((u / width) * 2.0) - 1.0
+    grid = torch.concat([u, v], dim=-1)
 
-    # This assertion (len(image.shape) == 4) to protect
-    # from passing something out of range to size()
+    return F.grid_sample(
+        image,
+        grid,
+        mode=interpolation,
+        padding_mode=padding,
+        align_corners=False,
+    )
+
+
+def dense_image_warp(
+    image: torch.Tensor,
+    flow: torch.Tensor,
+    interpolation: str = "bilinear",
+    clamp_to_edge: bool = True,
+) -> torch.Tensor:
+    """Image warping using per-pixel flow vectors."""
+
     if len(image.shape) != 4:
         raise ValueError("Image must be 4D Tensor.")
     if len(flow.shape) != 4:
         raise ValueError("Flow must be 4D Tensor.")
-    batch_size, channels, height, width = (
-        image.size(0),
-        image.size(1),
-        image.size(2),
-        image.size(3),
+
+    _, _, height, width = image.shape
+    flow_y, flow_x = torch.split(flow, split_size_or_sections=1, dim=1)
+    flow_xy = torch.concat([flow_x, flow_y], dim=1)
+
+    grid_y, grid_x = torch.meshgrid(
+        torch.arange(0, height, device=flow.device),
+        torch.arange(0, width, device=flow.device),
+        indexing="ij",
     )
+    stacked_grid = torch.stack([grid_x, grid_y], dim=0).float()
+    query_points_on_grid = stacked_grid.unsqueeze(0) - flow_xy
 
-    # The flow is defined on the image grid. Turn the flow into a list of query
-    # points in the grid space.
-    grid_x, grid_y = torch.meshgrid(
-        torch.arange(width), torch.arange(height), indexing="xy"
+    return resampler(
+        image,
+        query_points_on_grid,
+        interpolation=interpolation,
+        clamp_to_edge=clamp_to_edge,
     )
-    stacked_grid = torch.stack([grid_y, grid_x], dim=0).to(flow.dtype).to(flow.device)
-    batched_grid = torch.unsqueeze(stacked_grid, dim=0)
-    query_points_on_grid = batched_grid - flow
-
-    query_points_flattened = torch.reshape(
-        query_points_on_grid, [batch_size, 2, height * width]
-    )
-
-    # Compute values at the query points, then reshape the result back to the image grid.
-    interpolated = interpolate_bilinear(image, query_points_flattened)
-    interpolated = torch.reshape(interpolated, [batch_size, channels, height, width])
-
-    return interpolated
 
 
 def bilinear_oob_zero(image: torch.Tensor, flow: torch.Tensor) -> torch.Tensor:
-    """Image warping using per-pixel flow vectors."""
-    image = image.float()
-    flow = flow.float()
-    batch_size, channels, height, width = image.shape
+    """Image warping using per-pixel flow vectors with zero OOB padding."""
 
-    # Create grid of coordinates
-    grid_x, grid_y = torch.meshgrid(
-        torch.arange(width, device=image.device, dtype=flow.dtype),
-        torch.arange(height, device=image.device, dtype=flow.dtype),
-        indexing="xy",
+    return dense_image_warp(
+        image,
+        flow,
+        interpolation="bilinear",
+        clamp_to_edge=False,
     )
-    # [batch_size, height, width]
-    grid_x = grid_x.unsqueeze(0).expand(batch_size, -1, -1)
-    grid_y = grid_y.unsqueeze(0).expand(batch_size, -1, -1)
-
-    # Compute query points
-    x = grid_x - flow[:, 1, :, :]
-    y = grid_y - flow[:, 0, :, :]
-
-    # [batch_size, height*width, 2]
-    query_points = torch.stack((y, x), dim=3).view(batch_size, -1, 2)
-
-    interpolated = interpolate_bilinear_w_zero_pad(image, query_points)
-
-    # Reshape to image
-    # [batch_size, channels, height, width]
-    output = interpolated.view(batch_size, channels, height, width)
-    return output
 
 
 def backward_warp_nearest(
