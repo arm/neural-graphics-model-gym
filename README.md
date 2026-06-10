@@ -238,9 +238,9 @@ We also support defining custom use cases to group together related models, data
 
 ## Generating new training data
 
-To train the Neural Super Sampling model, you will first need to capture training data from your game engine in the format expected by the model. Information regarding the types of data to capture and how to convert your captured frames can be found [here](./docs/nss/nss_data_generation.md).
+To train the Neural Super Sampling model, you will first need to capture training data from your game engine in the format expected by the model. A [data capture guide for NSS](./docs/nss/nss_data_capture_guide.md) explaining the steps required to capture datasets is available and the expected layout of the dataset can been seen at [nss_dataset_specification.md](./docs/nss/nss_dataset_specification.md). A plugin for Unreal® Engine is also available [here](https://github.com/arm/neural-graphics-data-capture-for-unreal) that can capture datasets for NSS from a game.
 
-For Neural Frame Rate Upscaling training data, see [nfru_data_generation.md](./docs/nfru/nfru_data_generation.md).
+For information regarding the types of data to capture for Neural Frame Rate Upscaling and how to convert your captured frames , see [nfru_data_generation.md](./docs/nfru/nfru_data_generation.md).
 
 
 ## Troubleshooting
@@ -277,3 +277,4 @@ Neural Graphics Model Gym is licensed under [Apache License 2.0](LICENSE.md).
 * “Jupyter” and the Jupyter logos are trademarks or registered trademarks of LF Charities.
 * Vulkan is a registered trademark and the Vulkan SC logo is a trademark of the Khronos Group Inc.
 * Microsoft, Windows are trademarks of the Microsoft group of companies
+* Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.
