@@ -237,6 +237,9 @@ PYTHONIOENCODING = "utf-8"
 [tool.hatch.envs.test.scripts]
 # Download test data
 download                        = "python tests/fetch_huggingface.py"
+lfs-assets                      = [ "python -c \"print('\\nFetching optional Git LFS test assets\\n')\"",
+                                    "git lfs pull --include='tests/**' --exclude=''"
+                                ]
 
 # Test
 unit-core                       = "python -m pytest tests/core/unit tests/scripts"                                                                                                   # core unit tests
