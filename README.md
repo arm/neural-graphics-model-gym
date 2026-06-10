@@ -226,6 +226,12 @@ ngmg.logging_config(parameters)
 
 A collection of unit and integration tests are provided to ensure the functionality of Neural Graphics Model Gym.
 
+Git LFS assets used for testing are not cloned by default. Tests that depend on LFS files require running the following pull command:
+
+```bash
+git lfs pull --include="tests/**" --exclude=""
+```
+
 Testing can be run using Hatch commands. First [install Hatch and create a dev environment](./docs/setup.md#dev-installation). This will install all the dependencies for Neural Graphics Model Gym, plus the additional dependencies required for testing. The list of testing commands can be found [here](./docs/testing.md).
 
 

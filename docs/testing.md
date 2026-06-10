@@ -5,6 +5,21 @@ SPDX-License-Identifier: Apache-2.0
 
 # Testing
 
+**To download test assets:**
+
+Test data stored in Git LFS is not cloned by default.
+
+To pull it, run either:
+
+```bash
+git lfs pull --include="tests/**" --exclude=""
+```
+
+or the following Hatch command:
+```bash
+hatch run test:lfs-assets
+```
+
 **To download pretrained weights and datasets:**
 
 The tests depend on pretrained weights and datasets from Hugging Face. To automatically download the required files, run the following command:
