@@ -12,7 +12,7 @@ from unittest.mock import Mock
 import torch
 from torch import nn, optim
 
-from ng_model_gym.core.loss import LossV1
+from ng_model_gym.core.loss import LossV0_1
 from ng_model_gym.core.optimizers import LARS
 from ng_model_gym.core.trainer import get_loss_fn, get_optimizer_type, Trainer
 from ng_model_gym.core.utils.enum_definitions import (
@@ -398,12 +398,12 @@ class TestLossFnFactory(unittest.TestCase):
     """Tests for loss function factory method: get_loss_fn()"""
 
     # pylint: disable=C0116
-    def test_get_loss_fn_with_valid_loss_v1(self):
-        """Test get_loss_fn() returns LossV1 when requested"""
+    def test_get_loss_fn_with_valid_loss_v0_1(self):
+        """Test get_loss_fn() returns LossV0_1 when requested"""
         params = create_simple_params(usecase="nss")
-        params.train.loss_fn = LossFn.LOSS_V1.value
+        params.train.loss_fn = LossFn.LOSS_V0_1.value
         loss_obj = get_loss_fn(params, torch.device("cpu"))
-        self.assertIsInstance(loss_obj, LossV1)
+        self.assertIsInstance(loss_obj, LossV0_1)
 
     def test_get_loss_fn_raises_exception(self):
         params = create_simple_params(usecase="nss")

@@ -6,7 +6,7 @@ import unittest
 import torch
 from torch import nn
 
-from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
+from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV0_1
 from tests.base_gpu_test import BaseGPUMemoryTest
 
 FEEDBACK_CH = 4
@@ -17,7 +17,7 @@ class TestAutoEncoder(unittest.TestCase):
 
     def setUp(self):
         """Set up the test class."""
-        self.autoencoder_model = AutoEncoderV1()
+        self.autoencoder_model = AutoEncoderV0_1()
 
         # Set all weights and biases to fixed values
         def init_weights(m):
@@ -154,18 +154,18 @@ class TestAutoEncoderGolden(BaseGPUMemoryTest):
         device = torch.device("cuda")
 
         autoencoder_input = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/autoencoder_input_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/autoencoder_input_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
         autoencoder_output_tensors = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/autoencoder_output_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/autoencoder_output_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
-        autoencoder = AutoEncoderV1()
+        autoencoder = AutoEncoderV0_1()
         autoencoder.load_state_dict(autoencoder_output_tensors["autoencoder_model"])
         autoencoder.to(device)
         autoencoder_input_tensors = autoencoder_input["input_tensor"]

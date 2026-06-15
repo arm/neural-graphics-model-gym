@@ -4,8 +4,8 @@
 import torch
 
 from ng_model_gym.usecases.nss.model.post_processing import (
-    PostProcessV1,
-    PostProcessV1_ShaderAccurate,
+    PostProcessV0_1,
+    PostProcessV0_1_ShaderAccurate,
 )
 from tests.base_gpu_test import BaseGPUMemoryTest
 
@@ -44,12 +44,12 @@ class TestPostProcess(BaseGPUMemoryTest):
         )
 
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
-        self.slang_shader_file = "nss_v1.slang"
+        self.slang_shader_file = "nss_v0_1.slang"
 
     def test_output_shape(self):
         """Test that the output shape matches the history shape."""
 
-        output, output_filtered = PostProcessV1.apply(
+        output, output_filtered = PostProcessV0_1.apply(
             self.colour,
             self.history,
             self.kpn_params,
@@ -70,7 +70,7 @@ class TestPostProcess(BaseGPUMemoryTest):
     def test_shader_acc_output_shape(self):
         """Test that the output shape matches the history shape."""
 
-        output, output_filtered = PostProcessV1_ShaderAccurate.apply(
+        output, output_filtered = PostProcessV0_1_ShaderAccurate.apply(
             self.colour,
             self.history,
             self.kpn_params,
@@ -97,7 +97,7 @@ class TestPostProcess(BaseGPUMemoryTest):
         self.kpn_params.requires_grad_()
         self.temporal_params.requires_grad_()
 
-        output, _ = PostProcessV1.apply(
+        output, _ = PostProcessV0_1.apply(
             self.colour,
             self.history,
             self.kpn_params,
@@ -127,7 +127,7 @@ class TestPostProcess(BaseGPUMemoryTest):
         self.kpn_params.requires_grad_()
         self.temporal_params.requires_grad_()
 
-        output, _ = PostProcessV1_ShaderAccurate.apply(
+        output, _ = PostProcessV0_1_ShaderAccurate.apply(
             self.colour,
             self.history,
             self.kpn_params,
@@ -157,25 +157,25 @@ class TestPostprocessGolden(BaseGPUMemoryTest):
     def setUp(self):
         super().setUp()
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
-        self.slang_shader_file = "nss_v1.slang"
+        self.slang_shader_file = "nss_v0_1.slang"
 
     def test_postprocess(self):
         """Test postprocess implementation"""
         device = torch.device("cuda")
 
         postprocess_input = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/postprocess_inputs_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/postprocess_inputs_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
         postprocess_output = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/postprocess_output_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/postprocess_output_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
-        output_linear, out_filtered = PostProcessV1.apply(
+        output_linear, out_filtered = PostProcessV0_1.apply(
             postprocess_input["colour_linear"],
             postprocess_input["history"],
             postprocess_input["kpn_params"],
@@ -210,27 +210,27 @@ class TestShaderAccPostprocessGolden(BaseGPUMemoryTest):
     def setUp(self):
         super().setUp()
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
-        self.slang_shader_file = "nss_v1.slang"
+        self.slang_shader_file = "nss_v0_1.slang"
 
     def test_shader_acc_postprocess(self):
         """Test shader accurate postprocess implementation"""
         device = torch.device("cuda")
 
         postprocess_input = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/"
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/"
             + "shader_acc_postprocess_inputs_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
         postprocess_output = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/"
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/"
             + "shader_acc_postprocess_output_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
-        output_linear, out_filtered = PostProcessV1_ShaderAccurate.apply(
+        output_linear, out_filtered = PostProcessV0_1_ShaderAccurate.apply(
             postprocess_input["colour_linear"],
             postprocess_input["history"],
             postprocess_input["kpn_params"],

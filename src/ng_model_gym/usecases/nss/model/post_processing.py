@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 # pylint: disable=duplicate-code
@@ -12,7 +12,7 @@ from ng_model_gym.core.model.shaders.slang_utils import load_slang_module
 # pylint: disable=abstract-method
 
 
-class PostProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
+class PostProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
     """Neural Super Sampling (NSS) PostProcess Shader in PyTorch."""
 
     @staticmethod
@@ -33,7 +33,7 @@ class PostProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
     ) -> List[torch.Tensor]:
         """Forward pass"""
 
-        output, out_filtered = post_process_v1_fwd(
+        output, out_filtered = post_process_v0_1_fwd(
             colour,
             history,
             t_kpn_params,
@@ -96,7 +96,7 @@ class PostProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
             grad_history,
             grad_t_kpn_params,
             grad_temporal_params,
-        ) = post_process_v1_bwd(
+        ) = post_process_v0_1_bwd(
             colour,
             history,
             t_kpn_params,
@@ -129,8 +129,8 @@ class PostProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
         )
 
 
-@torch.library.custom_op("nss_v1::post_process_v1_fwd", mutates_args=())
-def post_process_v1_fwd(
+@torch.library.custom_op("nss_v0_1::post_process_v0_1_fwd", mutates_args=())
+def post_process_v0_1_fwd(
     colour: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
@@ -153,7 +153,7 @@ def post_process_v1_fwd(
 
     block_sz = 512
     dispatch_size = [output.shape[0], output.shape[2], output.shape[3]]
-    kernel_with_args = m.post_process_v1(
+    kernel_with_args = m.post_process_v0_1(
         colour=colour,
         history=history,
         t_kpn_params=t_kpn_params,
@@ -177,8 +177,8 @@ def post_process_v1_fwd(
 
 
 # pylint: disable=unused-argument
-@torch.library.register_fake("nss_v1::post_process_v1_fwd")
-def post_process_v1_fwd_abstract(
+@torch.library.register_fake("nss_v0_1::post_process_v0_1_fwd")
+def post_process_v0_1_fwd_abstract(
     colour: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
@@ -200,8 +200,8 @@ def post_process_v1_fwd_abstract(
 # pylint: enable=unused-argument
 
 
-@torch.library.custom_op("nss_v1::post_process_v1_bwd", mutates_args=())
-def post_process_v1_bwd(
+@torch.library.custom_op("nss_v0_1::post_process_v0_1_bwd", mutates_args=())
+def post_process_v0_1_bwd(
     colour: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
@@ -228,7 +228,7 @@ def post_process_v1_bwd(
     block_sz = 256
     dispatch_size = [output[0].shape[0], output[0].shape[2], output[0].shape[3]]
 
-    kernel_with_args = m.post_process_v1.bwd(
+    kernel_with_args = m.post_process_v0_1.bwd(
         colour=colour,
         history=(history, grad_history),
         t_kpn_params=(t_kpn_params, grad_t_kpn_params),
@@ -256,8 +256,8 @@ def post_process_v1_bwd(
 
 
 # pylint: disable=unused-argument
-@torch.library.register_fake("nss_v1::post_process_v1_bwd")
-def post_process_v1_bwd_abstract(
+@torch.library.register_fake("nss_v0_1::post_process_v0_1_bwd")
+def post_process_v0_1_bwd_abstract(
     colour: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
@@ -285,7 +285,7 @@ def post_process_v1_bwd_abstract(
 # pylint: enable=unused-argument
 
 
-class PostProcessV1_ShaderAccurate(
+class PostProcessV0_1_ShaderAccurate(
     torch.autograd.Function
 ):  # pylint: disable=invalid-name
     """Neural Super Sampling (NSS) "shader accurate" PostProcess Shader in PyTorch."""
@@ -309,7 +309,7 @@ class PostProcessV1_ShaderAccurate(
     ) -> List[torch.Tensor]:
         """Shader accurate forward pass"""
 
-        output, out_filtered = post_process_v1_sa_fwd(
+        output, out_filtered = post_process_v0_1_sa_fwd(
             colour,
             history,
             t_kpn_params,
@@ -374,7 +374,7 @@ class PostProcessV1_ShaderAccurate(
             grad_history,
             grad_t_kpn_params,
             grad_temporal_params,
-        ) = post_process_v1_sa_bwd(
+        ) = post_process_v0_1_sa_bwd(
             colour,
             history,
             t_kpn_params,
@@ -409,8 +409,8 @@ class PostProcessV1_ShaderAccurate(
         )
 
 
-@torch.library.custom_op("nss_v1::post_process_v1_sa_fwd", mutates_args=())
-def post_process_v1_sa_fwd(
+@torch.library.custom_op("nss_v0_1::post_process_v0_1_sa_fwd", mutates_args=())
+def post_process_v0_1_sa_fwd(
     colour: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
@@ -434,7 +434,7 @@ def post_process_v1_sa_fwd(
 
     block_sz = 512
     dispatch_size = [output.shape[0], output.shape[2], output.shape[3]]
-    kernel_with_args = m.post_process_v1_shader_accurate(
+    kernel_with_args = m.post_process_v0_1_shader_accurate(
         colour=colour,
         history=history,
         t_kpn_params=t_kpn_params,
@@ -459,8 +459,8 @@ def post_process_v1_sa_fwd(
 
 
 # pylint: disable=unused-argument
-@torch.library.register_fake("nss_v1::post_process_v1_sa_fwd")
-def post_process_v1_sa_fwd_abstract(
+@torch.library.register_fake("nss_v0_1::post_process_v0_1_sa_fwd")
+def post_process_v0_1_sa_fwd_abstract(
     colour: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
@@ -483,8 +483,8 @@ def post_process_v1_sa_fwd_abstract(
 # pylint: enable=unused-argument
 
 
-@torch.library.custom_op("nss_v1::post_process_v1_sa_bwd", mutates_args=())
-def post_process_v1_sa_bwd(
+@torch.library.custom_op("nss_v0_1::post_process_v0_1_sa_bwd", mutates_args=())
+def post_process_v0_1_sa_bwd(
     colour: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
@@ -512,7 +512,7 @@ def post_process_v1_sa_bwd(
     block_sz = 256
     dispatch_size = [output[0].shape[0], output[0].shape[2], output[0].shape[3]]
 
-    kernel_with_args = m.post_process_v1_shader_accurate.bwd(
+    kernel_with_args = m.post_process_v0_1_shader_accurate.bwd(
         colour=colour,
         history=(history, grad_history),
         t_kpn_params=(t_kpn_params, grad_t_kpn_params),
@@ -541,8 +541,8 @@ def post_process_v1_sa_bwd(
 
 
 # pylint: disable=unused-argument
-@torch.library.register_fake("nss_v1::post_process_v1_sa_bwd")
-def post_process_v1_sa_bwd_abstract(
+@torch.library.register_fake("nss_v0_1::post_process_v0_1_sa_bwd")
+def post_process_v0_1_sa_bwd_abstract(
     colour: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,

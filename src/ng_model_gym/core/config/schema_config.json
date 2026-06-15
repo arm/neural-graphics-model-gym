@@ -750,7 +750,7 @@
                 }
             ],
             "default": null,
-            "description": "Loss function to use. Choose from: loss_v1, lpips_spatial_loss_v1"
+            "description": "Loss function to use. Choose from: loss_v0_1, lpips_spatial_loss_v1"
         },
         "loss_args": {
             "anyOf": [

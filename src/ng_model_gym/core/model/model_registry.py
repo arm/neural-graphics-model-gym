@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import inspect
@@ -59,7 +59,7 @@ def register_model(name: str, version: Optional[str] = None):
 
     Example::
 
-        @register_model(name="NSS", version="1")
+        @register_model(name="NSS", version="0.1")
         class NSS_Model(BaseNGModel)
             pass
     """

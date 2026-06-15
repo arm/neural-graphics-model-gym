@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -20,11 +20,11 @@ class Registry(Generic[T]):
 
         MODEL_REGISTRY: Registry[BaseNGModel] = Registry("Model", validator_func)
 
-        @MODEL_REGISTRY.register("NSS-v1")
-        class NSS_V1(BaseNGModel):
+        @MODEL_REGISTRY.register("NSS-v0.1")
+        class NSS_V0_1(BaseNGModel):
             pass
 
-        nss_model = MODEL_REGISTRY.get("NSS-v1")
+        nss_model = MODEL_REGISTRY.get("NSS-v0.1")
         print(f"All available models: {MODEL_REGISTRY.list_registered()}")
     """
 

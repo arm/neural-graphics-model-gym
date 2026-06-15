@@ -4,10 +4,10 @@
 import torch
 
 from ng_model_gym.usecases.nss.model.pre_processing import (
-    pre_process_v1_bwd,
-    pre_process_v1_sa_bwd,
-    PreProcessV1,
-    PreProcessV1_ShaderAccurate,
+    pre_process_v0_1_bwd,
+    pre_process_v0_1_sa_bwd,
+    PreProcessV0_1,
+    PreProcessV0_1_ShaderAccurate,
 )
 from tests.base_gpu_test import BaseGPUMemoryTest
 
@@ -48,7 +48,7 @@ class TestPreProcess(BaseGPUMemoryTest):
         dm_scale = torch.tensor([0.5])
 
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
-        self.slang_shader_file = "nss_v1.slang"
+        self.slang_shader_file = "nss_v0_1.slang"
 
         self.inputs = {
             "colour_linear": colour_linear,
@@ -82,7 +82,7 @@ class TestPreProcess(BaseGPUMemoryTest):
 
     def test_fwd_pass_returns_values(self):
         """Test forward pass can run and return some values."""
-        input_tensor, derivative, depth_dilated = PreProcessV1.apply(
+        input_tensor, derivative, depth_dilated = PreProcessV0_1.apply(
             self.inputs["colour_linear"],
             self.inputs["history"],
             self.inputs["motion"],
@@ -106,7 +106,7 @@ class TestPreProcess(BaseGPUMemoryTest):
 
     def test_shader_acc_fwd_pass_returns_values(self):
         """Test shader accurate forward pass can run and return some values."""
-        input_tensor, derivative, depth_dilated = PreProcessV1_ShaderAccurate.apply(
+        input_tensor, derivative, depth_dilated = PreProcessV0_1_ShaderAccurate.apply(
             self.inputs["colour_linear"],
             self.inputs["history"],
             self.inputs["motion_lr"],
@@ -138,7 +138,7 @@ class TestPreProcess(BaseGPUMemoryTest):
         out_luma_derivative = self.out_luma
         out_depth_t = torch.rand_like(self.inputs["depth"])
 
-        grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v1_bwd(
+        grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v0_1_bwd(
             self.inputs["colour_linear"],
             self.inputs["history"],
             self.inputs["motion"],
@@ -173,7 +173,7 @@ class TestPreProcess(BaseGPUMemoryTest):
         out_luma_derivative = self.out_luma
         out_depth_t = torch.rand_like(self.inputs["depth"])
 
-        grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v1_sa_bwd(
+        grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v0_1_sa_bwd(
             self.inputs["colour_linear"],
             self.inputs["history"],
             self.inputs["motion_lr"],
@@ -206,25 +206,25 @@ class TestPreprocessGolden(BaseGPUMemoryTest):
     def setUp(self):
         super().setUp()
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
-        self.slang_shader_file = "nss_v1.slang"
+        self.slang_shader_file = "nss_v0_1.slang"
 
     def test_preprocess(self):
         """Test preprocess implementation"""
         device = torch.device("cuda")
 
         preprocess_input = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/preprocess_inputs_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/preprocess_inputs_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
         preprocess_output = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/preprocess_output_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/preprocess_output_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
-        input_tensor, derivative, depth_dilated = PreProcessV1.apply(
+        input_tensor, derivative, depth_dilated = PreProcessV0_1.apply(
             preprocess_input["colour_linear"],
             preprocess_input["history"],
             preprocess_input["motion"],
@@ -265,27 +265,27 @@ class TestShaderAccPreprocessGolden(BaseGPUMemoryTest):
     def setUp(self):
         super().setUp()
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
-        self.slang_shader_file = "nss_v1.slang"
+        self.slang_shader_file = "nss_v0_1.slang"
 
     def test_shader_acc_preprocess(self):
         """Test shader accurate preprocess implementation"""
         device = torch.device("cuda")
 
         preprocess_input = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/"
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/"
             + "shader_acc_preprocess_inputs_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
         preprocess_output = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/"
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/"
             + "shader_acc_preprocess_output_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
-        input_tensor, derivative, depth_dilated = PreProcessV1_ShaderAccurate.apply(
+        input_tensor, derivative, depth_dilated = PreProcessV0_1_ShaderAccurate.apply(
             preprocess_input["colour_linear"],
             preprocess_input["history"],
             preprocess_input["motion_lr"],

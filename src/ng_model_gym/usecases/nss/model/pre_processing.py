@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 # pylint: disable=duplicate-code
@@ -11,7 +11,7 @@ from ng_model_gym.core.model.shaders.slang_utils import load_slang_module
 
 
 # pylint: disable=abstract-method
-class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
+class PreProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
     """Neural Super Sampling (NSS) PreProcess layer in PyTorch."""
 
     @staticmethod
@@ -35,7 +35,7 @@ class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
     ):
         """Forward pass."""
 
-        output_tensor, out_luma_derivative, out_depth_t = pre_process_v1_fwd(
+        output_tensor, out_luma_derivative, out_depth_t = pre_process_v0_1_fwd(
             colour=colour,
             history=history,
             motion=motion,
@@ -109,7 +109,7 @@ class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
         shader_dir = ctx.shader_dir
         shader_file = ctx.shader_file
 
-        grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v1_bwd(
+        grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v0_1_bwd(
             colour=colour,
             history=history,
             motion=motion,
@@ -151,8 +151,8 @@ class PreProcessV1(torch.autograd.Function):  # pylint: disable=invalid-name
     # pylint: enable=unused-argument
 
 
-@torch.library.custom_op("nss_v1::pre_process_v1_fwd", mutates_args=())
-def pre_process_v1_fwd(
+@torch.library.custom_op("nss_v0_1::pre_process_v0_1_fwd", mutates_args=())
+def pre_process_v0_1_fwd(
     colour: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
@@ -186,7 +186,7 @@ def pre_process_v1_fwd(
         output_tensor.shape[2],
         output_tensor.shape[3],
     ]
-    kernel_with_args = m.pre_process_v1(
+    kernel_with_args = m.pre_process_v0_1(
         colour=colour,
         history=history,
         motion=motion,
@@ -214,8 +214,8 @@ def pre_process_v1_fwd(
 
 
 # pylint: disable=unused-argument
-@torch.library.register_fake("nss_v1::pre_process_v1_fwd")
-def pre_process_v1_fwd_abstract(
+@torch.library.register_fake("nss_v0_1::pre_process_v0_1_fwd")
+def pre_process_v0_1_fwd_abstract(
     colour: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
@@ -250,8 +250,8 @@ def pre_process_v1_fwd_abstract(
 # pylint: enable=unused-argument
 
 
-@torch.library.custom_op("nss_v1::pre_process_v1_bwd", mutates_args=())
-def pre_process_v1_bwd(
+@torch.library.custom_op("nss_v0_1::pre_process_v0_1_bwd", mutates_args=())
+def pre_process_v0_1_bwd(
     colour: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
@@ -288,7 +288,7 @@ def pre_process_v1_bwd(
         output_tensor[0].shape[3],
     ]
 
-    kernel_with_args = m.pre_process_v1.bwd(
+    kernel_with_args = m.pre_process_v0_1.bwd(
         colour=colour,
         history=(history, grad_history),
         motion=motion,
@@ -316,8 +316,8 @@ def pre_process_v1_bwd(
 
 
 # pylint: disable=unused-argument
-@torch.library.register_fake("nss_v1::pre_process_v1_bwd")
-def pre_process_v1_bwd_abstract(
+@torch.library.register_fake("nss_v0_1::pre_process_v0_1_bwd")
+def pre_process_v0_1_bwd_abstract(
     colour: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
@@ -353,7 +353,7 @@ def pre_process_v1_bwd_abstract(
 # pylint: enable=unused-argument
 
 
-class PreProcessV1_ShaderAccurate(
+class PreProcessV0_1_ShaderAccurate(
     torch.autograd.Function
 ):  # pylint: disable=invalid-name
     """Neural Super Sampling (NSS) "shader accurate" PreProcess shader in PyTorch."""
@@ -380,7 +380,7 @@ class PreProcessV1_ShaderAccurate(
     ):
         """Shader accurate forward pass"""
 
-        output_tensor, out_luma_derivative, out_depth_t = pre_process_v1_sa_fwd(
+        output_tensor, out_luma_derivative, out_depth_t = pre_process_v0_1_sa_fwd(
             colour=colour,
             history=history,
             motion=motion,
@@ -457,7 +457,7 @@ class PreProcessV1_ShaderAccurate(
         shader_dir = ctx.shader_dir
         shader_file = ctx.shader_file
 
-        grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v1_sa_bwd(
+        grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v0_1_sa_bwd(
             colour=colour,
             history=history,
             motion=motion,
@@ -501,8 +501,8 @@ class PreProcessV1_ShaderAccurate(
     # pylint: enable=unused-argument
 
 
-@torch.library.custom_op("nss_v1::pre_process_v1_sa_fwd", mutates_args=())
-def pre_process_v1_sa_fwd(
+@torch.library.custom_op("nss_v0_1::pre_process_v0_1_sa_fwd", mutates_args=())
+def pre_process_v0_1_sa_fwd(
     colour: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
@@ -537,7 +537,7 @@ def pre_process_v1_sa_fwd(
         output_tensor.shape[2],
         output_tensor.shape[3],
     ]
-    kernel_with_args = m.pre_process_v1_shader_accurate(
+    kernel_with_args = m.pre_process_v0_1_shader_accurate(
         colour=colour,
         history=history,
         motion=motion,
@@ -566,8 +566,8 @@ def pre_process_v1_sa_fwd(
 
 
 # pylint: disable=unused-argument
-@torch.library.register_fake("nss_v1::pre_process_v1_sa_fwd")
-def pre_process_v1_fwd_sa_abstract(
+@torch.library.register_fake("nss_v0_1::pre_process_v0_1_sa_fwd")
+def pre_process_v0_1_fwd_sa_abstract(
     colour: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
@@ -603,8 +603,8 @@ def pre_process_v1_fwd_sa_abstract(
 # pylint: enable=unused-argument
 
 
-@torch.library.custom_op("nss_v1::pre_process_v1_sa_bwd", mutates_args=())
-def pre_process_v1_sa_bwd(
+@torch.library.custom_op("nss_v0_1::pre_process_v0_1_sa_bwd", mutates_args=())
+def pre_process_v0_1_sa_bwd(
     colour: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
@@ -642,7 +642,7 @@ def pre_process_v1_sa_bwd(
         output_tensor[0].shape[3],
     ]
 
-    kernel_with_args = m.pre_process_v1_shader_accurate.bwd(
+    kernel_with_args = m.pre_process_v0_1_shader_accurate.bwd(
         colour=colour,
         history=(history, grad_history),
         motion=motion,
@@ -671,8 +671,8 @@ def pre_process_v1_sa_bwd(
 
 
 # pylint: disable=unused-argument
-@torch.library.register_fake("nss_v1::pre_process_v1_sa_bwd")
-def pre_process_v1_sa_bwd_abstract(
+@torch.library.register_fake("nss_v0_1::pre_process_v0_1_sa_bwd")
+def pre_process_v0_1_sa_bwd_abstract(
     colour: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,

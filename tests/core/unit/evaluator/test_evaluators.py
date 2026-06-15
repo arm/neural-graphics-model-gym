@@ -12,7 +12,7 @@ import torch
 
 from ng_model_gym.core.data import DataLoaderMode
 from ng_model_gym.core.evaluator.evaluator import NGModelEvaluator
-from ng_model_gym.usecases.nss.model.model_v1 import NSSModel
+from ng_model_gym.usecases.nss.model.model_v0_1 import NSSModel
 from tests.testing_utils import create_simple_params
 
 

@@ -6,12 +6,12 @@ import torch
 
 from ng_model_gym.core.model import create_model
 from ng_model_gym.core.utils.enum_definitions import ToneMapperMode, TrainEvalMode
-from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
+from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV0_1
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
 
 
-class TestNSSV1ModelCore(BaseGPUMemoryTest):
+class TestNSSV0_1ModelCore(BaseGPUMemoryTest):
     """Tests for NSSModel class"""
 
     def test_core_forward_pass_golden_values(self):
@@ -22,18 +22,18 @@ class TestNSSV1ModelCore(BaseGPUMemoryTest):
         device = torch.device("cuda")
 
         forward_inputs = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/forward_pass_inputs_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/forward_pass_inputs_golden.pt",
             map_location=device,
             weights_only=True,
         )
 
         forward_outputs = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/forward_pass_output_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/forward_pass_output_golden.pt",
             map_location=device,
             weights_only=True,
         )["output"]
 
-        autoencoder = AutoEncoderV1()
+        autoencoder = AutoEncoderV0_1()
         autoencoder.load_state_dict(forward_inputs["autoencoder_state"])
         autoencoder.to(device)
 
