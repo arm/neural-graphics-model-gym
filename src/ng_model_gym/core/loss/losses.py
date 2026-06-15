@@ -220,6 +220,31 @@ class LossV1(torch.nn.Module):
     def forward(self, y_true: torch.Tensor, y_pred: TensorData) -> torch.Tensor:
         """Compute the NSS v1 recurrent loss."""
 
+        loss = self._compute_base_loss(y_true, y_pred)
+
+        if self.theta_reg_weight > 0.0:
+            loss = loss + self.theta_reg_weight * self._theta_regression_penalty(y_pred)
+        if self.alpha_reg_weight > 0.0:
+            loss = loss + self.alpha_reg_weight * self._alpha_regression_penalty(y_pred)
+        if self.temporal_reg_weight > 0.0:
+            loss = loss + self.temporal_reg_weight * self._temporal_flicker_penalty(
+                y_pred
+            )
+        if self.change_pred_weight > 0.0:
+            loss = loss + self.change_pred_weight * self._change_prediction_penalty(
+                truth=y_true,
+                pred=y_pred.get("output"),
+                motion=y_pred.get("motion"),
+                disocclusion_mask=y_pred.get("disocclusion_mask"),
+            )
+
+        return loss
+
+    def _compute_base_loss(
+        self, y_true: torch.Tensor, y_pred: TensorData
+    ) -> torch.Tensor:
+        """Compute the base NSS loss"""
+
         if not isinstance(y_pred, dict):
             raise TypeError("LossV1 expects y_pred to be a prediction dictionary.")
 
@@ -277,25 +302,7 @@ class LossV1(torch.nn.Module):
         first_frame_loss = self._compute_first_frame_loss(
             y_pred_filt=y_pred_filt, y_true=y_true, device=device
         )
-        loss = loss + self.first_frame_weight * first_frame_loss
-
-        if self.theta_reg_weight > 0.0:
-            loss = loss + self.theta_reg_weight * self._theta_regression_penalty(y_pred)
-        if self.alpha_reg_weight > 0.0:
-            loss = loss + self.alpha_reg_weight * self._alpha_regression_penalty(y_pred)
-        if self.temporal_reg_weight > 0.0:
-            loss = loss + self.temporal_reg_weight * self._temporal_flicker_penalty(
-                y_pred
-            )
-        if self.change_pred_weight > 0.0:
-            loss = loss + self.change_pred_weight * self._change_prediction_penalty(
-                truth=y_true,
-                pred=y_pred.get("output"),
-                motion=y_pred.get("motion"),
-                disocclusion_mask=y_pred.get("disocclusion_mask"),
-            )
-
-        return loss
+        return loss + self.first_frame_weight * first_frame_loss
 
     @staticmethod
     def _fetch_value(args: Any, key: str, default: Any) -> Any:

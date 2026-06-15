@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from types import MethodType
 from unittest.mock import Mock
 
 import torch
@@ -114,6 +115,11 @@ class TestTrainerMethods(unittest.TestCase):
         mock_loss.backward = Mock()
         mock_loss.item = Mock(return_value=0.1)
         self.mock_trainer.criterion = Mock(return_value=mock_loss)
+        self.mock_trainer._training_model = self.mock_trainer.model
+        self.mock_trainer._training_loss = self.mock_trainer.criterion
+        self.mock_trainer._train_step = MethodType(
+            Trainer._train_step, self.mock_trainer
+        )
 
         # --- Other ---
         self.mock_trainer.lr_schedule = Mock()

@@ -1,5 +1,5 @@
 {
-    "config_schema_version": "5",
+    "config_schema_version": "6",
     "model": {
         "name": "<NAME_OF_REGISTERED_MODEL>",
         "model_source": "custom",
@@ -40,6 +40,7 @@
         "batch_size": "<>",
         "seed": 123456,
         "perform_validate": true,
+        "compile": false,
         "validate_frequency": 1,
         "loss_fn": "<LOSS_FUNCTION>",
         "fp32": {

@@ -19,7 +19,7 @@ class TestCLIDatasetValidationIntegration(unittest.TestCase):
     def setUp(self):
         self.test_dir = tempfile.mkdtemp()
         default_config_path = (
-            files("ng_model_gym.usecases.nss.configs") / "nss_template.json"
+            files("ng_model_gym.usecases.nss.configs") / "nss_v1_template.json"
         )
         with default_config_path.open(encoding="utf-8") as f:
             self.default_config = json.load(f)

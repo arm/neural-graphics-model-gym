@@ -99,6 +99,7 @@ class Trainer:
         self._restore_model_weights()
         self._quantize_modules()
         self._set_up_tensorboard_logging()
+        self._set_up_torch_compile()
 
         self.train_metrics = get_metrics(self.params, mode="train")
         for metric in self.train_metrics:
@@ -119,6 +120,27 @@ class Trainer:
             logger.warning(
                 "Validation path is provided but perform_validate is set to false"
             )
+
+    def _set_up_torch_compile(self) -> None:
+        """Set up optional torch.compile for training"""
+
+        compile_enabled = self.params.train.compile
+        if compile_enabled:
+            torch._dynamo.config.cache_size_limit = max(
+                torch._dynamo.config.cache_size_limit,
+                128,
+            )
+            torch._dynamo.config.capture_scalar_outputs = True
+            logger.info("torch.compile is enabled for training")
+
+        self._training_model = torch.compile(
+            self.model,
+            disable=not compile_enabled,
+        )
+        self._training_loss = torch.compile(
+            self.criterion,
+            disable=not compile_enabled,
+        )
 
     def _quantize_modules(self):
         """Quantize modules if not already quantized"""
@@ -272,6 +294,39 @@ class Trainer:
             return True
         return False
 
+    def _train_step(self, inputs_dataset, ground_truth_data):
+        """Run the training step"""
+
+        self.optimizer.zero_grad()
+
+        inputs_dataset, ground_truth_data = self.model.on_before_batch_transfer(
+            (inputs_dataset, ground_truth_data)
+        )
+        inputs_dataset = move_to_device(inputs_dataset, self.device)
+        ground_truth_data = move_to_device(ground_truth_data, self.device)
+        inputs_dataset, ground_truth_data = self.model.on_after_batch_transfer(
+            (inputs_dataset, ground_truth_data)
+        )
+
+        self.model.y_true = ground_truth_data
+
+        inference_out = self._training_model(inputs_dataset)
+
+        if not isinstance(inference_out, dict) or "output" not in inference_out:
+            raise TypeError(
+                "Forward pass must return a dictionary containing 'output' key"
+            )
+
+        loss = self._training_loss(ground_truth_data, inference_out)
+
+        loss.backward()
+        self.optimizer.step()
+
+        if self.lr_schedule:
+            self.lr_schedule.step()
+
+        return inference_out, loss, ground_truth_data
+
     def train(self, profiler: Optional[torch.profiler.profile] = None):
         """Start training loop"""
 
@@ -292,33 +347,9 @@ class Trainer:
 
             for iteration, (inputs_dataset, ground_truth_data) in train_pbar:
                 self.model.on_train_batch_start()
-                self.optimizer.zero_grad()
-
-                inputs_dataset, ground_truth_data = self.model.on_before_batch_transfer(
-                    (inputs_dataset, ground_truth_data)
+                inference_out, loss, ground_truth_data = self._train_step(
+                    inputs_dataset, ground_truth_data
                 )
-                inputs_dataset = move_to_device(inputs_dataset, self.device)
-                ground_truth_data = move_to_device(ground_truth_data, self.device)
-                inputs_dataset, ground_truth_data = self.model.on_after_batch_transfer(
-                    (inputs_dataset, ground_truth_data)
-                )
-
-                self.model.y_true = ground_truth_data
-
-                inference_out = self.model(inputs_dataset)
-
-                if not isinstance(inference_out, dict) or "output" not in inference_out:
-                    raise TypeError(
-                        "Forward pass must return a dictionary containing 'output' key"
-                    )
-
-                loss = self.criterion(ground_truth_data, inference_out)
-
-                loss.backward()
-                self.optimizer.step()
-
-                if self.lr_schedule:
-                    self.lr_schedule.step()
 
                 # Accumulate the loss
                 running_epoch_loss += loss.item()
