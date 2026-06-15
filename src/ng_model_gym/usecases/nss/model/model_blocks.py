@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2024-2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2024-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
@@ -31,8 +31,8 @@ def split_to_texture_size(n: int) -> list[int]:
     return chunks
 
 
-class AutoEncoderV1(nn.Module):
-    """Neural Super Sampling v1 backbone"""
+class AutoEncoderV0_1(nn.Module):
+    """Neural Super Sampling v0_1 backbone"""
 
     def __init__(
         self,

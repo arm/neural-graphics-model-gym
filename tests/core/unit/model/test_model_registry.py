@@ -71,14 +71,14 @@ class TestModelRegistry(unittest.TestCase):
         """Test model key returned matches expected format."""
 
         self.assertEqual(get_model_key(name="nss"), "nss")
-        self.assertEqual(get_model_key(name="nss", version="1"), "nss-v1")
-        self.assertEqual(get_model_key(name="NSS", version="1"), "nss-v1")
+        self.assertEqual(get_model_key(name="nss", version="0.1"), "nss-v0.1")
+        self.assertEqual(get_model_key(name="NSS", version="0.1"), "nss-v0.1")
 
     def test_model_registry_helper_func(self):
         """Test adding a valid model using the register_model() helper function."""
 
         model_name = "NSS"
-        model_version = "1"
+        model_version = "0.1"
 
         @register_model(model_name, model_version)
         class NSSModel(MockBaseNGModel):  # pylint: disable=unused-variable

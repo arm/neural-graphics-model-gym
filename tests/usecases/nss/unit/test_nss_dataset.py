@@ -90,7 +90,7 @@ class TestNSSDataset(unittest.TestCase):
         data = next(iter(dataloader))[0]
 
         golden_data = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/dataloader_output_fp32.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/dataloader_output_fp32.pt",
             map_location=torch.device("cpu"),
             weights_only=True,
         )

@@ -6,7 +6,7 @@ from unittest import mock
 
 import torch
 
-from ng_model_gym.core.loss import LossV1
+from ng_model_gym.core.loss import LossV0_1
 from ng_model_gym.core.loss.losses import LPIPSSpatialLossV1
 
 
@@ -32,15 +32,15 @@ class MockLPIPS(torch.nn.Module):
         )
 
 
-class TestLossV1(unittest.TestCase):
-    """Tests for LossV1 class"""
+class TestLossV0_1(unittest.TestCase):
+    """Tests for LossV0_1 class"""
 
     def test_loss_function(self):
         """Test loss function against golden value"""
         device = torch.device("cuda")
         # Load loss files from test
         loss_input = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/loss_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/loss_golden.pt",
             map_location=device,
             weights_only=True,
         )
@@ -61,7 +61,7 @@ class TestLossV1(unittest.TestCase):
 
         recurrent_samples = y_true.shape[1]
         self.assertEqual(recurrent_samples, 4)
-        criterion = LossV1(recurrent_samples, device)
+        criterion = LossV0_1(recurrent_samples, device)
 
         loss = criterion(y_true, y_pred)
         self.assertAlmostEqual(loss.item(), loss_input["loss"], places=3)

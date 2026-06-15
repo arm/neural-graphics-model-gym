@@ -120,7 +120,7 @@ class TestModelFactory(unittest.TestCase):
         """Test loading a model class with a version that isn't registered."""
 
         # Override model version from params
-        self.params.model.version = "0"
+        self.params.model.version = "unregistered_version"
 
         model_key = get_model_key(self.params.model.name, self.params.model.version)
 

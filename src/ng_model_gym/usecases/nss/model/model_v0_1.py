@@ -21,24 +21,24 @@ from ng_model_gym.usecases.nss.model.history_buffer import (
     HistoryBuffer,
     HistoryBufferResetFunction,
 )
-from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
+from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV0_1
 from ng_model_gym.usecases.nss.model.nss_padding_utils import (
     NSSPaddingPolicy,
     Resolution,
 )
 from ng_model_gym.usecases.nss.model.post_processing import (
-    PostProcessV1,
-    PostProcessV1_ShaderAccurate,
+    PostProcessV0_1,
+    PostProcessV0_1_ShaderAccurate,
 )
 from ng_model_gym.usecases.nss.model.pre_processing import (
-    PreProcessV1,
-    PreProcessV1_ShaderAccurate,
+    PreProcessV0_1,
+    PreProcessV0_1_ShaderAccurate,
 )
 
 logger = logging.getLogger(__name__)
 
 
-@register_model(name="NSS", version="1")
+@register_model(name="NSS", version="0.1")
 class NSSModel(BaseNGModel):
     """NSS Model"""
 
@@ -57,7 +57,9 @@ class NSSModel(BaseNGModel):
 
         self.tonemapper = self.params.dataset.tonemapper
 
-        self.autoencoder = AutoEncoderV1(feedback_ch=self.feedback_ch, batch_norm=True)
+        self.autoencoder = AutoEncoderV0_1(
+            feedback_ch=self.feedback_ch, batch_norm=True
+        )
 
         self.scale = self.params.model.scale
 
@@ -66,7 +68,7 @@ class NSSModel(BaseNGModel):
         )
 
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
-        self.slang_shader_file = "nss_v1.slang"
+        self.slang_shader_file = "nss_v0_1.slang"
 
         self.padding_policy: NSSPaddingPolicy | None = None
 
@@ -159,7 +161,7 @@ class NSSModel(BaseNGModel):
                 input_tensor,
                 derivative,
                 depth_dilated,
-            ) = PreProcessV1_ShaderAccurate.apply(
+            ) = PreProcessV0_1_ShaderAccurate.apply(
                 preprocess_input["colour_linear"],
                 preprocess_input["history"],
                 preprocess_input["motion_lr"],
@@ -179,7 +181,7 @@ class NSSModel(BaseNGModel):
             )
 
         else:
-            input_tensor, derivative, depth_dilated = PreProcessV1.apply(
+            input_tensor, derivative, depth_dilated = PreProcessV0_1.apply(
                 preprocess_input["colour_linear"],
                 preprocess_input["history"],
                 preprocess_input["motion"],
@@ -233,7 +235,7 @@ class NSSModel(BaseNGModel):
                 inputs["jitter"], scale_tensor, idx_modulo
             )
 
-            output_linear, out_filtered = PostProcessV1_ShaderAccurate.apply(
+            output_linear, out_filtered = PostProcessV0_1_ShaderAccurate.apply(
                 inputs["colour_linear"],
                 inputs["history"],
                 kpn_params.to(dtype=torch.float32),
@@ -252,7 +254,7 @@ class NSSModel(BaseNGModel):
         else:
             offset_lut, idx_modulo = generate_lr_to_hr_lut(self.scale, inputs["jitter"])
 
-            output_linear, out_filtered = PostProcessV1.apply(
+            output_linear, out_filtered = PostProcessV0_1.apply(
                 inputs["colour_linear"],
                 inputs["history"],
                 kpn_params.to(dtype=torch.float32),

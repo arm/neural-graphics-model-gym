@@ -16,7 +16,7 @@ TEST_PARAMS_PRESETS = {
         "model": {
             "name": "NSS",
             "model_source": "prebuilt",
-            "version": "1",
+            "version": "0.1",
             "scale": 2.0,
             "recurrent_samples": 16,
         },
@@ -143,7 +143,7 @@ def create_simple_params(
             "batch_size": 8,
             "seed": 123456,
             "perform_validate": False,
-            "loss_fn": "loss_v1",
+            "loss_fn": "loss_v0_1",
             "fp32": {
                 "number_of_epochs": 1,
                 "checkpoints": {

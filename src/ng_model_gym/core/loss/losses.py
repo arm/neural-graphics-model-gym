@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 TensorData = Union[torch.Tensor, Dict[str, torch.Tensor], List[torch.Tensor]]
 
 
-class LossV1(torch.nn.Module):
+class LossV0_1(torch.nn.Module):
     """Custom loss function."""
 
     def __init__(self, recurrent_samples: int, device):

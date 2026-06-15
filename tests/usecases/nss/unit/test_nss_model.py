@@ -7,7 +7,7 @@ import torch
 
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
-from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV1
+from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV0_1
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
 
@@ -80,20 +80,20 @@ class TestNSS(BaseGPUMemoryTest):
         """Test nss model training"""
 
         nss_input_golden = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/nss_input_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/nss_input_golden.pt",
             map_location=self.device,
             weights_only=True,
         )
 
         nss_output_golden = torch.load(
-            "tests/usecases/nss/unit/data/nss_v1_golden_values/nss_output_golden.pt",
+            "tests/usecases/nss/unit/data/nss_v0_1_golden_values/nss_output_golden.pt",
             map_location=self.device,
             weights_only=True,
         )["outputs"]
 
         self.model.train()
 
-        autoencoder_with_golden_state = AutoEncoderV1()
+        autoencoder_with_golden_state = AutoEncoderV0_1()
         autoencoder_with_golden_state.load_state_dict(
             nss_input_golden["autoencoder_state"]
         )

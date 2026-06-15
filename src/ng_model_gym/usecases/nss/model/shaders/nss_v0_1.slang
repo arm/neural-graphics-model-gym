@@ -151,7 +151,7 @@ int2 DecodeNearestOffset(TensorView<float> nearest_tm1_offset, int2 pixel, int b
 [AutoPyBindCUDA]
 [CUDAKernel]
 [Differentiable]
-void pre_process_v1(
+void pre_process_v0_1(
     TensorView<float> colour,
     DiffTensorView history,
     TensorView<float> motion,
@@ -342,7 +342,7 @@ public void simulate_r11g11b10_fakeq_bwd(
 [AutoPyBindCUDA]
 [CUDAKernel]
 [Differentiable]
-void post_process_v1_shader_accurate(
+void post_process_v0_1_shader_accurate(
     TensorView<float> colour,
     DiffTensorView history,
     DiffTensorView t_kpn_params,
@@ -541,7 +541,7 @@ void post_process_v1_shader_accurate(
 [AutoPyBindCUDA]
 [CUDAKernel]
 [Differentiable]
-void post_process_v1(
+void post_process_v0_1(
     TensorView<float> colour,
     DiffTensorView history,
     DiffTensorView t_kpn_params,
@@ -683,7 +683,7 @@ void post_process_v1(
 [AutoPyBindCUDA]
 [CUDAKernel]
 [Differentiable]
-void pre_process_v1_shader_accurate(
+void pre_process_v0_1_shader_accurate(
     TensorView<float> colour,
     DiffTensorView history,
     TensorView<float> motion,
