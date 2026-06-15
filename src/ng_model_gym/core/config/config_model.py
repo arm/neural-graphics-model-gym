@@ -27,7 +27,7 @@ from ng_model_gym.core.utils.enum_definitions import (
 
 # pylint: disable=line-too-long
 
-CONFIG_SCHEMA_VERSION = "5"
+CONFIG_SCHEMA_VERSION = "6"
 
 # Pydantic models representing the configuration file structure.
 # For fields which are not core to all model types (e.g. recurrent_samples),
@@ -464,6 +464,10 @@ class Train(PydanticConfigModel):
     )  # Hidden from user
     perform_validate: bool = Field(
         description="Perform validation at the end of specific training epochs, as set by the validate_frequency field."
+    )
+    compile: bool = Field(  # pylint: disable=redefined-builtin
+        default=False,
+        description="Enable torch.compile for the training step.",
     )
     validate_frequency: Union[int, List[int]] = Field(
         default=1,

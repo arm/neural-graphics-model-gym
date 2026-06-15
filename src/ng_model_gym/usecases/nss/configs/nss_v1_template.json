@@ -1,5 +1,5 @@
 {
-    "config_schema_version": "5",
+    "config_schema_version": "6",
     "model": {
         "name": "NSS",
         "model_source": "prebuilt",
@@ -45,6 +45,7 @@
         "batch_size": 8,
         "seed": 123456,
         "perform_validate": true,
+        "compile": false,
         "validate_frequency": 1,
         "loss_fn": "loss_v1",
         "loss_args": {

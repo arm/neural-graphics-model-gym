@@ -618,6 +618,7 @@ class NSSV1Model(BaseNGModel):
         )
         return process_h, process_w, padded_h, padded_w
 
+    @torch.compiler.disable
     def _generate_offset_lut(
         self, jitter: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
