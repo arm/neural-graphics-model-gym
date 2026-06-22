@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Quality mode guardrails for NSS v1."""
 
+from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
+from typing import Optional, Tuple
 
 
 class NSSV1Quality(str, Enum):
@@ -22,7 +23,7 @@ def resolve_nss_v1_quality(value: Optional[str]) -> NSSV1Quality:
         value: Quality mode string from configuration, or None for the default.
 
     Returns:
-        The supported high-quality NSS v1 mode.
+        NSS v1 quality mode equivalent to the passed string.
 
     Raises:
         ValueError: If the quality mode is unknown.
@@ -41,11 +42,62 @@ def resolve_nss_v1_quality(value: Optional[str]) -> NSSV1Quality:
             "Supported quality values are: high, mid, low."
         ) from exc
 
-    if quality in (NSSV1Quality.MID, NSSV1Quality.LOW):
-        raise NotImplementedError(
-            f"NSS-v1 quality '{quality.value}' is planned follow-up work. "
-            "The initial NSS-v1 implementation supports high-quality "
-            "training/evaluation only."
-        )
-
     return quality
+
+
+@dataclass(frozen=True)
+class NSSV1QualitySettings:
+    """
+    The different NSSV1Quality levels are implemented by turning parts of the
+    algorithm on and off. This class defines which parts of the algorithm will
+    be enabled for each given quality level.
+    """
+
+    quality: NSSV1Quality
+    preprocess_half_res_input: bool
+    depth_scatter_quarter_res_input: bool
+    use_sparse_filter_2x2: bool
+    use_history_catmull: bool
+    packed_nearest_offset_quad: bool
+    kpn_size: Tuple[int, int]
+
+    @classmethod
+    def preset(cls, quality: NSSV1Quality) -> "NSSV1QualitySettings":
+        """
+        Returns the parts of the NSS algorithm corresponding to the given
+        quality level.
+        """
+
+        if quality == NSSV1Quality.LOW:
+            return cls(
+                quality=quality,
+                preprocess_half_res_input=True,
+                depth_scatter_quarter_res_input=True,
+                use_sparse_filter_2x2=True,
+                use_history_catmull=False,
+                packed_nearest_offset_quad=True,
+                kpn_size=(4, 4),
+            )
+
+        if quality == NSSV1Quality.MID:
+            return cls(
+                quality=quality,
+                preprocess_half_res_input=True,
+                depth_scatter_quarter_res_input=True,
+                use_sparse_filter_2x2=True,
+                use_history_catmull=True,
+                packed_nearest_offset_quad=True,
+                kpn_size=(4, 4),
+            )
+
+        assert quality == NSSV1Quality.HIGH  # nosec B101
+
+        return cls(
+            quality=quality,
+            preprocess_half_res_input=False,
+            depth_scatter_quarter_res_input=False,
+            use_sparse_filter_2x2=False,
+            use_history_catmull=True,
+            packed_nearest_offset_quad=False,
+            kpn_size=(6, 6),
+        )

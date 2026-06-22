@@ -1,20 +1,19 @@
 # SPDX-FileCopyrightText: <text>Copyright 2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-import unittest
-
 import torch
 
 from ng_model_gym.usecases.nss.model.model_blocks_v1 import (
     AutoEncoderV1,
     get_kpn_prune_indices,
 )
+from tests.base_gpu_test import BaseGPUMemoryTest
 
 
-class TestNSSV1AutoEncoder(unittest.TestCase):
+class TestNSSV1AutoEncoder(BaseGPUMemoryTest):
     """Tests for the NSS v1 AutoEncoderV1 block."""
 
-    def test_output_shapes(self):
+    def test_output_shapes_for_high_quality_kpn_size(self):
         """Test AutoEncoderV1 output shapes for the high-quality KPN size."""
 
         autoencoder = AutoEncoderV1(kpn_size=(6, 6))
@@ -23,6 +22,17 @@ class TestNSSV1AutoEncoder(unittest.TestCase):
         kpn_params, temporal_params = autoencoder(x)
 
         self.assertEqual(kpn_params.shape, (2, 36, 32, 32))
+        self.assertEqual(temporal_params.shape, (2, 4, 128, 128))
+
+    def test_output_shapes_for_low_mid_quality_kpn_size(self):
+        """Test AutoEncoderV1 output shapes for the low/mid-quality KPN size."""
+
+        autoencoder = AutoEncoderV1(kpn_size=(4, 4))
+        x = torch.randn(2, 12, 128, 128)
+
+        kpn_params, temporal_params = autoencoder(x)
+
+        self.assertEqual(kpn_params.shape, (2, 16, 32, 32))
         self.assertEqual(temporal_params.shape, (2, 4, 128, 128))
 
     def test_get_kpn_prune_indices_returns_centered_column_major_indices(self):

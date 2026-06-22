@@ -11,11 +11,12 @@ from ng_model_gym.core.config.config_model import NSSModelSettings
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks_v1 import AutoEncoderV1
+from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
 
 
-class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-methods
-    """Tests for NSS v1 model registration and public guardrails."""
+class _NSSV1ModelTestMixin:
+    """Shared NSS v1 model test helpers."""
 
     def _data_creator_helper(self, lr_h, lr_w, hr_h, hr_w, recurrence=None):
         """Create NSS v1 recurrent tensors for a forward pass."""
@@ -75,7 +76,9 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
         model.core_forward = core_forward
         return captured_inputs
 
-    def setUp(self) -> None:
+    def _init_nss_v1_model_test_state(self) -> None:
+        """Set up shared NSS v1 model test state."""
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.params = create_simple_params(usecase="nss_v1")
         self.params.model_train_eval_mode = TrainEvalMode.FP32
@@ -83,6 +86,16 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
         self.params.model.recurrent_samples = 4
         self.batch_size = self.params.train.batch_size
         self.recurrence = self.params.model.recurrent_samples
+
+
+class TestNSSV1Model(  # pylint: disable=too-many-public-methods
+    _NSSV1ModelTestMixin,
+    unittest.TestCase,
+):
+    """Tests for NSS v1 model registration and public guardrails."""
+
+    def setUp(self) -> None:
+        self._init_nss_v1_model_test_state()
 
     def test_config_accepts_non_integer_nss_v1_scale(self) -> None:
         """NSS config accepts numeric scales greater than 1.0."""
@@ -150,6 +163,21 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
         self.assertIsInstance(model.get_neural_network(), AutoEncoderV1)
         self.assertTrue(model.shader_accurate)
 
+    def test_normalized_lr_motion_is_rejected_for_nss_v1(self) -> None:
+        """NSS v1 requires preserved low-resolution motion vectors."""
+
+        self.params.model.normalize_lr_motion = True
+
+        for model_quality in ("high", "mid", "low"):
+            with self.subTest(model_quality=model_quality):
+                self.params.model.quality = model_quality
+
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "model.normalize_lr_motion=False",
+                ):
+                    create_model(self.params, self.device)
+
     def test_device_reports_autoencoder_device(self) -> None:
         """NSS v1 device tracks the trainable network device."""
 
@@ -198,9 +226,12 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
         with self.assertRaisesRegex(RuntimeError, "requires CUDA"):
             model.core_forward(one_frame)
 
-    def test_non_multiple_lr_shapes_pad_temporal_state_only(self) -> None:
-        """NSS v1 pads autoencoder input/state but keeps raw derivative shapes."""
+    def test_high_quality_non_multiple_lr_shapes_use_full_res_processing_with_padded_state(
+        self,
+    ) -> None:
+        """High quality processes at LR resolution and pads recurrent temporal state."""
 
+        self.params.model.quality = "high"
         model = create_model(self.params, self.device)
         one_frame = {
             key: tensor[:, 0, :, :, :]
@@ -224,6 +255,66 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
             one_frame["derivative_tm1"].shape,
             (self.batch_size, 4, 130, 132),
         )
+
+    def test_low_mid_quality_non_multiple_lr_shapes_use_half_res_processing_with_padded_state(
+        self,
+    ) -> None:
+        """Low and mid quality process at half LR and pad recurrent temporal/derivative state."""
+
+        for model_quality in ("low", "mid"):
+            with self.subTest(model_quality=model_quality):
+                self.params.model.quality = model_quality
+                model = create_model(self.params, self.device)
+                one_frame = {
+                    key: tensor[:, 0, :, :, :]
+                    for key, tensor in self._data_creator_helper(
+                        130, 132, 260, 264
+                    ).items()
+                }
+                one_frame = model.set_buffers(one_frame)
+
+                dispatch_dims = model._calculate_dispatch_dims(one_frame)
+                (
+                    input_shape,
+                    process_shape,
+                    hr_shape,
+                    pad_shape,
+                    depth_shape,
+                ) = dispatch_dims
+
+                self.assertEqual(input_shape, (self.batch_size, 3, 130, 132))
+                self.assertEqual(process_shape, (self.batch_size, 3, 65, 66))
+                self.assertEqual(hr_shape, (self.batch_size, 3, 260, 264))
+                self.assertEqual(pad_shape, (self.batch_size, 3, 72, 72))
+                self.assertEqual(depth_shape, (self.batch_size, 1, 32, 33))
+                self.assertEqual(
+                    one_frame["temporal_params_tm1"].shape,
+                    (self.batch_size, 4, 72, 72),
+                )
+                self.assertEqual(
+                    one_frame["derivative_tm1"].shape,
+                    (self.batch_size, 4, 72, 72),
+                )
+
+    def test_low_mid_quality_uses_packed_nearest_offset_channels(self) -> None:
+        """Low and mid quality allocates both channels used by packed nearest offsets."""
+
+        for model_quality in ("low", "mid"):
+            with self.subTest(model_quality=model_quality):
+                self.params.model.quality = model_quality
+                model = create_model(self.params, self.device)
+
+                self.assertTrue(model.packed_nearest_offset_quad)
+                self.assertEqual(model._nearest_depth_offset_channels(), 2)
+
+    def test_high_quality_uses_single_nearest_offset_channel(self) -> None:
+        """High quality keeps the unpacked single-channel nearest offset encoding."""
+
+        self.params.model.quality = "high"
+        model = create_model(self.params, self.device)
+
+        self.assertFalse(model.packed_nearest_offset_quad)
+        self.assertEqual(model._nearest_depth_offset_channels(), 1)
 
     def test_non_integer_scale_dispatch_dims_use_rounded_output_shape(self) -> None:
         """NSS v1 dispatch dims use rounded non-integer scale output shape."""
@@ -313,17 +404,18 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
 
         get_slang.assert_not_called()
 
-    def test_shape_aware_offset_lut_uses_actual_lr_hr_shapes(self) -> None:
-        """NSS v1 LUT generation derives modulo from rounded LR/HR shape."""
+    def test_high_quality_offset_lut_uses_compact_metadata_layout(self) -> None:
+        """High quality passes only idx modulo metadata for rounded LR/HR shapes."""
 
         self.params.model.scale = 1.5
+        self.params.model.quality = "high"
         model = create_model(self.params, self.device)
         jitter = torch.zeros(self.batch_size, 2, 1, 1, device=self.device)
 
         offset_lut, idx_modulo = model._generate_offset_lut(
             jitter,
-            (self.batch_size, 3, 8, 10),
-            (self.batch_size, 3, 12, 15),
+            in_shape=(self.batch_size, 3, 8, 10),
+            out_shape=(self.batch_size, 3, 12, 15),
         )
 
         self.assertEqual(offset_lut.shape, (self.batch_size, 6, 9, 9))
@@ -334,9 +426,65 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
             atol=0,
         )
 
-    def test_slang_defines_include_v1_macros(self) -> None:
-        """NSS v1 shader loading uses NSS v1 macro names."""
+    def test_low_mid_quality_offset_lut_uses_post_process_metadata_layout(
+        self,
+    ) -> None:
+        """Low and mid quality pass idx modulo and preprocess dimensions by channel."""
+        for model_quality in ("low", "mid"):
+            with self.subTest(model_quality=model_quality):
+                self.params.model.scale = 1.5
+                self.params.model.quality = model_quality
+                model = create_model(self.params, self.device)
+                jitter = torch.zeros(self.batch_size, 2, 1, 1, device=self.device)
 
+                offset_lut, idx_modulo = model._generate_offset_lut(
+                    jitter,
+                    in_shape=(self.batch_size, 3, 8, 10),
+                    out_shape=(self.batch_size, 3, 12, 15),
+                )
+
+                self.assertEqual(offset_lut.shape, (self.batch_size, 6, 9, 9))
+
+                # Low- and mid-quality use half-resolution, turning 8 and 10
+                # (in_shape, above) into 4.0 and 5.0.
+                expected = torch.tensor(
+                    [3.0, 3.0, 4.0, 5.0],
+                    device=self.device,
+                ).reshape(1, 4, 1, 1)
+                torch.testing.assert_close(
+                    idx_modulo,
+                    expected.expand(self.batch_size, -1, -1, -1),
+                    rtol=0,
+                    atol=0,
+                )
+
+    def test_common_slang_defines(self) -> None:
+        """
+        Test Slang defines which should be used at all quality levels. Assume NSS v1.
+        """
+
+        for model_quality in ("low", "mid", "high"):
+            with self.subTest(model_quality=model_quality):
+                self.params.model.quality = model_quality
+                model = create_model(self.params, self.device)
+                with patch(
+                    "ng_model_gym.usecases.nss.model.model_v1.load_slang_module",
+                    return_value=object(),
+                ) as load_module:
+                    model._get_slang()
+
+                defines = load_module.call_args.kwargs["defines"]
+                self.assertEqual(defines["NSS_QUALITY_LOW"], 0)
+                self.assertEqual(defines["NSS_QUALITY_MEDIUM"], 1)
+                self.assertEqual(defines["NSS_QUALITY_HIGH"], 2)
+                self.assertEqual(defines["FILTER_COLOUR_KERNEL_SZ"], 9)
+                self.assertEqual(defines["NSS_V1_LUMA_DERIVATIVE"], 1)
+                self.assertEqual(defines["NSS_V1_SHARP_THETA"], 1)
+
+    def test_high_quality_slang_defines(self) -> None:
+        """Test Slang defines which should be used for high quality."""
+
+        self.params.model.quality = "high"
         model = create_model(self.params, self.device)
         with patch(
             "ng_model_gym.usecases.nss.model.model_v1.load_slang_module",
@@ -345,8 +493,50 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
             model._get_slang()
 
         defines = load_module.call_args.kwargs["defines"]
-        self.assertEqual(defines["NSS_V1_LUMA_DERIVATIVE"], 1)
-        self.assertEqual(defines["NSS_V1_SHARP_THETA"], 1)
+        self.assertEqual(defines["NSS_QUALITY"], 2)  # 2 = "high"
+        self.assertEqual(defines["NSS_PREPROCESS_HALF_RES_INPUT"], False)
+        self.assertEqual(defines["NSS_DEPTH_SCATTER_QUARTER_RES_INPUT"], False)
+        self.assertEqual(defines["NSS_USE_SPARSE_2X2_FILTER"], False)
+        self.assertEqual(defines["NSS_USE_HISTORY_CATMULL"], True)
+        self.assertEqual(defines["NSS_PACKED_NEAREST_OFFSET_QUAD"], False)
+
+    def test_mid_quality_slang_defines(self) -> None:
+        """Test Slang defines which should be used for mid quality."""
+
+        self.params.model.quality = "mid"
+        model = create_model(self.params, self.device)
+        with patch(
+            "ng_model_gym.usecases.nss.model.model_v1.load_slang_module",
+            return_value=object(),
+        ) as load_module:
+            model._get_slang()
+
+        defines = load_module.call_args.kwargs["defines"]
+        self.assertEqual(defines["NSS_QUALITY"], 1)  # 1 = "mid"
+        self.assertEqual(defines["NSS_PREPROCESS_HALF_RES_INPUT"], True)
+        self.assertEqual(defines["NSS_DEPTH_SCATTER_QUARTER_RES_INPUT"], True)
+        self.assertEqual(defines["NSS_USE_SPARSE_2X2_FILTER"], True)
+        self.assertEqual(defines["NSS_USE_HISTORY_CATMULL"], True)
+        self.assertEqual(defines["NSS_PACKED_NEAREST_OFFSET_QUAD"], True)
+
+    def test_low_quality_slang_defines(self) -> None:
+        """Test Slang defines which should be used for low quality."""
+
+        self.params.model.quality = "low"
+        model = create_model(self.params, self.device)
+        with patch(
+            "ng_model_gym.usecases.nss.model.model_v1.load_slang_module",
+            return_value=object(),
+        ) as load_module:
+            model._get_slang()
+
+        defines = load_module.call_args.kwargs["defines"]
+        self.assertEqual(defines["NSS_QUALITY"], 0)  # 1 = "low"
+        self.assertEqual(defines["NSS_PREPROCESS_HALF_RES_INPUT"], True)
+        self.assertEqual(defines["NSS_DEPTH_SCATTER_QUARTER_RES_INPUT"], True)
+        self.assertEqual(defines["NSS_USE_SPARSE_2X2_FILTER"], True)
+        self.assertEqual(defines["NSS_USE_HISTORY_CATMULL"], False)
+        self.assertEqual(defines["NSS_PACKED_NEAREST_OFFSET_QUAD"], True)
 
     def test_forward_uses_available_time_dimension(self) -> None:
         """NSS v1 does not index past the input recurrent dimension."""
@@ -647,11 +837,20 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
 
         self.assertTrue(torch.all(captured_inputs[0]["history"] == 0.0))
 
-    @unittest.skipUnless(
-        torch.cuda.is_available(),
-        "NSS v1 forward requires CUDA because the forward path is Slang-backed.",
-    )
-    def test_shape_nss_v1_model_forward_pass(self) -> None:
+
+@unittest.skipUnless(
+    torch.cuda.is_available(),
+    "NSS v1 forward requires CUDA because the forward path is Slang-backed.",
+)
+class TestNSSV1ModelGPU(_NSSV1ModelTestMixin, BaseGPUMemoryTest):
+    """CUDA-backed NSS v1 model tests."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        self._init_nss_v1_model_test_state()
+        self.device = torch.device("cuda")
+
+    def test_shape_nss_v1_high_quality_model_forward_pass(self) -> None:
         """Test NSS v1 recurrent high-quality forward output shapes."""
 
         model = create_model(self.params, self.device)
@@ -682,11 +881,41 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
             (self.batch_size, self.recurrence, 4, 128, 128),
         )
 
-    @unittest.skipUnless(
-        torch.cuda.is_available(),
-        "NSS v1 forward requires CUDA because the forward path is Slang-backed.",
-    )
-    def test_shape_nss_v1_non_integer_scale_forward_pass(self) -> None:
+    def test_shape_nss_v1_low_mid_quality_model_forward_pass(self) -> None:
+        """Test NSS v1 recurrent low-/mid-quality forward output shapes."""
+
+        for model_quality in ("low", "mid"):
+            with self.subTest(model_quality=model_quality):
+                self.params.model.quality = model_quality
+                model = create_model(self.params, self.device)
+                data = self._data_creator_helper(128, 128, 256, 256)
+
+                with torch.no_grad():
+                    model.train()
+                    model_out = model(data)
+
+                self.assertEqual(
+                    model_out["output_linear"].shape,
+                    (self.batch_size, self.recurrence, 3, 256, 256),
+                )
+                self.assertEqual(
+                    model_out["output"].shape,
+                    (self.batch_size, self.recurrence, 3, 256, 256),
+                )
+                self.assertEqual(
+                    model_out["out_filtered"].shape,
+                    (self.batch_size, self.recurrence, 3, 256, 256),
+                )
+                self.assertEqual(
+                    model_out["temporal_params"].shape,
+                    (self.batch_size, self.recurrence, 4, 64, 64),
+                )
+                self.assertEqual(
+                    model_out["derivative"].shape,
+                    (self.batch_size, self.recurrence, 4, 64, 64),
+                )
+
+    def test_shape_nss_v1_high_quality_non_integer_scale_forward_pass(self) -> None:
         """Test NSS v1 recurrent high-quality forward shapes for non-integer scale."""
 
         self.params.model.scale = 1.5
@@ -717,3 +946,38 @@ class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-meth
             model_out["derivative"].shape,
             (self.batch_size, self.recurrence, 4, 96, 80),
         )
+
+    def test_shape_nss_v1_low_mid_quality_non_integer_scale_forward_pass(self) -> None:
+        """Test NSS v1 recurrent low-/mid-quality forward shapes for non-integer scale."""
+
+        for model_quality in ("low", "mid"):
+            with self.subTest(model_quality=model_quality):
+                self.params.model.quality = model_quality
+                self.params.model.scale = 1.5
+                model = create_model(self.params, self.device)
+                data = self._data_creator_helper(96, 80, 144, 120)
+
+                with torch.no_grad():
+                    model.eval()
+                    model_out = model(data)
+
+                self.assertEqual(
+                    model_out["output_linear"].shape,
+                    (self.batch_size, self.recurrence, 3, 144, 120),
+                )
+                self.assertEqual(
+                    model_out["output"].shape,
+                    (self.batch_size, self.recurrence, 3, 144, 120),
+                )
+                self.assertEqual(
+                    model_out["out_filtered"].shape,
+                    (self.batch_size, self.recurrence, 3, 144, 120),
+                )
+                self.assertEqual(
+                    model_out["temporal_params"].shape,
+                    (self.batch_size, self.recurrence, 4, 48, 40),
+                )
+                self.assertEqual(
+                    model_out["derivative"].shape,
+                    (self.batch_size, self.recurrence, 4, 48, 40),
+                )
