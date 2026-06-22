@@ -7,13 +7,19 @@
 from .blockmatch_v321 import (
     ArgMinCentered,
     BlockMatchV321,
+    BlockMatchV321Config,
     ExtractSearchWindows,
+    Polarity,
+    TemplateFrameId,
     upscale_and_dilate_flow,
 )
 
 __all__ = [
     "ArgMinCentered",
+    "BlockMatchV321Config",
     "BlockMatchV321",
     "ExtractSearchWindows",
+    "Polarity",
+    "TemplateFrameId",
     "upscale_and_dilate_flow",
 ]
