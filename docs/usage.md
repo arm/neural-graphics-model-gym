@@ -89,7 +89,7 @@ To fine-tune from an existing remote checkpoint, pass the string identifier to f
 ng-model-gym -c <path/to/config/file> train --finetune @<repo_name>/<filename>
 
 # e.g.
-ng-model-gym -c <path/to/config/file> train --finetune @neural-super-sampling/nss_v0.1.0_fp32.pt
+ng-model-gym -c <path/to/config/file> train --finetune @neural-super-sampling/nss_v1_high_fp32.pt
 ```
 
 To resume training from an existing checkpoint file or a directory containing checkpoints, run:

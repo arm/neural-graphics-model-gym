@@ -34,16 +34,16 @@ def parse_model_identifier(model_identifier: str) -> tuple[str, str]:
 
     if "/" not in parsed_model_identifier:
         raise ValueError(
-            "Model identifier must be <repo_name>/<filename> or "
-            f"@<repo_name>/<filename>, not '{model_identifier}'"
+            "Model identifier must be <repo_name>/<file_name> or "
+            f"@<repo_name>/<file_name>, not '{model_identifier}'"
         )
 
     repo_name, file_name = parsed_model_identifier.split("/", 1)
 
     if not repo_name or not file_name:
         raise ValueError(
-            "Model identifier must be <repo_name>/<filename> or "
-            f"@<repo_name>/<filename>, not '{model_identifier}'"
+            "Model identifier must be <repo_name>/<file_name> or "
+            f"@<repo_name>/<file_name>, not '{model_identifier}'"
         )
 
     return repo_name, file_name
@@ -102,8 +102,9 @@ def download_pretrained_model(model_name: str, destination: Path | None = None) 
 
             found_repo = True
             for model in remote_repo.models:
-                available_models.add(model.file_name)
-                if user_file_name in available_models:
+                model_names = {model.file_name, model.relative_path}
+                available_models.update(model_names)
+                if user_file_name in model_names:
                     return server.download(remote_repo.repository, model, destination)
 
     if not found_repo:

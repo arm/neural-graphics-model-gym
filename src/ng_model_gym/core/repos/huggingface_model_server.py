@@ -29,7 +29,7 @@ class HuggingfaceModelServer(BaseModelServer):
                 namespace="Arm",
                 name="neural-super-sampling",
                 url="https://huggingface.co/Arm/neural-super-sampling",
-                revision="2e9b606acd9fa25071825a12f0764f1c3bef9480",
+                revision="ad93d335e1faf49bc852294ac8780c4f518a8d79",
             )
         ]
         # TODO: NFRU HF integration stub:

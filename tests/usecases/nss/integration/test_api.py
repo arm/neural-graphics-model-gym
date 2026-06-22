@@ -11,12 +11,12 @@ from ng_model_gym.core.utils.enum_definitions import (
     ProfilerType,
     TrainEvalMode,
 )
-from tests.usecases.nss.integration.base_integration import NSSBaseIntegrationTest
+from tests.usecases.nss.integration.base_integration import NSSV0_1BaseIntegrationTest
 
 # pylint: disable=duplicate-code
 
 
-class ApiIntegrationTest(NSSBaseIntegrationTest):
+class ApiIntegrationTest(NSSV0_1BaseIntegrationTest):
     """NSS specific integration tests for API functions in ng_model_gym."""
 
     def setUp(self):

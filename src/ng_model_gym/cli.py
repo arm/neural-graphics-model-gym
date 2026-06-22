@@ -164,7 +164,7 @@ def download_cli(
         typer.Argument(
             help=(
                 "Model identifier to download "
-                "(e.g. @neural-super-sampling/nss_v0.1.0_fp32.pt)"
+                "(e.g. @neural-super-sampling/nss_v1_high_fp32.pt)"
             )
         ),
     ],
@@ -311,8 +311,8 @@ def eval_cli(
     model_path: Annotated[
         str,
         typer.Option(
-            help="Path to local model .pt file or remote model identifier @<repo_name>/<file_name> "
-            "to evaluate",
+            help="Path to local model .pt file or remote model identifier "
+            "@<repo_name>/<file_name> to evaluate",
         ),
     ],
     model_type: Annotated[
@@ -337,8 +337,8 @@ def export_cli(
     model_path: Annotated[
         str,
         typer.Option(
-            help="Path to model .pt file or remote model identifier @<repo_name>/<file_name> "
-            "for VGF file export",
+            help="Path to model .pt file or remote model identifier "
+            "@<repo_name>/<file_name> for VGF file export",
         ),
     ],
     export_type: Annotated[

@@ -18,7 +18,6 @@ from ng_model_gym.core.model.graphics_utils import (
 )
 from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.model.shaders.slang_utils import load_slang_module, SlangOutput
-from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks_v1 import AutoEncoderV1
 from ng_model_gym.usecases.nss.model.quality_modes import (
     NSSV1Quality,
@@ -46,12 +45,6 @@ class NSSV1Model(BaseNGModel):
         if not isinstance(self.params.model, NSSModelSettings):
             raise TypeError(
                 "model section in parameter is not of type NSSModelSettings"
-            )
-
-        if self.params.model_train_eval_mode == TrainEvalMode.QAT_INT8:
-            raise NotImplementedError(
-                "NSS-v1 QAT is planned follow-up work. "
-                "The initial NSS-v1 release supports FP32 training/evaluation only."
             )
 
         self.quality = resolve_nss_v1_quality(self.params.model.quality)

@@ -133,7 +133,7 @@ def do_training(
        >>> checkpoint_path = do_training(params, TrainEvalMode.FP32)
        >>> # Finetuning - preexisting weights as starting point for training
        >>> checkpoint_path = do_training(params, TrainEvalMode.FP32, finetune_model_path='./path/to/model.pt')
-       >>> checkpoint_path = do_training(params, TrainEvalMode.FP32, finetune_model_path='@neural-super-sampling/nss_v0.1.0_fp32.pt')
+       >>> checkpoint_path = do_training(params, TrainEvalMode.FP32, finetune_model_path='@neural-super-sampling/nss_v1_high_fp32.pt')
     """
 
     if not isinstance(training_mode, TrainEvalMode):
