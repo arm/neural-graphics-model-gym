@@ -22,6 +22,7 @@ from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks_v1 import AutoEncoderV1
 from ng_model_gym.usecases.nss.model.quality_modes import (
     NSSV1Quality,
+    NSSV1QualitySettings,
     resolve_nss_v1_quality,
 )
 
@@ -36,7 +37,7 @@ _NSS_V1_SHADER_QUALITY_DEFINES = {
 
 @register_model(name="NSS", version="1")
 class NSSV1Model(BaseNGModel):
-    """NSS v1 model for high-quality training and evaluation flows."""
+    """NSS v1 model for training and evaluation flows."""
 
     def __init__(self, params: ConfigModel):
         """Set up the NSS v1 model."""
@@ -54,6 +55,8 @@ class NSSV1Model(BaseNGModel):
             )
 
         self.quality = resolve_nss_v1_quality(self.params.model.quality)
+        quality_settings = NSSV1QualitySettings.preset(self.quality)
+
         self.scale = self.params.model.scale
         self.recurrent_samples = self.params.model.recurrent_samples
         self.gt_history_augmentation = bool(self.params.model.gt_history_augmentation)
@@ -61,7 +64,8 @@ class NSSV1Model(BaseNGModel):
             self.params.model.gt_history_augmentation_chance
         )
         self.tonemapper = self.params.dataset.tonemapper
-        self.autoencoder = AutoEncoderV1(batch_norm=False, kpn_size=(6, 6))
+        self.kpn_size = quality_settings.kpn_size
+        self.autoencoder = AutoEncoderV1(batch_norm=False, kpn_size=self.kpn_size)
         self.history_buffers = self.init_history_buffers()
 
         # NSS v1 training and evaluation configs use shader-accurate NSS with
@@ -71,14 +75,30 @@ class NSSV1Model(BaseNGModel):
         self.slang_shader_file = "nss_v1.slang"
         self.slang: Optional[object] = None
 
-        self.preprocess_half_res_input = False
-        self.depth_scatter_quarter_res_input = False
-        self.use_sparse_filter_2x2 = False
-        self.use_history_catmull = True
-        self.packed_nearest_offset_quad = False
+        self.preprocess_half_res_input = quality_settings.preprocess_half_res_input
+        self.depth_scatter_quarter_res_input = (
+            quality_settings.depth_scatter_quarter_res_input
+        )
+        self.use_sparse_filter_2x2 = quality_settings.use_sparse_filter_2x2
+        self.use_history_catmull = quality_settings.use_history_catmull
+        self.packed_nearest_offset_quad = quality_settings.packed_nearest_offset_quad
+        self.nss_v1_luma_derivative = True
+        self.nss_v1_sharp_theta = True
         self.required_multiple = (8, 8)
         self.filter_kernel_size = 3
         self.filter_kernel_taps = self.filter_kernel_size * self.filter_kernel_size
+        self.effective_shader_accurate = (
+            self.shader_accurate or self.preprocess_half_res_input
+        )
+        if self.effective_shader_accurate and self.params.model.normalize_lr_motion:
+            raise ValueError(
+                "NSS-v1 shader-accurate or half-resolution quality modes require "
+                "model.normalize_lr_motion=False to preserve low-resolution motion "
+                "vectors."
+            )
+
+        self.motion_key = "motion_lr" if self.effective_shader_accurate else "motion"
+
         self._lut_in_shape: Optional[tuple[int, int, int, int]] = None
         self._lut_out_shape: Optional[tuple[int, int, int, int]] = None
         self._lut_height_map: Optional[tuple[int, int]] = None
@@ -109,7 +129,7 @@ class NSSV1Model(BaseNGModel):
         self.validate_export_supported(export_type=None)
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        """Run recurrent NSS v1 high-quality forward pass.
+        """Run recurrent NSS v1 forward pass.
 
         Input tensors are channel-first recurrent tensors with shape
         ``(N, T, C, H, W)``.
@@ -151,7 +171,7 @@ class NSSV1Model(BaseNGModel):
         return stacked_outputs
 
     def core_forward(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        """Run a one-frame high-quality NSS v1 forward pass."""
+        """Run a one-frame NSS v1 forward pass."""
 
         (
             input_shape,
@@ -167,7 +187,7 @@ class NSSV1Model(BaseNGModel):
         device = str(inputs["colour_linear"].device)
 
         depth_tm1 = slang.depth_scatter(
-            in_motion=inputs["motion_lr"],
+            in_motion=inputs[self.motion_key],
             in_depth=inputs["depth"],
             in_render_size=inputs["render_size"],
             out_constructors={
@@ -182,32 +202,31 @@ class NSSV1Model(BaseNGModel):
             dispatch_size=[depth_shape[0], depth_shape[2], depth_shape[3]],
         )
 
-        (
-            input_tensor,
-            derivative,
-            disocclusion_mask,
-            nearest_depth_offset,
-        ) = slang.pre_process(
-            in_colour=inputs["colour_linear"],
-            in_history=inputs["history"],
-            in_motion=inputs["motion_lr"],
-            in_depth=inputs["depth"],
-            in_depth_tm1=depth_tm1,
-            in_jitter=inputs["jitter"],
-            in_jitter_tm1=inputs["jitter_tm1"],
-            in_feedback_tm1=inputs["temporal_params_tm1"],
-            in_derivative_tm1=inputs["derivative_tm1"],
-            in_depth_params=inputs["depth_params"],
-            in_exposure=inputs["exposure"],
-            in_render_size=inputs["render_size"],
-            out_constructors={
+        derivative_shape = pad_shape if self.preprocess_half_res_input else input_shape
+        nearest_offset_shape = (
+            pad_shape if self.preprocess_half_res_input else process_shape
+        )
+        preprocess_kwargs = {
+            "in_colour": inputs["colour_linear"],
+            "in_history": inputs["history"],
+            "in_motion": inputs[self.motion_key],
+            "in_depth": inputs["depth"],
+            "in_depth_tm1": depth_tm1,
+            "in_jitter": inputs["jitter"],
+            "in_jitter_tm1": inputs["jitter_tm1"],
+            "in_feedback_tm1": inputs["temporal_params_tm1"],
+            "in_derivative_tm1": inputs["derivative_tm1"],
+            "in_depth_params": inputs["depth_params"],
+            "in_exposure": inputs["exposure"],
+            "in_render_size": inputs["render_size"],
+            "out_constructors": {
                 "out_tensor": SlangOutput(
                     shape=pad_shape,
                     channel_dim=12,
                     device=device,
                 ),
                 "out_luma_derivative": SlangOutput(
-                    shape=input_shape,
+                    shape=derivative_shape,
                     channel_dim=4,
                     device=device,
                 ),
@@ -217,13 +236,22 @@ class NSSV1Model(BaseNGModel):
                     device=device,
                 ),
                 "out_nearest_depth_off": SlangOutput(
-                    shape=process_shape,
-                    channel_dim=1,
+                    shape=nearest_offset_shape,
+                    channel_dim=self._nearest_depth_offset_channels(),
                     device=device,
                 ),
             },
-            dispatch_size=[pad_shape[0], pad_shape[2], pad_shape[3]],
-        )
+            "dispatch_size": [pad_shape[0], pad_shape[2], pad_shape[3]],
+        }
+        if self.preprocess_half_res_input:
+            preprocess_kwargs["block_size"] = 128
+
+        (
+            input_tensor,
+            derivative,
+            disocclusion_mask,
+            nearest_depth_offset,
+        ) = slang.pre_process(**preprocess_kwargs)
 
         kpn_params, temporal_params = self.autoencoder(input_tensor)
 
@@ -237,7 +265,7 @@ class NSSV1Model(BaseNGModel):
             in_history=inputs["history"],
             in_kpn_params=kpn_params,
             in_temporal_params=temporal_params,
-            in_motion=inputs["motion_lr"],
+            in_motion=inputs[self.motion_key],
             in_nearest_depth_off=nearest_depth_offset,
             in_exposure=inputs["exposure"],
             in_jitter=inputs["jitter"],
@@ -276,7 +304,7 @@ class NSSV1Model(BaseNGModel):
         }
 
     def init_history_buffers(self) -> Dict[str, Optional[torch.Tensor]]:
-        """Return version-local NSS v1 history buffers."""
+        """Return NSS v1 history buffers."""
 
         return {
             "history": None,
@@ -513,10 +541,10 @@ class NSSV1Model(BaseNGModel):
                 "NSS_USE_HISTORY_CATMULL": int(self.use_history_catmull),
                 "NSS_PACKED_NEAREST_OFFSET_QUAD": int(self.packed_nearest_offset_quad),
                 "FILTER_COLOUR_KERNEL_SZ": int(self.filter_kernel_taps),
-                "NSS_V1_LUMA_DERIVATIVE": 1,
-                "NSS_V1_SHARP_THETA": 1,
+                "NSS_V1_LUMA_DERIVATIVE": int(self.nss_v1_luma_derivative),
+                "NSS_V1_SHARP_THETA": int(self.nss_v1_sharp_theta),
             }
-            if self.shader_accurate or self.preprocess_half_res_input:
+            if self.effective_shader_accurate:
                 slang_defines["SHADER_ACCURATE"] = True
             self.slang = load_slang_module(
                 self.slang_shader_dir,
@@ -529,12 +557,17 @@ class NSSV1Model(BaseNGModel):
     def _create_zero_history_buffers(
         self, inputs: Dict[str, torch.Tensor]
     ) -> Dict[str, torch.Tensor]:
-        """Create reset-state history buffers for high-quality NSS v1."""
+        """Create reset-state history buffers for NSS v1."""
 
         batch = inputs["colour_linear"].shape[0]
         lr_h, lr_w = inputs["colour_linear"].shape[2:]
         device = inputs["colour_linear"].device
         dtype = inputs["colour_linear"].dtype
+
+        padded_shape = self._derive_process_and_padded_spatial(lr_h, lr_w)[2:]
+        derivative_shape = (
+            padded_shape if self.preprocess_half_res_input else (lr_h, lr_w)
+        )
 
         return {
             "history": torch.zeros_like(inputs["ground_truth_linear"]),
@@ -542,15 +575,14 @@ class NSSV1Model(BaseNGModel):
             "temporal_params_tm1": torch.zeros(
                 batch,
                 4,
-                *self._derive_process_and_padded_spatial(lr_h, lr_w)[2:],
+                *padded_shape,
                 device=device,
                 dtype=dtype,
             ),
             "derivative_tm1": torch.zeros(
                 batch,
                 4,
-                lr_h,
-                lr_w,
+                *derivative_shape,
                 device=device,
                 dtype=dtype,
             ),
@@ -628,11 +660,13 @@ class NSSV1Model(BaseNGModel):
         )
         process_shape = (input_shape[0], input_shape[1], process_h, process_w)
         pad_shape = (input_shape[0], input_shape[1], padded_h, padded_w)
+
+        depth_divisor = 4 if self.depth_scatter_quarter_res_input else 2
         depth_shape = (
             input_shape[0],
             1,
-            input_shape[2] // 2,
-            input_shape[3] // 2,
+            input_shape[2] // depth_divisor,
+            input_shape[3] // depth_divisor,
         )
         return input_shape, process_shape, hr_shape, pad_shape, depth_shape
 
@@ -648,7 +682,7 @@ class NSSV1Model(BaseNGModel):
         input_h: int,
         input_w: int,
     ) -> tuple[int, int, int, int]:
-        """Return high-quality process and padded spatial dimensions."""
+        """Return process and padded spatial dimensions."""
 
         process_h = input_h // 2 if self.preprocess_half_res_input else input_h
         process_w = input_w // 2 if self.preprocess_half_res_input else input_w
@@ -661,6 +695,11 @@ class NSSV1Model(BaseNGModel):
             self.required_multiple[1],
         )
         return process_h, process_w, padded_h, padded_w
+
+    def _nearest_depth_offset_channels(self) -> int:
+        """Return channel count required by the selected nearest-offset encoding."""
+
+        return 2 if self.packed_nearest_offset_quad else 1
 
     @torch.compiler.disable
     def _generate_offset_lut(
@@ -707,8 +746,38 @@ class NSSV1Model(BaseNGModel):
             self._lut_width_map,
         )
         offset_lut = self._compute_lut(base_lut, self._lut_idx_mod)
-        idx_modulo = self._lut_idx_mod
+        idx_modulo = self._post_process_idx_modulo(jitter, in_shape)
         return offset_lut, idx_modulo
+
+    def _post_process_idx_modulo(
+        self,
+        jitter: torch.Tensor,
+        in_shape: tuple[int, int, int, int],
+    ) -> torch.Tensor:
+        """Return idx/modulo metadata in the layout expected by post_process."""
+
+        if self._lut_idx_mod is None:
+            raise RuntimeError("Offset LUT modulo must be initialized first.")
+
+        if not self.preprocess_half_res_input:
+            return self._lut_idx_mod
+
+        process_h, process_w, _, _ = self._derive_process_and_padded_spatial(
+            in_shape[2],
+            in_shape[3],
+        )
+        batch = in_shape[0]
+        idx_mod_hw = self._lut_idx_mod.expand(batch, -1, -1, -1)
+        idx_modulo = torch.empty(
+            (batch, 4, 1, 1),
+            dtype=self._lut_idx_mod.dtype,
+            device=jitter.device,
+        )
+        idx_modulo[:, 0, 0, 0] = idx_mod_hw[:, 0, 0, 0]
+        idx_modulo[:, 1, 0, 0] = idx_mod_hw[:, 0, 0, 1]
+        idx_modulo[:, 2, 0, 0] = process_h
+        idx_modulo[:, 3, 0, 0] = process_w
+        return idx_modulo
 
     def _compute_lut(
         self,

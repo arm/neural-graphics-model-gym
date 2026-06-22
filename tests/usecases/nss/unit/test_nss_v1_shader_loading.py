@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
-import unittest
 from pathlib import Path
 
 from ng_model_gym.core.model.shaders.slang_utils import load_slang_module
+from tests.base_gpu_test import BaseGPUMemoryTest
 
 
-class TestNSSV1ShaderLoading(unittest.TestCase):
+class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
     """Tests for NSS v1 shader module loading."""
 
     _REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -99,6 +99,67 @@ class TestNSSV1ShaderLoading(unittest.TestCase):
 
         for defines in define_cases:
             with self.subTest(defines=defines):
+                module = load_slang_module(
+                    "ng_model_gym.usecases.nss.model.shaders",
+                    "nss_v1.slang",
+                    defines=defines,
+                )
+
+                self.assert_nss_v1_exports(module)
+
+    def test_nss_v1_shader_loads_with_defines_at_each_quality_level(self):
+        """The v1 Slang wrapper loads with defines at each quality level."""
+
+        define_cases = {
+            "low": {
+                "NSS_QUALITY": 0,
+                "NSS_QUALITY_LOW": 0,
+                "NSS_QUALITY_MEDIUM": 1,
+                "NSS_QUALITY_HIGH": 2,
+                "NSS_PREPROCESS_HALF_RES_INPUT": 1,
+                "NSS_DEPTH_SCATTER_QUARTER_RES_INPUT": 1,
+                "NSS_USE_SPARSE_2X2_FILTER": 1,
+                "NSS_USE_HISTORY_CATMULL": 0,
+                "NSS_PACKED_NEAREST_OFFSET_QUAD": 1,
+                "FILTER_COLOUR_KERNEL_SZ": 9,
+                "NSS_V1_LUMA_DERIVATIVE": 1,
+                "NSS_V1_SHARP_THETA": 1,
+                "SHADER_ACCURATE": True,
+            },
+            "mid": {
+                "NSS_QUALITY": 1,
+                "NSS_QUALITY_LOW": 0,
+                "NSS_QUALITY_MEDIUM": 1,
+                "NSS_QUALITY_HIGH": 2,
+                "NSS_PREPROCESS_HALF_RES_INPUT": 1,
+                "NSS_DEPTH_SCATTER_QUARTER_RES_INPUT": 1,
+                "NSS_USE_SPARSE_2X2_FILTER": 1,
+                "NSS_USE_HISTORY_CATMULL": 1,
+                "NSS_PACKED_NEAREST_OFFSET_QUAD": 1,
+                "FILTER_COLOUR_KERNEL_SZ": 9,
+                "NSS_V1_LUMA_DERIVATIVE": 1,
+                "NSS_V1_SHARP_THETA": 1,
+                "SHADER_ACCURATE": True,
+            },
+            "high": {
+                "NSS_QUALITY": 2,
+                "NSS_QUALITY_LOW": 0,
+                "NSS_QUALITY_MEDIUM": 1,
+                "NSS_QUALITY_HIGH": 2,
+                "NSS_PREPROCESS_HALF_RES_INPUT": 0,
+                "NSS_DEPTH_SCATTER_QUARTER_RES_INPUT": 0,
+                "NSS_USE_SPARSE_2X2_FILTER": 0,
+                "NSS_USE_HISTORY_CATMULL": 1,
+                "NSS_PACKED_NEAREST_OFFSET_QUAD": 0,
+                "FILTER_COLOUR_KERNEL_SZ": 9,
+                "NSS_V1_LUMA_DERIVATIVE": 1,
+                "NSS_V1_SHARP_THETA": 1,
+                "SHADER_ACCURATE": True,
+            },
+        }
+
+        for quality, defines in define_cases.items():
+            with self.subTest(quality=quality):
                 module = load_slang_module(
                     "ng_model_gym.usecases.nss.model.shaders",
                     "nss_v1.slang",

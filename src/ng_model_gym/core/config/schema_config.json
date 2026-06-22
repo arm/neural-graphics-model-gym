@@ -61,7 +61,7 @@
                                 }
                             ],
                             "default": null,
-                            "description": "NSS v1 quality mode. Only high is supported in the train/eval-first release; mid and low are planned follow-up work."
+                            "description": "NSS v1 quality mode."
                         },
                         "normalize_lr_motion": {
                             "anyOf": [

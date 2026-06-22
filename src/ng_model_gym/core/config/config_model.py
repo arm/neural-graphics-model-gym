@@ -190,10 +190,7 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
     recurrent_samples: int = Field(gt=1, description="Number of recurrent samples")
     quality: Optional[Literal["high", "mid", "low"]] = Field(
         default=None,
-        description=(
-            "NSS v1 quality mode. Only high is supported in the train/eval-first "
-            "release; mid and low are planned follow-up work."
-        ),
+        description=("NSS v1 quality mode."),
     )
     normalize_lr_motion: Optional[bool] = Field(
         default=None,
