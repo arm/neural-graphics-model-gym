@@ -6,8 +6,10 @@ import unittest
 import torch
 
 from ng_model_gym.core.model import (
+    calculate_lr_to_hr_modulo,
     compute_luminance,
     generate_lr_to_hr_lut,
+    generate_lr_to_hr_tile,
     length,
     lerp,
     normalize_mvs,
@@ -273,3 +275,115 @@ class TestLRToHRLookupTable(unittest.TestCase):
         padding = offset_lut[:, 3]
 
         self.assertTrue(torch.all(padding == 0.0))
+
+
+class TestShapeAwareLRToHRTile(unittest.TestCase):
+    """Tests for shape-derived LR to HR LUT helpers used by NSS v1."""
+
+    def setUp(self):
+        """Set up shape-aware LUT inputs."""
+
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.batch_size = 3
+        self.jitter = torch.zeros(self.batch_size, 2, 1, 1, device=self.device)
+
+    def test_calculate_lr_to_hr_modulo_reduces_each_axis_independently(self):
+        """Modulo maps are reduced from actual LR and rounded HR shapes."""
+
+        height_map, width_map, idx_mod = calculate_lr_to_hr_modulo(
+            (self.batch_size, 3, 10, 14),
+            (self.batch_size, 3, 15, 19),
+            self.jitter,
+        )
+
+        self.assertEqual(height_map, (2, 3))
+        self.assertEqual(width_map, (14, 19))
+        torch.testing.assert_close(
+            idx_mod,
+            torch.tensor([3, 19], dtype=torch.int32, device=self.device),
+            rtol=0,
+            atol=0,
+        )
+
+    def test_generate_lr_to_hr_tile_matches_legacy_two_x_tile(self):
+        """The shape-aware 2x reduced tile matches the legacy 2x preset tile."""
+
+        legacy_tile, legacy_idx_mod = generate_lr_to_hr_lut(2.0, self.jitter)
+        height_map, width_map, idx_mod = calculate_lr_to_hr_modulo(
+            (self.batch_size, 3, 1, 1),
+            (self.batch_size, 3, 2, 2),
+            self.jitter,
+        )
+        shape_tile = generate_lr_to_hr_tile(
+            (2.0, 2.0),
+            self.jitter,
+            height_map,
+            width_map,
+        )
+
+        torch.testing.assert_close(shape_tile, legacy_tile, rtol=0, atol=0)
+        torch.testing.assert_close(idx_mod, legacy_idx_mod.repeat(2), rtol=0, atol=0)
+
+    def test_generate_lr_to_hr_tile_supports_non_integer_scale(self):
+        """Non-integer scale tiles are derived from shape, not fixed presets."""
+
+        height_map, width_map, idx_mod = calculate_lr_to_hr_modulo(
+            (self.batch_size, 3, 10, 10),
+            (self.batch_size, 3, 13, 13),
+            self.jitter,
+        )
+        tile = generate_lr_to_hr_tile(
+            (1.3, 1.3),
+            self.jitter,
+            height_map,
+            width_map,
+        )
+
+        self.assertEqual(tile.shape, torch.Size([self.batch_size, 4, 13, 13]))
+        torch.testing.assert_close(
+            idx_mod,
+            torch.tensor([13, 13], dtype=torch.int32, device=self.device),
+            rtol=0,
+            atol=0,
+        )
+        self.assertTrue(torch.all((tile[:, 2] == 0.0) | (tile[:, 2] == 1.0)))
+
+    def test_generate_lr_to_hr_tile_uses_float32_coordinate_math_for_fp16_jitter(
+        self,
+    ):
+        """Mixed-precision jitter does not change non-integer HR indices."""
+
+        height_map, width_map, _ = calculate_lr_to_hr_modulo(
+            (self.batch_size, 3, 2, 11),
+            (self.batch_size, 3, 3, 26),
+            self.jitter,
+        )
+        scale = (1.5, 26 / 11)
+
+        fp32_tile = generate_lr_to_hr_tile(
+            scale,
+            self.jitter.to(torch.float32),
+            height_map,
+            width_map,
+        )
+        fp16_tile = generate_lr_to_hr_tile(
+            scale,
+            self.jitter.to(torch.float16),
+            height_map,
+            width_map,
+        )
+
+        expected_mask = torch.zeros((3, 26), dtype=torch.float32, device=self.device)
+        expected_mask[
+            torch.tensor([0, 2], device=self.device)[:, None],
+            torch.tensor([1, 3, 5, 8, 10, 12, 15, 17, 20, 22, 24], device=self.device),
+        ] = 1.0
+
+        torch.testing.assert_close(fp16_tile, fp32_tile, rtol=0, atol=0)
+        torch.testing.assert_close(fp32_tile[0, 2], expected_mask, rtol=0, atol=0)
+
+    def test_legacy_lut_still_rejects_unknown_presets(self):
+        """Existing NSS v0.1 callers keep the legacy preset guardrail."""
+
+        with self.assertRaises(ValueError):
+            generate_lr_to_hr_lut(1.7, self.jitter)
