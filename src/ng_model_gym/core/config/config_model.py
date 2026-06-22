@@ -181,9 +181,11 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
     name: Literal["nss"]
     scale: StrictFloat = Field(
         2.0,
-        ge=2.0,
-        le=2.0,
-        description="Upscale parameter for the NSS model. Note, for now only 2x is supported in this version",
+        gt=1.0,
+        description=(
+            "Upscale parameter for the NSS model. NSS v1 train/eval supports "
+            "numeric scale values greater than 1.0."
+        ),
     )
     recurrent_samples: int = Field(gt=1, description="Number of recurrent samples")
     quality: Optional[Literal["high", "mid", "low"]] = Field(
@@ -218,6 +220,15 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
             "history with ground truth when gt_history_augmentation is enabled."
         ),
     )
+
+    # TODO: Remove this validator when we drop support for NSS v0.1
+    @model_validator(mode="after")
+    def _validate_nss_scale_for_version(self):
+        """Keep legacy NSS versions on their existing 2x scale contract."""
+        if self.version != "1" and self.scale != 2.0:
+            raise ValueError("NSS scale must be 2.0 for versions before v1")
+
+        return self
 
 
 class NFRUModelSettings(PrebuiltModelSettingsBase):

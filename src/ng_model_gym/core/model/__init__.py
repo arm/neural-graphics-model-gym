@@ -12,10 +12,12 @@ from .dense_warp_utils import (
     interpolate_bilinear_w_zero_pad,
 )
 from .graphics_utils import (
+    calculate_lr_to_hr_modulo,
     compute_jitter_tile_offset,
     compute_luminance,
     fixed_normalize_mvs,
     generate_lr_to_hr_lut,
+    generate_lr_to_hr_tile,
     length,
     lerp,
     normalize_mvs,

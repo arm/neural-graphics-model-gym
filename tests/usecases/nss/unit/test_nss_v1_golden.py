@@ -23,7 +23,7 @@ _CHECK_KEYS = (
 
 
 class TestNSSV1Golden(BaseGPUMemoryTest):
-    """Parity test for the NSS v1 port against reference goldens."""
+    """Parity test against stored reference goldens."""
 
     @unittest.skipUnless(
         torch.cuda.is_available(),

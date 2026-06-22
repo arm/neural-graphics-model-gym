@@ -2,7 +2,8 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
-from typing import Tuple
+import math
+from typing import Tuple, Union
 
 import torch
 
@@ -166,6 +167,125 @@ def generate_lr_to_hr_lut(scale: float, jitter: torch.Tensor) -> torch.Tensor:
     out[n_idx, 2, hy, hx] = 1.0
 
     return out, idx_mod
+
+
+ScaleArg = Union[float, Tuple[float, float], torch.Tensor]
+
+
+def _reduce_fraction(low_res_size: int, high_res_size: int) -> tuple[int, int]:
+    """Reduce a low-resolution to high-resolution integer ratio."""
+
+    low_res_size = int(low_res_size)
+    high_res_size = int(high_res_size)
+    if low_res_size <= 0 or high_res_size <= 0:
+        raise ValueError(
+            "LR and HR spatial dimensions must be positive, "
+            f"got low_res_size={low_res_size}, high_res_size={high_res_size}."
+        )
+
+    divisor = math.gcd(low_res_size, high_res_size)
+    return low_res_size // divisor, high_res_size // divisor
+
+
+def calculate_lr_to_hr_modulo(
+    in_shape: tuple[int, ...],
+    out_shape: tuple[int, ...],
+    jitter: torch.Tensor,
+) -> tuple[tuple[int, int], tuple[int, int], torch.Tensor]:
+    """Calculate reduced H/W modulo maps for an LR-to-HR shape pair."""
+
+    if len(in_shape) < 4 or len(out_shape) < 4:
+        raise ValueError(
+            f"Expected NCHW-like shapes, got in_shape={in_shape}, out_shape={out_shape}."
+        )
+
+    height_map = _reduce_fraction(in_shape[-2], out_shape[-2])
+    width_map = _reduce_fraction(in_shape[-1], out_shape[-1])
+    idx_mod = torch.tensor(
+        [height_map[1], width_map[1]],
+        dtype=torch.int32,
+        device=jitter.device,
+    )
+    return height_map, width_map, idx_mod
+
+
+def _scale_to_yx_tensor(
+    scale: ScaleArg,
+    device: torch.device,
+    dtype: torch.dtype,
+) -> torch.Tensor:
+    """Convert a scalar or Y/X scale pair into a broadcastable tensor."""
+
+    if isinstance(scale, torch.Tensor):
+        scale_t = scale.to(device=device, dtype=dtype)
+    elif isinstance(scale, (tuple, list)):
+        if len(scale) != 2:
+            raise ValueError(
+                f"Expected scale as scalar or (scale_y, scale_x), got {scale!r}."
+            )
+        scale_t = torch.tensor(scale, device=device, dtype=dtype)
+    else:
+        return torch.tensor(float(scale), device=device, dtype=dtype)
+
+    if scale_t.numel() == 1:
+        return scale_t.reshape(())
+    if scale_t.numel() != 2:
+        raise ValueError(
+            "Expected scale as scalar or (scale_y, scale_x), "
+            f"got tensor with {scale_t.numel()} values."
+        )
+    return scale_t.reshape(1, 2, 1, 1)
+
+
+def generate_lr_to_hr_tile(
+    scale: ScaleArg,
+    jitter: torch.Tensor,
+    height_map: tuple[int, int],
+    width_map: tuple[int, int],
+) -> torch.Tensor:
+    """Generate the reduced LR-to-HR tile for shape-aware NSS v1 filtering."""
+
+    h_lr, h_hr = height_map
+    w_lr, w_hr = width_map
+    n, _, _, _ = jitter.shape
+    device = jitter.device
+    compute_dtype = torch.float32
+    scale_yx = _scale_to_yx_tensor(scale, device, compute_dtype)
+
+    y, x = torch.meshgrid(
+        torch.arange(h_lr, device=device),
+        torch.arange(w_lr, device=device),
+        indexing="ij",
+    )
+    lr_grid = (
+        torch.stack((y, x), dim=0).to(compute_dtype).unsqueeze(0).expand(n, -1, -1, -1)
+    )
+
+    expanded_jitter = jitter.to(compute_dtype).expand(n, 2, h_lr, w_lr)
+    hr_pos = (lr_grid + expanded_jitter + 0.5) * scale_yx
+    hr_idx = hr_pos.floor().int()
+
+    lr_coord = ((hr_idx.to(compute_dtype) + 0.5) / scale_yx).floor().int()
+    offset = lr_grid.int() - lr_coord
+
+    hy = hr_idx[:, 0].reshape(-1)
+    hx = hr_idx[:, 1].reshape(-1)
+    n_idx = (
+        torch.arange(n, device=device).view(-1, 1, 1).expand(n, h_lr, w_lr).reshape(-1)
+    )
+    offset_flat = offset.permute(0, 2, 3, 1).reshape(-1, 2)
+
+    valid = (hy >= 0) & (hy < h_hr) & (hx >= 0) & (hx < w_hr)
+    n_idx = n_idx[valid]
+    hy = hy[valid]
+    hx = hx[valid]
+    dy, dx = offset_flat[valid].T
+
+    out = torch.zeros((n, 4, h_hr, w_hr), dtype=torch.float32, device=device)
+    out[n_idx, 0, hy, hx] = dy.float()
+    out[n_idx, 1, hy, hx] = dx.float()
+    out[n_idx, 2, hy, hx] = 1.0
+    return out
 
 
 def swizzle(x: torch.Tensor, pattern: str) -> torch.Tensor:

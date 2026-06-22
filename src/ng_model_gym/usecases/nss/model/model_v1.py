@@ -12,7 +12,10 @@ from torch import nn
 from ng_model_gym.core.config.config_model import ConfigModel, NSSModelSettings
 from ng_model_gym.core.data.data_utils import tonemap_forward
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
-from ng_model_gym.core.model.graphics_utils import generate_lr_to_hr_lut
+from ng_model_gym.core.model.graphics_utils import (
+    calculate_lr_to_hr_modulo,
+    generate_lr_to_hr_tile,
+)
 from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.model.shaders.slang_utils import load_slang_module, SlangOutput
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
@@ -76,6 +79,11 @@ class NSSV1Model(BaseNGModel):
         self.required_multiple = (8, 8)
         self.filter_kernel_size = 3
         self.filter_kernel_taps = self.filter_kernel_size * self.filter_kernel_size
+        self._lut_in_shape: Optional[tuple[int, int, int, int]] = None
+        self._lut_out_shape: Optional[tuple[int, int, int, int]] = None
+        self._lut_height_map: Optional[tuple[int, int]] = None
+        self._lut_width_map: Optional[tuple[int, int]] = None
+        self._lut_idx_mod: Optional[torch.Tensor] = None
 
     def get_neural_network(self) -> nn.Module:
         """Return the trainable NSS v1 neural network."""
@@ -145,8 +153,6 @@ class NSSV1Model(BaseNGModel):
     def core_forward(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Run a one-frame high-quality NSS v1 forward pass."""
 
-        self._require_cuda_for_slang_forward(inputs)
-        slang = self._get_slang()
         (
             input_shape,
             process_shape,
@@ -154,6 +160,9 @@ class NSSV1Model(BaseNGModel):
             pad_shape,
             depth_shape,
         ) = self._calculate_dispatch_dims(inputs)
+        self._validate_ground_truth_shape(inputs, hr_shape)
+        self._require_cuda_for_slang_forward(inputs)
+        slang = self._get_slang()
         reset_occurred = 1.0 - (inputs["reset_event"] == 0.0).float()
         device = str(inputs["colour_linear"].device)
 
@@ -199,7 +208,7 @@ class NSSV1Model(BaseNGModel):
                 ),
                 "out_luma_derivative": SlangOutput(
                     shape=input_shape,
-                    channel_dim=2,
+                    channel_dim=4,
                     device=device,
                 ),
                 "out_disocclusion_mask": SlangOutput(
@@ -218,7 +227,11 @@ class NSSV1Model(BaseNGModel):
 
         kpn_params, temporal_params = self.autoencoder(input_tensor)
 
-        offset_lut, idx_modulo = self._generate_offset_lut(inputs["jitter"])
+        offset_lut, idx_modulo = self._generate_offset_lut(
+            inputs["jitter"],
+            input_shape,
+            hr_shape,
+        )
         output_linear, out_filtered_linear = slang.post_process(
             in_colour=inputs["colour_linear"],
             in_history=inputs["history"],
@@ -500,6 +513,8 @@ class NSSV1Model(BaseNGModel):
                 "NSS_USE_HISTORY_CATMULL": int(self.use_history_catmull),
                 "NSS_PACKED_NEAREST_OFFSET_QUAD": int(self.packed_nearest_offset_quad),
                 "FILTER_COLOUR_KERNEL_SZ": int(self.filter_kernel_taps),
+                "NSS_V1_LUMA_DERIVATIVE": 1,
+                "NSS_V1_SHARP_THETA": 1,
             }
             if self.shader_accurate or self.preprocess_half_res_input:
                 slang_defines["SHADER_ACCURATE"] = True
@@ -533,7 +548,7 @@ class NSSV1Model(BaseNGModel):
             ),
             "derivative_tm1": torch.zeros(
                 batch,
-                2,
+                4,
                 lr_h,
                 lr_w,
                 device=device,
@@ -558,6 +573,31 @@ class NSSV1Model(BaseNGModel):
                     inputs[key],
                 )
 
+    def get_output_spatial_shape(self, input_h: int, input_w: int) -> tuple[int, int]:
+        """Return rounded HR output shape for the configured scale."""
+
+        return int(round(input_h * self.scale)), int(round(input_w * self.scale))
+
+    def _validate_ground_truth_shape(
+        self,
+        inputs: Dict[str, torch.Tensor],
+        hr_shape: tuple[int, int, int, int],
+    ) -> None:
+        """Require ground_truth_linear to match the rounded HR shape."""
+
+        ground_truth = inputs.get("ground_truth_linear")
+        if ground_truth is None:
+            return
+
+        expected_shape = tuple(hr_shape)
+        actual_shape = tuple(ground_truth.shape)
+        if actual_shape != expected_shape:
+            raise ValueError(
+                "NSS-v1 ground_truth_linear shape mismatch: expected "
+                f"{expected_shape} from input scale {self.scale}, got "
+                f"{actual_shape}."
+            )
+
     def _calculate_dispatch_dims(
         self, inputs: Dict[str, torch.Tensor]
     ) -> tuple[
@@ -576,11 +616,15 @@ class NSSV1Model(BaseNGModel):
             padded_h,
             padded_w,
         ) = self._derive_process_and_padded_spatial(input_shape[2], input_shape[3])
+        output_h, output_w = self.get_output_spatial_shape(
+            input_shape[2],
+            input_shape[3],
+        )
         hr_shape = (
             input_shape[0],
             input_shape[1],
-            int(input_shape[2] * self.scale),
-            int(input_shape[3] * self.scale),
+            output_h,
+            output_w,
         )
         process_shape = (input_shape[0], input_shape[1], process_h, process_w)
         pad_shape = (input_shape[0], input_shape[1], padded_h, padded_w)
@@ -620,17 +664,50 @@ class NSSV1Model(BaseNGModel):
 
     @torch.compiler.disable
     def _generate_offset_lut(
-        self, jitter: torch.Tensor
+        self,
+        jitter: torch.Tensor,
+        in_shape: tuple[int, int, int, int],
+        out_shape: tuple[int, int, int, int],
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Generate the NSS v1 post-process offset LUT and modulo tensor."""
 
-        base_lut, idx_mod = generate_lr_to_hr_lut(self.scale, jitter)
-        idx_mod_pair = idx_mod.repeat(2) if idx_mod.ndim == 0 else idx_mod
-        offset_lut = self._compute_lut(base_lut, idx_mod_pair)
-        idx_modulo = idx_mod_pair.reshape(1, 1, 1, 2).to(
-            dtype=torch.float32,
-            device=jitter.device,
+        in_shape = tuple(in_shape)
+        out_shape = tuple(out_shape)
+        if (
+            self._lut_in_shape != in_shape
+            or self._lut_out_shape != out_shape
+            or self._lut_idx_mod is None
+            or self._lut_height_map is None
+            or self._lut_width_map is None
+        ):
+            height_map, width_map, idx_mod = calculate_lr_to_hr_modulo(
+                in_shape,
+                out_shape,
+                jitter,
+            )
+            self._lut_in_shape = in_shape
+            self._lut_out_shape = out_shape
+            self._lut_height_map = height_map
+            self._lut_width_map = width_map
+            self._lut_idx_mod = idx_mod.reshape(1, 1, 1, 2).to(
+                dtype=torch.float32,
+                device=jitter.device,
+            )
+        elif self._lut_idx_mod.device != jitter.device:
+            self._lut_idx_mod = self._lut_idx_mod.to(device=jitter.device)
+
+        scale_yx = (
+            float(out_shape[2]) / float(in_shape[2]),
+            float(out_shape[3]) / float(in_shape[3]),
         )
+        base_lut = generate_lr_to_hr_tile(
+            scale_yx,
+            jitter,
+            self._lut_height_map,
+            self._lut_width_map,
+        )
+        offset_lut = self._compute_lut(base_lut, self._lut_idx_mod)
+        idx_modulo = self._lut_idx_mod
         return offset_lut, idx_modulo
 
     def _compute_lut(

@@ -2,16 +2,19 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import unittest
+from unittest.mock import patch
 
 import torch
+from pydantic import ValidationError
 
+from ng_model_gym.core.config.config_model import NSSModelSettings
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks_v1 import AutoEncoderV1
 from tests.testing_utils import create_simple_params
 
 
-class TestNSSV1Model(unittest.TestCase):
+class TestNSSV1Model(unittest.TestCase):  # pylint: disable=too-many-public-methods
     """Tests for NSS v1 model registration and public guardrails."""
 
     def _data_creator_helper(self, lr_h, lr_w, hr_h, hr_w, recurrence=None):
@@ -20,21 +23,23 @@ class TestNSSV1Model(unittest.TestCase):
         if recurrence is None:
             recurrence = self.recurrence
 
-        render_size = torch.zeros(self.batch, recurrence, 2, 1, 1)
+        render_size = torch.zeros(self.batch_size, recurrence, 2, 1, 1)
         render_size[:, :, 0, :, :] = lr_h
         render_size[:, :, 1, :, :] = lr_w
 
         data = {
-            "colour_linear": torch.rand(self.batch, recurrence, 3, lr_h, lr_w),
-            "depth": torch.rand(self.batch, recurrence, 1, lr_h, lr_w),
-            "depth_params": torch.rand(self.batch, recurrence, 4, lr_h, lr_w),
-            "ground_truth_linear": torch.rand(self.batch, recurrence, 3, hr_h, hr_w),
-            "jitter": torch.zeros(self.batch, recurrence, 2, 1, 1),
-            "motion": torch.zeros(self.batch, recurrence, 2, hr_h, hr_w),
-            "motion_lr": torch.zeros(self.batch, recurrence, 2, lr_h, lr_w),
+            "colour_linear": torch.rand(self.batch_size, recurrence, 3, lr_h, lr_w),
+            "depth": torch.rand(self.batch_size, recurrence, 1, lr_h, lr_w),
+            "depth_params": torch.rand(self.batch_size, recurrence, 4, lr_h, lr_w),
+            "ground_truth_linear": torch.rand(
+                self.batch_size, recurrence, 3, hr_h, hr_w
+            ),
+            "jitter": torch.zeros(self.batch_size, recurrence, 2, 1, 1),
+            "motion": torch.zeros(self.batch_size, recurrence, 2, hr_h, hr_w),
+            "motion_lr": torch.zeros(self.batch_size, recurrence, 2, lr_h, lr_w),
             "render_size": render_size,
-            "seq": torch.ones(self.batch, recurrence, 1, 1, 1),
-            "exposure": torch.ones(self.batch, recurrence, 1, 1, 1),
+            "seq": torch.ones(self.batch_size, recurrence, 1, 1, 1),
+            "exposure": torch.ones(self.batch_size, recurrence, 1, 1, 1),
         }
         return {key: tensor.to(self.device) for key, tensor in data.items()}
 
@@ -76,8 +81,65 @@ class TestNSSV1Model(unittest.TestCase):
         self.params.model_train_eval_mode = TrainEvalMode.FP32
         self.params.train.batch_size = 2
         self.params.model.recurrent_samples = 4
-        self.batch = self.params.train.batch_size
+        self.batch_size = self.params.train.batch_size
         self.recurrence = self.params.model.recurrent_samples
+
+    def test_config_accepts_non_integer_nss_v1_scale(self) -> None:
+        """NSS config accepts numeric scales greater than 1.0."""
+
+        settings = NSSModelSettings(
+            name="nss",
+            model_source="prebuilt",
+            version="1",
+            scale=1.5,
+            recurrent_samples=4,
+            quality="high",
+        )
+
+        self.assertEqual(settings.scale, 1.5)
+
+    def test_config_rejects_nss_v1_scale_at_or_below_one(self) -> None:
+        """NSS config rejects scales that do not upscale."""
+
+        for scale in (1.0, 0.75):
+            with self.subTest(scale=scale):
+                with self.assertRaisesRegex(ValidationError, "greater than 1"):
+                    NSSModelSettings(
+                        name="nss",
+                        model_source="prebuilt",
+                        version="1",
+                        scale=scale,
+                        recurrent_samples=4,
+                        quality="high",
+                    )
+
+    def test_config_coerces_integer_nss_v1_scale(self) -> None:
+        """NSS config accepts integer scales and stores them as floats."""
+
+        settings = NSSModelSettings(
+            name="nss",
+            model_source="prebuilt",
+            version="1",
+            scale=2,
+            recurrent_samples=4,
+            quality="high",
+        )
+
+        self.assertEqual(settings.scale, 2.0)
+        self.assertIsInstance(settings.scale, float)
+
+    def test_config_preserves_legacy_nss_scale_contract(self) -> None:
+        """Legacy NSS configs remain restricted to the existing 2x scale."""
+
+        with self.assertRaisesRegex(ValidationError, "NSS scale must be 2.0"):
+            NSSModelSettings(
+                name="nss",
+                model_source="prebuilt",
+                version="0.1",
+                scale=1.5,
+                recurrent_samples=4,
+                quality="high",
+            )
 
     def test_create_nss_v1_model(self) -> None:
         """NSS v1 creates a BaseNGModel with AutoEncoderV1."""
@@ -149,19 +211,142 @@ class TestNSSV1Model(unittest.TestCase):
         dispatch_dims = model._calculate_dispatch_dims(one_frame)
         input_shape, process_shape, hr_shape, pad_shape, depth_shape = dispatch_dims
 
-        self.assertEqual(input_shape, (self.batch, 3, 130, 132))
-        self.assertEqual(process_shape, (self.batch, 3, 130, 132))
-        self.assertEqual(hr_shape, (self.batch, 3, 260, 264))
-        self.assertEqual(pad_shape, (self.batch, 3, 136, 136))
-        self.assertEqual(depth_shape, (self.batch, 1, 65, 66))
+        self.assertEqual(input_shape, (self.batch_size, 3, 130, 132))
+        self.assertEqual(process_shape, (self.batch_size, 3, 130, 132))
+        self.assertEqual(hr_shape, (self.batch_size, 3, 260, 264))
+        self.assertEqual(pad_shape, (self.batch_size, 3, 136, 136))
+        self.assertEqual(depth_shape, (self.batch_size, 1, 65, 66))
         self.assertEqual(
             one_frame["temporal_params_tm1"].shape,
-            (self.batch, 4, 136, 136),
+            (self.batch_size, 4, 136, 136),
         )
         self.assertEqual(
             one_frame["derivative_tm1"].shape,
-            (self.batch, 2, 130, 132),
+            (self.batch_size, 4, 130, 132),
         )
+
+    def test_non_integer_scale_dispatch_dims_use_rounded_output_shape(self) -> None:
+        """NSS v1 dispatch dims use rounded non-integer scale output shape."""
+
+        self.params.model.scale = 1.3
+        model = create_model(self.params, self.device)
+        one_frame = {
+            key: tensor[:, 0, :, :, :]
+            for key, tensor in self._data_creator_helper(129, 131, 168, 170).items()
+        }
+        one_frame = model.set_buffers(one_frame)
+
+        _, _, hr_shape, _, depth_shape = model._calculate_dispatch_dims(one_frame)
+
+        self.assertEqual(hr_shape, (self.batch_size, 3, 168, 170))
+        self.assertEqual(depth_shape, (self.batch_size, 1, 64, 65))
+        self.assertEqual(one_frame["history"].shape, (self.batch_size, 3, 168, 170))
+        self.assertEqual(
+            one_frame["derivative_tm1"].shape, (self.batch_size, 4, 129, 131)
+        )
+
+    def test_ground_truth_shape_mismatch_raises_clear_error(self) -> None:
+        """NSS v1 rejects GT tensors that do not match rounded HR shape."""
+
+        self.params.model.scale = 1.3
+        model = create_model(self.params, self.device)
+        one_frame = {
+            key: tensor[:, 0, :, :, :]
+            for key, tensor in self._data_creator_helper(129, 131, 167, 170).items()
+        }
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "NSS-v1 ground_truth_linear shape mismatch",
+        ):
+            model._validate_ground_truth_shape(
+                one_frame, (self.batch_size, 3, 168, 170)
+            )
+
+    def test_ground_truth_channel_mismatch_raises_clear_error(self) -> None:
+        """NSS v1 rejects GT tensors with wrong channel count."""
+
+        model = create_model(self.params, self.device)
+        one_frame = {
+            key: tensor[:, 0, :, :, :]
+            for key, tensor in self._data_creator_helper(128, 128, 256, 256).items()
+        }
+        one_frame["ground_truth_linear"] = torch.rand(
+            self.batch_size,
+            1,
+            256,
+            256,
+            device=self.device,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "NSS-v1 ground_truth_linear shape mismatch",
+        ):
+            model._validate_ground_truth_shape(
+                one_frame, (self.batch_size, 3, 256, 256)
+            )
+
+    def test_core_forward_validates_ground_truth_before_loading_slang(self) -> None:
+        """NSS v1 rejects bad GT shape before loading Slang."""
+
+        model = create_model(self.params, self.device)
+        one_frame = {
+            key: tensor[:, 0, :, :, :]
+            for key, tensor in self._data_creator_helper(128, 128, 256, 256).items()
+        }
+        one_frame = model.set_buffers(one_frame)
+        one_frame["ground_truth_linear"] = torch.rand(
+            self.batch_size,
+            1,
+            256,
+            256,
+            device=self.device,
+        )
+
+        with patch.object(model, "_get_slang", return_value=object()) as get_slang:
+            with self.assertRaisesRegex(
+                ValueError,
+                "NSS-v1 ground_truth_linear shape mismatch",
+            ):
+                model.core_forward(one_frame)
+
+        get_slang.assert_not_called()
+
+    def test_shape_aware_offset_lut_uses_actual_lr_hr_shapes(self) -> None:
+        """NSS v1 LUT generation derives modulo from rounded LR/HR shape."""
+
+        self.params.model.scale = 1.5
+        model = create_model(self.params, self.device)
+        jitter = torch.zeros(self.batch_size, 2, 1, 1, device=self.device)
+
+        offset_lut, idx_modulo = model._generate_offset_lut(
+            jitter,
+            (self.batch_size, 3, 8, 10),
+            (self.batch_size, 3, 12, 15),
+        )
+
+        self.assertEqual(offset_lut.shape, (self.batch_size, 6, 9, 9))
+        torch.testing.assert_close(
+            idx_modulo,
+            torch.tensor([[[[3.0, 3.0]]]], device=self.device),
+            rtol=0,
+            atol=0,
+        )
+
+    def test_slang_defines_include_v1_macros(self) -> None:
+        """NSS v1 shader loading uses NSS v1 macro names."""
+
+        model = create_model(self.params, self.device)
+        with patch(
+            "ng_model_gym.usecases.nss.model.model_v1.load_slang_module",
+            return_value=object(),
+        ) as load_module:
+            model._get_slang()
+
+        defines = load_module.call_args.kwargs["defines"]
+        self.assertEqual(defines["NSS_V1_LUMA_DERIVATIVE"], 1)
+        self.assertEqual(defines["NSS_V1_SHARP_THETA"], 1)
 
     def test_forward_uses_available_time_dimension(self) -> None:
         """NSS v1 does not index past the input recurrent dimension."""
@@ -203,15 +388,15 @@ class TestNSSV1Model(unittest.TestCase):
         model = create_model(self.params, self.device)
         data = {
             "colour_linear": torch.arange(
-                self.batch * 2 * 3 * 4 * 4,
+                self.batch_size * 2 * 3 * 4 * 4,
                 device=self.device,
                 dtype=torch.float32,
-            ).reshape(self.batch, 2, 3, 4, 4),
+            ).reshape(self.batch_size, 2, 3, 4, 4),
             "metadata": torch.arange(
-                self.batch * 2,
+                self.batch_size * 2,
                 device=self.device,
                 dtype=torch.float32,
-            ).reshape(self.batch, 2),
+            ).reshape(self.batch_size, 2),
         }
 
         frames = model._split_inputs_over_time(data, sequence_length=2)
@@ -400,7 +585,7 @@ class TestNSSV1Model(unittest.TestCase):
         data = self._data_creator_helper(128, 128, 256, 256, recurrence=2)
         data["ground_truth_linear"].fill_(0.25)
         y_true = torch.full(
-            (self.batch, self.recurrence, 3, 256, 256),
+            (self.batch_size, self.recurrence, 3, 256, 256),
             0.75,
             device=self.device,
         )
@@ -427,7 +612,7 @@ class TestNSSV1Model(unittest.TestCase):
         captured_inputs = self._stub_core_forward(model)
         data = self._data_creator_helper(128, 128, 256, 256, recurrence=1)
         model.y_true = torch.ones(
-            self.batch,
+            self.batch_size,
             self.recurrence,
             3,
             256,
@@ -450,7 +635,7 @@ class TestNSSV1Model(unittest.TestCase):
         captured_inputs = self._stub_core_forward(model)
         data = self._data_creator_helper(128, 128, 256, 256, recurrence=1)
         model.y_true = torch.ones(
-            self.batch,
+            self.batch_size,
             self.recurrence,
             3,
             256,
@@ -478,21 +663,57 @@ class TestNSSV1Model(unittest.TestCase):
 
         self.assertEqual(
             model_out["output_linear"].shape,
-            (self.batch, self.recurrence, 3, 256, 256),
+            (self.batch_size, self.recurrence, 3, 256, 256),
         )
         self.assertEqual(
             model_out["output"].shape,
-            (self.batch, self.recurrence, 3, 256, 256),
+            (self.batch_size, self.recurrence, 3, 256, 256),
         )
         self.assertEqual(
             model_out["out_filtered"].shape,
-            (self.batch, self.recurrence, 3, 256, 256),
+            (self.batch_size, self.recurrence, 3, 256, 256),
         )
         self.assertEqual(
             model_out["temporal_params"].shape,
-            (self.batch, self.recurrence, 4, 128, 128),
+            (self.batch_size, self.recurrence, 4, 128, 128),
         )
         self.assertEqual(
             model_out["derivative"].shape,
-            (self.batch, self.recurrence, 2, 128, 128),
+            (self.batch_size, self.recurrence, 4, 128, 128),
+        )
+
+    @unittest.skipUnless(
+        torch.cuda.is_available(),
+        "NSS v1 forward requires CUDA because the forward path is Slang-backed.",
+    )
+    def test_shape_nss_v1_non_integer_scale_forward_pass(self) -> None:
+        """Test NSS v1 recurrent high-quality forward shapes for non-integer scale."""
+
+        self.params.model.scale = 1.5
+        model = create_model(self.params, self.device)
+        data = self._data_creator_helper(96, 80, 144, 120)
+
+        with torch.no_grad():
+            model.eval()
+            model_out = model(data)
+
+        self.assertEqual(
+            model_out["output_linear"].shape,
+            (self.batch_size, self.recurrence, 3, 144, 120),
+        )
+        self.assertEqual(
+            model_out["output"].shape,
+            (self.batch_size, self.recurrence, 3, 144, 120),
+        )
+        self.assertEqual(
+            model_out["out_filtered"].shape,
+            (self.batch_size, self.recurrence, 3, 144, 120),
+        )
+        self.assertEqual(
+            model_out["temporal_params"].shape,
+            (self.batch_size, self.recurrence, 4, 96, 80),
+        )
+        self.assertEqual(
+            model_out["derivative"].shape,
+            (self.batch_size, self.recurrence, 4, 96, 80),
         )

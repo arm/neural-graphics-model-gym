@@ -23,6 +23,9 @@ import "nss_common";
 #ifndef NSS_PACKED_NEAREST_OFFSET_QUAD
 #define NSS_PACKED_NEAREST_OFFSET_QUAD 0
 #endif // !NSS_PACKED_NEAREST_OFFSET_QUAD
+#ifndef NSS_V1_SHARP_THETA
+#define NSS_V1_SHARP_THETA 1
+#endif // !NSS_V1_SHARP_THETA
 #ifndef NSS_DISABLE_HISTORY_CLAMP
 #ifdef DISABLE_HISTORY_CLAMP
 #define NSS_DISABLE_HISTORY_CLAMP 1
@@ -367,6 +370,16 @@ inline void FilterColour(
 
 
 [Differentiable]
+float sharpen_theta(float theta, float g)
+{
+    theta = clamp(theta, 0.f, 1.f);
+    float a = pow(theta, g);
+    float b = pow(1.0 - theta, g);
+    return a / max(a + b, 1e-6f);
+}
+
+
+[Differentiable]
 inline void SampleTemporalParams(
     Globals g,
     uint b,
@@ -384,7 +397,11 @@ inline void SampleTemporalParams(
     float3 params = sample_tensor(g.b._TemporalParamsTex, b, uint3(0, 1, 2), uv_temporal);
     gamma = params.z * 2.f;
 #endif // NSS_DISABLE_HISTORY_CLAMP
+#if NSS_V1_SHARP_THETA
+    theta = sharpen_theta(params.x, 2.f);
+#else
     theta = params.x;
+#endif // NSS_V1_SHARP_THETA
     alpha = params.y * 0.35 + 0.05;
 }
 

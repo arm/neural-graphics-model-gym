@@ -37,9 +37,8 @@
                         },
                         "scale": {
                             "default": 2.0,
-                            "description": "Upscale parameter for the NSS model. Note, for now only 2x is supported in this version",
-                            "maximum": 2.0,
-                            "minimum": 2.0,
+                            "description": "Upscale parameter for the NSS model. NSS v1 train/eval supports numeric scale values greater than 1.0.",
+                            "exclusiveMinimum": 1.0,
                             "type": "number"
                         },
                         "recurrent_samples": {
