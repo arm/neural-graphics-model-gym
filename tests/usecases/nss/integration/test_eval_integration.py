@@ -6,12 +6,12 @@ import re
 import subprocess
 from pathlib import Path
 
-from tests.usecases.nss.integration.base_integration import NSSBaseIntegrationTest
+from tests.usecases.nss.integration.base_integration import NSSV0_1BaseIntegrationTest
 
 # pylint: disable=duplicate-code
 
 
-class EvaluationIntegrationTest(NSSBaseIntegrationTest):
+class EvaluationIntegrationTest(NSSV0_1BaseIntegrationTest):
     """Tests for NSS Evaluation pipeline."""
 
     def _extract_metric_value(self, metric, log_line):

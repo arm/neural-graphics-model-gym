@@ -5,12 +5,12 @@ import json
 import subprocess
 from pathlib import Path
 
-from tests.usecases.nss.integration.base_integration import NSSBaseIntegrationTest
+from tests.usecases.nss.integration.base_integration_v1 import NSSV1BaseIntegrationTest
 
 # pylint: disable=duplicate-code
 
 
-class QATIntegrationTest(NSSBaseIntegrationTest):
+class QATIntegrationTest(NSSV1BaseIntegrationTest):
     """Tests for NSS training pipeline."""
 
     # pylint: disable=duplicate-code
@@ -29,8 +29,6 @@ class QATIntegrationTest(NSSBaseIntegrationTest):
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        self.assertEqual(sub_proc.returncode, 0)
-
         out = sub_proc.stdout.decode("utf-8", errors="ignore")
         err = sub_proc.stderr.decode("utf-8", errors="ignore")
 
@@ -55,16 +53,14 @@ class QATIntegrationTest(NSSBaseIntegrationTest):
                 "qat",
                 "--no-evaluate",
                 "--finetune",
-                "@neural-super-sampling/nss_v0.1.0_fp32.pt",
+                "@neural-super-sampling/nss_v1_high_fp32.pt",
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        self.assertEqual(sub_proc.returncode, 0)
-
         out = sub_proc.stdout.decode("utf-8", errors="ignore")
         err = sub_proc.stderr.decode("utf-8", errors="ignore")
-        self.check_log(["Fine tuning using weights nss_v0.1.0_fp32.pt"])
+        self.check_log(["Fine tuning using weights nss_v1_high_fp32.pt"])
 
         self.assertEqual(
             sub_proc.returncode,

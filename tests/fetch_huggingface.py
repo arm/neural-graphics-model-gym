@@ -27,9 +27,9 @@ def download_pretrained_nss_weights():
 
     hf.snapshot_download(
         repo_id="Arm/neural-super-sampling",
-        allow_patterns=["nss_*.pt", "config.json"],
+        allow_patterns=["*.pt", "config.json"],
         local_dir=weights_dir,
-        revision="2e9b606acd9fa25071825a12f0764f1c3bef9480",
+        revision="ad93d335e1faf49bc852294ac8780c4f518a8d79",
     )
     print(f"Downloaded pretrained NSS weights to {weights_dir}")
 
@@ -53,14 +53,21 @@ def validate_nss_downloads(datasets_dir):
     try:
         # Validate pretrained weights
         weights_dir = Path("tests/usecases/nss/weights")
-        expected_weights = ["nss_v0.1.0_fp32.pt", "nss_v0.1.1_int8.pt"]
-        for file_name in expected_weights:
-            weights_path = weights_dir / file_name
-            assert weights_path.exists(), f"Missing weight file: {file_name}"
+        expected_weights = [
+            Path("nss_v0.1.0_fp32.pt"),
+            Path("nss_v0.1.1_int8.pt"),
+            Path("v1/nss_v1_high_fp32.pt"),
+            Path("v1/nss_v1_high_int8.pt"),
+            Path("v1/nss_v1_mid_low_fp32.pt"),
+            Path("v1/nss_v1_mid_low_int8.pt"),
+        ]
+        for file_path in expected_weights:
+            weights_path = weights_dir / file_path
+            assert weights_path.exists(), f"Missing weight file: {file_path}"
             size = weights_path.stat().st_size
             assert (
                 size > 100 * 1024
-            ), f"Weight file {file_name} is less than 100KB ({size:.1f} bytes)"
+            ), f"Weight file {file_path} is less than 100KB ({size:.1f} bytes)"
 
         # Validate datasets
         folders = ["train", "test", "val"]

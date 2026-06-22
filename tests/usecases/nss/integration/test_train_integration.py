@@ -6,12 +6,12 @@ import subprocess
 import unittest
 from pathlib import Path
 
-from tests.usecases.nss.integration.base_integration import NSSBaseIntegrationTest
+from tests.usecases.nss.integration.base_integration import NSSV0_1BaseIntegrationTest
 from tests.usecases.nss.unit.data.camera_cut_builders import write_camera_cut_fixture
 
 
 # pylint: disable=duplicate-code
-class TrainingIntegrationTest(NSSBaseIntegrationTest):
+class TrainingIntegrationTest(NSSV0_1BaseIntegrationTest):
     """Tests for NSS training pipeline."""
 
     def run_finetune_training_test(self):

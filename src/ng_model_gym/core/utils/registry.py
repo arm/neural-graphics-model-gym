@@ -20,8 +20,8 @@ class Registry(Generic[T]):
 
         MODEL_REGISTRY: Registry[BaseNGModel] = Registry("Model", validator_func)
 
-        @MODEL_REGISTRY.register("NSS-v0.1")
-        class NSS_V0_1(BaseNGModel):
+        @MODEL_REGISTRY.register("NSS-v1")
+        class NSS_V1(BaseNGModel):
             pass
 
         nss_model = MODEL_REGISTRY.get("NSS-v0.1")

@@ -19,8 +19,8 @@ from tests.testing_utils import clear_loggers
 # pylint: disable=duplicate-code
 
 
-class NSSV0_1BaseIntegrationTest(BaseGPUMemoryTest):
-    """Base class for NSS v0.1 Integration Tests."""
+class NSSV1BaseIntegrationTest(BaseGPUMemoryTest):
+    """Base class for NSS v1 Integration Tests."""
 
     def setUp(self) -> None:
         """Create tmp test_default.json with overridden params."""
@@ -40,10 +40,12 @@ class NSSV0_1BaseIntegrationTest(BaseGPUMemoryTest):
             self.train_data_dir = "tests/usecases/nss/datasets/train"
             self.test_data_dir = "tests/usecases/nss/datasets/test"
 
-        self.finetune_weights = "tests/usecases/nss/weights/nss_v0.1.0_fp32.pt"
+        self.finetune_weights = "tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt"
         self.tensorboard_dir = Path(self.test_dir, "tensorboard-logs")
         create_directory(self.tensorboard_dir)
-        config_path = files("ng_model_gym.usecases.nss.configs") / "nss_template.json"
+        config_path = (
+            files("ng_model_gym.usecases.nss.configs") / "nss_v1_template.json"
+        )
         with open(config_path, encoding="utf-8") as f:
             self.cfg_json = json.load(f)
 
@@ -70,7 +72,7 @@ class NSSV0_1BaseIntegrationTest(BaseGPUMemoryTest):
         ] = False  # Speed up integration tests
 
         self.cfg_json["output"]["tensorboard_output_dir"] = str(self.tensorboard_dir)
-        self.test_cfg_path = Path(self.test_dir, "test_nss_template.json")
+        self.test_cfg_path = Path(self.test_dir, "test_nss_v1_template.json")
 
         with open(self.test_cfg_path, "w", encoding="utf-8") as f:
             json.dump(self.cfg_json, f)
@@ -155,7 +157,7 @@ class NSSV0_1BaseIntegrationTest(BaseGPUMemoryTest):
                     f"--config-path={self.test_cfg_path}",
                     "--profiler=trace",
                     "evaluate",
-                    "--model-path=tests/usecases/nss/weights/nss_v0.1.0_fp32.pt",
+                    "--model-path=tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt",
                     "--model-type=fp32",
                 ]
             )
@@ -214,7 +216,7 @@ class NSSV0_1BaseIntegrationTest(BaseGPUMemoryTest):
                     f"--config-path={self.test_cfg_path}",
                     "--profiler=gpu_memory",
                     "evaluate",
-                    "--model-path=tests/usecases/nss/weights/nss_v0.1.0_fp32.pt",
+                    "--model-path=tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt",
                     "--model-type=fp32",
                 ]
             )

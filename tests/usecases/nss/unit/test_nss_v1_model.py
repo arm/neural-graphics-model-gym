@@ -195,14 +195,6 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
             next(model.get_neural_network().parameters()).device,
         )
 
-    def test_qat_is_not_supported_yet(self) -> None:
-        """NSS v1 raises clearly for QAT until follow-up work lands."""
-
-        self.params.model_train_eval_mode = TrainEvalMode.QAT_INT8
-
-        with self.assertRaisesRegex(NotImplementedError, "NSS-v1 QAT"):
-            create_model(self.params, self.device)
-
     def test_dynamic_export_shape_is_not_supported_yet(self) -> None:
         """NSS v1 raises clearly for export until follow-up work lands."""
 
