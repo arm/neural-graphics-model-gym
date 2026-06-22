@@ -8,8 +8,11 @@ import torch
 
 from ng_model_gym.usecases.nfru.model.optical_flow.blockmatch_v321 import (
     BlockMatchV321,
+    BlockMatchV321Config,
     CalculateFlow,
     ExtractSearchWindows,
+    Polarity,
+    TemplateFrameId,
     upscale_and_dilate_flow,
 )
 
@@ -30,9 +33,41 @@ class TestBlockMatchV321(unittest.TestCase):
         self.assertEqual(cfg.last_bm_level, 2)
         self.assertTrue(cfg.mv_hints)
         self.assertFalse(cfg.min_cv_output)
-        self.assertEqual(helper.output_polarity, "positive")
-        self.assertEqual(helper.mv_hints_polarity, "positive")
-        self.assertEqual(helper.template_frame_id, "tm1")
+        self.assertEqual(helper.config.output_polarity, Polarity.POSITIVE)
+        self.assertEqual(helper.config.mv_hints_polarity, Polarity.POSITIVE)
+        self.assertEqual(helper.config.template_frame_id, TemplateFrameId.TM1)
+
+    def test_config_dataclass_drives_wrapper_and_flow_params(self):
+        """Wrapper should construct CalculateFlow from the provided config."""
+        config = BlockMatchV321Config(
+            rgb_in=False,
+            levels=5,
+            template_sz=7,
+            search_range=2,
+            median_kernel=(5, 5),
+            blur_levels=(1, 2),
+            last_bm_level=1,
+            performance_mode="fast",
+            mv_hints=False,
+            min_cv_output=True,
+            output_polarity=Polarity.NEGATIVE,
+            mv_hints_polarity=Polarity.NEGATIVE,
+            template_frame_id=TemplateFrameId.T,
+        )
+
+        helper = BlockMatchV321(config=config)
+
+        self.assertEqual(helper.config, config)
+        self.assertFalse(helper.rgb_in)
+        self.assertEqual(helper.calc_flow.levels, 5)
+        self.assertEqual(helper.calc_flow.template_sz, 7)
+        self.assertEqual(helper.calc_flow.search_range, 2)
+        self.assertEqual(helper.calc_flow.median_kernel, (5, 5))
+        self.assertEqual(helper.calc_flow.blur_levels, [1, 2])
+        self.assertEqual(helper.calc_flow.last_bm_level, 1)
+        self.assertEqual(helper.calc_flow.performance_mode, "fast")
+        self.assertFalse(helper.calc_flow.mv_hints)
+        self.assertTrue(helper.calc_flow.min_cv_output)
 
     def test_upscale_and_dilate_flow_uses_nearest_depth_motion(self):
         """Depth-guided dilation should propagate the nearest-depth flow."""
@@ -110,12 +145,18 @@ class TestBlockMatchV321(unittest.TestCase):
         mv = torch.rand(1, 2, 64, 64)
 
         unscaled = BlockMatchV321(
-            granularity_scaling=False,
-            flow_params={"last_bm_level": 2, "mv_hints": False},
+            config=BlockMatchV321Config(
+                granularity_scaling=False,
+                last_bm_level=2,
+                mv_hints=False,
+            )
         )
         scaled = BlockMatchV321(
-            granularity_scaling=True,
-            flow_params={"last_bm_level": 2, "mv_hints": False},
+            config=BlockMatchV321Config(
+                granularity_scaling=True,
+                last_bm_level=2,
+                mv_hints=False,
+            )
         )
 
         fixed_flow = torch.ones(1, 2, 16, 16, dtype=torch.float16)
@@ -131,7 +172,7 @@ class TestBlockMatchV321(unittest.TestCase):
 
     def test_min_cv_output_returns_cost_volume(self):
         """Enabling min_cv_output should expose min_cost_volume in wrapper output."""
-        helper = BlockMatchV321(min_cv_output=True)
+        helper = BlockMatchV321(config=BlockMatchV321Config(min_cv_output=True))
         fixed_flow = torch.ones(1, 2, 16, 16, dtype=torch.float16)
         fixed_min_cv = torch.ones(1, 16, 16, 1, dtype=torch.int32)
         helper.calc_flow.forward = lambda **kwargs: (

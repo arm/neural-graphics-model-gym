@@ -7,6 +7,8 @@
 from __future__ import annotations
 
 import math
+from dataclasses import dataclass
+from enum import Enum
 from typing import Optional, Union
 
 import numpy as np
@@ -38,6 +40,20 @@ from ng_model_gym.usecases.nfru.model.constants import (
     _UINT8_MAX,
 )
 from ng_model_gym.usecases.nfru.utils.down_sampling_2d import DownSampling2D
+
+
+class Polarity(Enum):
+    """The flow polarity choices."""
+
+    POSITIVE = 1
+    NEGATIVE = 2
+
+
+class TemplateFrameId(Enum):
+    """The frame ID to use for templating."""
+
+    T = 1
+    TM1 = 2
 
 
 def cast(img: torch.Tensor, dtype: torch.dtype) -> torch.Tensor:
@@ -741,30 +757,55 @@ class CalculateFlow(nn.Module):
         return vector_curr, additional_outputs
 
 
+@dataclass(frozen=True)
+class BlockMatchV321Config:
+    """Reference blockmatch-v321 parameters used by NFRU v1."""
+
+    rgb_in: bool = True
+    levels: int = _BLOCKMATCH_LEVELS
+    template_sz: int = _BLOCKMATCH_TEMPLATE_SIZE
+    search_range: int = _BLOCKMATCH_SEARCH_RANGE
+    median_kernel: tuple[int, int] = _BLOCKMATCH_MEDIAN_KERNEL
+    blur_levels: tuple[int, ...] = _BLOCKMATCH_BLUR_LEVELS
+    last_bm_level: int = _BLOCKMATCH_LAST_BM_LEVEL
+    performance_mode: str = "medium"
+    mv_hints: bool = True
+    min_cv_output: bool = False
+    mean_flow_l1_norm_hint: float = 0.0
+    output_polarity: Polarity = Polarity.POSITIVE
+    mv_hints_polarity: Polarity = Polarity.POSITIVE
+    template_frame_id: TemplateFrameId = TemplateFrameId.TM1
+    granularity_scaling: bool = False
+
+
 class BlockMatchV321(nn.Module):
     """BlockMatch v3.2.1 wrapper used by examples and NFRU training."""
 
     def __init__(
         self,
-        rgb_in: bool = True,
-        output_polarity: str = "positive",
-        mv_hints_polarity: str = "positive",
-        template_frame_id: str = "tm1",
-        granularity_scaling: bool = False,
-        min_cv_output: bool = False,
-        flow_params: Optional[dict] = None,
+        config: Optional[BlockMatchV321Config] = None,
     ):
         super().__init__()
-        self.rgb_in = rgb_in
-        self.output_polarity = output_polarity
-        self.mv_hints_polarity = mv_hints_polarity
-        self.template_frame_id = template_frame_id
-        self.granularity_scaling = granularity_scaling
-        params = dict(flow_params or {})
-        params.pop("din_sr", None)
-        self.granularity = 2 ** int(params.get("last_bm_level", 2))
-        self.min_cv_output = bool(params.get("min_cv_output", min_cv_output))
-        self.calc_flow = CalculateFlow(**params, min_cv_output=self.min_cv_output)
+        self.config = config or BlockMatchV321Config()
+        self.rgb_in = self.config.rgb_in
+        self.output_polarity = self.config.output_polarity
+        self.mv_hints_polarity = self.config.mv_hints_polarity
+        self.template_frame_id = self.config.template_frame_id
+        self.granularity_scaling = self.config.granularity_scaling
+        self.granularity = 2 ** int(self.config.last_bm_level)
+        self.min_cv_output = self.config.min_cv_output
+        self.calc_flow = CalculateFlow(
+            levels=self.config.levels,
+            template_sz=self.config.template_sz,
+            search_range=self.config.search_range,
+            median_kernel=self.config.median_kernel,
+            blur_levels=list(self.config.blur_levels),
+            last_bm_level=self.config.last_bm_level,
+            performance_mode=self.config.performance_mode,
+            min_cv_output=self.config.min_cv_output,
+            mv_hints=self.config.mv_hints,
+            mean_flow_l1_norm_hint=self.config.mean_flow_l1_norm_hint,
+        )
 
     # Wrapper keeps explicit polarity and template-direction control flow.
     # pylint: disable=too-many-branches
@@ -781,10 +822,10 @@ class BlockMatchV321(nn.Module):
             img_tm1 = _rgb_to_y(img_tm1)
 
         # Decide frame direction.
-        if self.template_frame_id == "tm1":
+        if self.template_frame_id == TemplateFrameId.TM1:
             search_frame = img_t
             template_frame = img_tm1
-        elif self.template_frame_id == "t":
+        elif self.template_frame_id == TemplateFrameId.T:
             search_frame = img_tm1
             template_frame = img_t
         else:
@@ -793,9 +834,9 @@ class BlockMatchV321(nn.Module):
             )
 
         # Set output flow polarity.
-        if self.output_polarity == "positive":
+        if self.output_polarity == Polarity.POSITIVE:
             reversed_polarity = -1.0
-        elif self.output_polarity == "negative":
+        elif self.output_polarity == Polarity.NEGATIVE:
             reversed_polarity = 1.0
         else:
             raise ValueError(
@@ -804,9 +845,9 @@ class BlockMatchV321(nn.Module):
             )
 
         # Set polarity for warps with mv hints.
-        if self.mv_hints_polarity == "positive":
+        if self.mv_hints_polarity == Polarity.POSITIVE:
             warp_polarity = -1.0
-        elif self.mv_hints_polarity == "negative":
+        elif self.mv_hints_polarity == Polarity.NEGATIVE:
             warp_polarity = 1.0
         else:
             raise ValueError(
