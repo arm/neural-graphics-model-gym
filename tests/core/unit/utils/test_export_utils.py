@@ -64,20 +64,6 @@ class MockNSS(BaseNGModel):
         return {"foo": "bar"}
 
 
-class MockUnsupportedExportModel(MockNSS):
-    """Mock model that does not support export."""
-
-    def validate_export_supported(self, export_type):
-        """Raise the NSS v1 export guardrail error."""
-
-        del export_type
-
-        raise NotImplementedError(
-            "NSS-v1 export is planned follow-up work. "
-            "The initial NSS-v1 release supports FP32 training/evaluation only."
-        )
-
-
 class MockNFRUDynamicModel(BaseNGModel):
     """Minimal module wrapper using the NFRU dynamic export shape contract."""
 
@@ -159,62 +145,6 @@ class TestExportUtils(unittest.TestCase):
         self.assertEqual(len(dynamic_shape), 1)
         self.assertIsInstance(dynamic_shape[0], dict)
         self.assertEqual(set(dynamic_shape[0]), {0, 2, 3})
-
-    @patch("ng_model_gym.core.export.model_export._export_module_to_vgf", new=DEFAULT)
-    @patch("ng_model_gym.core.export.model_export.model_tracer", new=DEFAULT)
-    @patch("ng_model_gym.core.export.model_export.get_dataloader", new=DEFAULT)
-    @patch("ng_model_gym.core.export.model_export._check_cuda", new=lambda: None)
-    def test_unsupported_dynamic_export_fails_before_trace(
-        self, mock_get_dataloader, mock_model_tracer, mock_export_module_to_vgf
-    ):
-        """Unsupported dynamic export should fail before dataloader/tracing."""
-
-        self.load_ckpt_patch.stop()
-        self.load_ckpt_patch = None
-
-        with patch(
-            "ng_model_gym.core.export.model_export.load_checkpoint",
-            new=lambda *a, **k: MockUnsupportedExportModel(self.params),
-        ):
-            with self.assertRaisesRegex(NotImplementedError, "NSS-v1 export"):
-                executorch_vgf_export(
-                    params=self.params,
-                    export_type=ExportType.FP32,
-                    model_path=Path("checkpoint.pt"),
-                )
-
-        mock_get_dataloader.assert_not_called()
-        mock_model_tracer.assert_not_called()
-        mock_export_module_to_vgf.assert_not_called()
-
-    @patch("ng_model_gym.core.export.model_export._export_module_to_vgf", new=DEFAULT)
-    @patch("ng_model_gym.core.export.model_export.model_tracer", new=DEFAULT)
-    @patch("ng_model_gym.core.export.model_export.get_dataloader", new=DEFAULT)
-    @patch("ng_model_gym.core.export.model_export._check_cuda", new=lambda: None)
-    def test_unsupported_static_export_fails_before_trace(
-        self, mock_get_dataloader, mock_model_tracer, mock_export_module_to_vgf
-    ):
-        """Unsupported static export should fail before dataloader/tracing."""
-
-        self.params.output.export.dynamic_shape = False
-        self.params.output.export.vgf_static_input_shape = [(1, 3, 64, 64)]
-        self.load_ckpt_patch.stop()
-        self.load_ckpt_patch = None
-
-        with patch(
-            "ng_model_gym.core.export.model_export.load_checkpoint",
-            new=lambda *a, **k: MockUnsupportedExportModel(self.params),
-        ):
-            with self.assertRaisesRegex(NotImplementedError, "NSS-v1 export"):
-                executorch_vgf_export(
-                    params=self.params,
-                    export_type=ExportType.FP32,
-                    model_path=Path("checkpoint.pt"),
-                )
-
-        mock_get_dataloader.assert_not_called()
-        mock_model_tracer.assert_not_called()
-        mock_export_module_to_vgf.assert_not_called()
 
     # Patch the heavy or external dependencies on every test:
     @patch("ng_model_gym.core.export.model_export._update_metadata_file", new=DEFAULT)

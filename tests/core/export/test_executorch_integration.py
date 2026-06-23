@@ -88,14 +88,14 @@ class TestExecuTorchIntegration(unittest.TestCase):
         """Load an NSS model and export it to a TOSA file via ExecuTorch."""
 
         models = [
-            "./tests/usecases/nss/weights/nss_v0.1.0_fp32.pt",
-            "@neural-super-sampling/nss_v0.1.0_fp32.pt",
+            "./tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt",
+            "@neural-super-sampling/nss_v1_high_fp32.pt",
         ]
 
         for model in models:
             with self.subTest(model):
                 # Load config and setup for current test
-                params = create_simple_params(usecase="nss")
+                params = create_simple_params(usecase="nss_v1")
                 params.dataset.path.validation = Path("tests/usecases/nss/datasets/val")
                 params.output.export.vgf_output_dir = self.tosa_out_dir
                 params.model_train_eval_mode = TrainEvalMode.FP32
@@ -116,13 +116,13 @@ class TestExecuTorchIntegration(unittest.TestCase):
         """Load an NSS model and export it to an int8 TOSA file via ExecuTorch."""
 
         models = [
-            "./tests/usecases/nss/weights/nss_v0.1.0_fp32.pt",
-            "@neural-super-sampling/nss_v0.1.0_fp32.pt",
+            "./tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt",
+            "@neural-super-sampling/nss_v1_high_fp32.pt",
         ]
 
         for model in models:
             # Load config and setup for current test
-            params = create_simple_params(usecase="nss")
+            params = create_simple_params(usecase="nss_v1")
             params.output.export.vgf_output_dir = self.tosa_out_dir
             params.dataset.path.validation = Path("tests/usecases/nss/datasets/val")
 
@@ -161,12 +161,12 @@ class TestExecuTorchIntegration(unittest.TestCase):
         """Load checkpoint produced from QAT training"""
 
         models = [
-            "./tests/usecases/nss/weights/nss_v0.1.1_int8.pt",
-            "@neural-super-sampling/nss_v0.1.1_int8.pt",
+            "./tests/usecases/nss/weights/v1/nss_v1_high_int8.pt",
+            "@neural-super-sampling/nss_v1_high_int8.pt",
         ]
 
         for model in models:
-            params = create_simple_params(usecase="nss")
+            params = create_simple_params(usecase="nss_v1")
             params.output.export.vgf_output_dir = self.tosa_out_dir
             params.dataset.path.train = Path("tests/usecases/nss/datasets/train")
 
@@ -203,7 +203,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
 
     def test_export_function_raises_error_missing_dataset_path(self):
         """Test export raises error if missing dataset path"""
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.output.export.vgf_output_dir = self.tosa_out_dir
 
         # Ensure tosa output directory does not exist
@@ -216,9 +216,9 @@ class TestExecuTorchIntegration(unittest.TestCase):
         params.dataset.path.test = None
 
         # Point to pretrained weights to load
-        qat_model_path = "tests/usecases/nss/weights/nss_v0.1.1_int8.pt"
+        qat_model_path = "tests/usecases/nss/weights/v1/nss_v1_high_int8.pt"
 
-        fp32_model_path = "tests/usecases/nss/weights/nss_v0.1.0_fp32.pt"
+        fp32_model_path = "tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt"
 
         with self.assertRaises(ValueError) as exc:
             do_export(params, qat_model_path, ExportType.QAT_INT8)
@@ -237,7 +237,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
 
     def test_export_raises_no_dynamic_or_static_config(self):
         """Test export raises error if dynamic is set to false and there is no static export cfg"""
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.output.export.dynamic_shape = False
         params.output.export.vgf_static_input_shape = None
         params.output.export.vgf_output_dir = self.tosa_out_dir
@@ -248,7 +248,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         self.assertFalse(tosa_out_dir.exists())
 
         # Point to pretrained weights to load
-        qat_model_path = "tests/usecases/nss/weights/nss_v0.1.1_int8.pt"
+        qat_model_path = "tests/usecases/nss/weights/v1/nss_v1_high_int8.pt"
 
         with self.assertRaises(ValueError) as exc:
             do_export(params, qat_model_path, ExportType.QAT_INT8)
@@ -258,7 +258,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
     def test_static_export(self):
         """Test export passes if dynamic is set to false and there is a static export cfg"""
 
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.output.export.dynamic_shape = False
         params.output.export.vgf_static_input_shape = [[1, 12, 256, 256]]
         params.output.export.vgf_output_dir = self.tosa_out_dir
@@ -269,7 +269,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         self.assertFalse(tosa_out_dir.exists())
 
         # Point to pretrained weights to load
-        qat_model_path = "tests/usecases/nss/weights/nss_v0.1.1_int8.pt"
+        qat_model_path = "tests/usecases/nss/weights/v1/nss_v1_high_int8.pt"
 
         with self.assertLogs("ng_model_gym", level="INFO") as log_capture:
             do_export(params, qat_model_path, ExportType.QAT_INT8)
@@ -284,7 +284,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
     def test_static_export_provided_and_dynamic_enabled(self):
         """Test warning if dynamic is set to true and there is a static export cfg"""
 
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.output.export.dynamic_shape = True
         params.output.export.vgf_static_input_shape = [[1, 12, 256, 256]]
         params.output.export.vgf_output_dir = self.tosa_out_dir
@@ -295,7 +295,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         self.assertFalse(tosa_out_dir.exists())
 
         # Point to pretrained weights to load
-        qat_model_path = "tests/usecases/nss/weights/nss_v0.1.1_int8.pt"
+        qat_model_path = "tests/usecases/nss/weights/v1/nss_v1_high_int8.pt"
 
         with self.assertLogs("ng_model_gym", level="WARN") as log_capture:
             do_export(params, qat_model_path, ExportType.QAT_INT8)

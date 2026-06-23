@@ -195,14 +195,6 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
             next(model.get_neural_network().parameters()).device,
         )
 
-    def test_dynamic_export_shape_is_not_supported_yet(self) -> None:
-        """NSS v1 raises clearly for export until follow-up work lands."""
-
-        model = create_model(self.params, self.device)
-
-        with self.assertRaisesRegex(NotImplementedError, "NSS-v1 export"):
-            model.define_dynamic_export_model_input()
-
     def test_core_forward_requires_cuda_for_slang_path(self) -> None:
         """Real NSS v1 Slang-backed forward fails clearly on CPU."""
 
