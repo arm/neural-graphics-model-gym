@@ -6,12 +6,12 @@ import subprocess
 import unittest
 from pathlib import Path
 
-from tests.usecases.nss.integration.base_integration import NSSV0_1BaseIntegrationTest
+from tests.usecases.nss.integration.base_integration_v1 import NSSV1BaseIntegrationTest
 from tests.usecases.nss.unit.data.camera_cut_builders import write_camera_cut_fixture
 
 
 # pylint: disable=duplicate-code
-class TrainingIntegrationTest(NSSV0_1BaseIntegrationTest):
+class TrainingIntegrationTest(NSSV1BaseIntegrationTest):
     """Tests for NSS training pipeline."""
 
     def run_finetune_training_test(self):
@@ -43,13 +43,13 @@ class TrainingIntegrationTest(NSSV0_1BaseIntegrationTest):
                 "train",
                 "--no-evaluate",
                 "--finetune",
-                "@neural-super-sampling/nss_v0.1.0_fp32.pt",
+                "@neural-super-sampling/nss_v1_high_fp32.pt",
             ],
             capture_output=True,
             text=True,
         )
         self.assertEqual(sub_proc.returncode, 0)
-        self.check_log(["Fine tuning using weights nss_v0.1.0_fp32.pt"])
+        self.check_log(["Fine tuning using weights nss_v1_high_fp32.pt"])
         return sub_proc
 
     def test_model_train(self):
