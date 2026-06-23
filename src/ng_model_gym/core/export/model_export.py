@@ -331,16 +331,13 @@ def executorch_vgf_export(
             "Dynamic export is enabled and provided static input shape will be ignored"
         )
 
-    # Resolve weights and load the model.
-    # Load on GPU first to accommodate the tracing forward pass of models with shaders.
+    # Resolve weights and load the model on GPU to accommodate the tracing forward
+    # pass of models with shaders.
     model = load_checkpoint(model_path, params, torch.device("cuda"))
-    model = model.to("cpu")
     model.eval()
 
     if not isinstance(model, BaseNGModel):
         raise ValueError(f"model type: {type(model)} , is not valid")
-
-    model.validate_export_supported(export_type)
 
     dataloader = get_dataloader(
         params,
@@ -353,6 +350,10 @@ def executorch_vgf_export(
     # Get sample data to trace graph.
     preprocess_trace_input = next(iter(dataloader))[0]
     model_forward_input = model_tracer(model, preprocess_trace_input)
+
+    # Move model to CPU for export
+    model = model.to("cpu")
+    model.eval()
 
     # Move model forward inputs to CPU and change memory format as TOSA uses NHWC.
     to_cpu = lambda x: x.to("cpu") if isinstance(x, torch.Tensor) else x

@@ -106,21 +106,6 @@ class NSSV1Model(BaseNGModel):
         """Replace the trainable NSS v1 neural network."""
         self.autoencoder = neural_network
 
-    def validate_export_supported(self, export_type: object) -> None:
-        """Raise until NSS v1 export support is implemented."""
-
-        del export_type
-
-        raise NotImplementedError(
-            "NSS-v1 export is planned follow-up work. "
-            "The initial NSS-v1 release supports FP32 training/evaluation only."
-        )
-
-    def define_dynamic_export_model_input(self) -> tuple[object, ...]:
-        """Raise until NSS v1 export support is implemented."""
-
-        self.validate_export_supported(export_type=None)
-
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Run recurrent NSS v1 forward pass.
 
@@ -295,6 +280,30 @@ class NSSV1Model(BaseNGModel):
                 mode=self.tonemapper,
             ),
         }
+
+    def define_dynamic_export_model_input(self) -> tuple[dict[int, object], ...]:
+        """
+        Description of dynamic dimensions of the exported autoencoder input tensor.
+
+        Note: Dynamic shape constraints e.g. dimension is a multiple of 8 or certain
+        range of values is an optional check during export. Exported TOSA/VGF models
+        do not capture these constraints in the network graph for the dynamic
+        dimensions. This should be handled in the preprocessing stage when running
+        the model.
+        """
+
+        # Dynamic batch size - ensure when exporting, this dim in the config is >= 2
+        batch_size = torch.export.Dim("batch")  # Batch size can be anything
+
+        # Input width/height is a multiple of 8 because of the resizing layers.
+        input_height_over_8 = torch.export.Dim("input_height_over_8", min=1)
+        input_width_over_8 = torch.export.Dim("input_width_over_8", min=1)
+
+        input_height = 8 * input_height_over_8
+        input_width = 8 * input_width_over_8
+
+        # Single NCHW tensor input to AutoEncoderV1.forward.
+        return ({0: batch_size, 2: input_height, 3: input_width},)
 
     def init_history_buffers(self) -> Dict[str, Optional[torch.Tensor]]:
         """Return NSS v1 history buffers."""
