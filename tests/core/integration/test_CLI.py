@@ -27,7 +27,7 @@ class CLIIntegrationTest(BaseGPUMemoryTest):
 
         # Create a valid config to use
         self.config = create_simple_params(
-            usecase="nss",
+            usecase="nss_v1",
             output_dir=self.test_dir / "output",
             dataset_path="tests/usecases/nss/mini_datasets/train",
             checkpoints=self.test_dir / "checkpoints",

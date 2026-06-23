@@ -27,7 +27,7 @@ class CLIIntegrationTest(NSSV0_1BaseIntegrationTest):
         self.assertIn(
             "https://huggingface.co/Arm/neural-super-sampling", sub_process.stdout
         )
-        self.assertIn("* nss_v0.1.0_fp32.pt", sub_process.stdout)
+        self.assertIn("* nss_v1_high_fp32.pt", sub_process.stdout)
 
     def test_downloading_models(self):
         """Test downloading NSS model"""
@@ -36,7 +36,7 @@ class CLIIntegrationTest(NSSV0_1BaseIntegrationTest):
                 [
                     "ng-model-gym",
                     "download",
-                    "neural-super-sampling/nss_v0.1.0_fp32.pt",
+                    "neural-super-sampling/nss_v1_high_fp32.pt",
                     tmpdir,
                 ],
                 capture_output=True,
@@ -45,8 +45,8 @@ class CLIIntegrationTest(NSSV0_1BaseIntegrationTest):
             self.assertEqual(sub_process.returncode, 0, sub_process.stderr)
 
             self.assertIn(
-                "Downloaded neural-super-sampling/nss_v0.1.0_fp32.pt to",
+                "Downloaded neural-super-sampling/nss_v1_high_fp32.pt to",
                 sub_process.stdout,
             )
 
-            self.assertTrue((tmpdir / Path("nss_v0.1.0_fp32.pt")).exists())
+            self.assertTrue((tmpdir / Path("v1/nss_v1_high_fp32.pt")).exists())
