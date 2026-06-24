@@ -152,22 +152,47 @@ class NSSV1Model(BaseNGModel):
         """Run a one-frame NSS v1 forward pass."""
 
         (
+            input_tensor,
+            derivative,
+            disocclusion_mask,
+            nearest_depth_offset,
+        ) = self.preprocess(inputs)
+
+        kpn_params, temporal_params = self.autoencoder(input_tensor)
+
+        outputs = self.postprocess(
+            kpn_params,
+            inputs,
+            temporal_params,
+            nearest_depth_offset,
+            derivative,
+            disocclusion_mask,
+        )
+
+        return outputs
+
+    def preprocess(
+        self,
+        preprocess_input: Dict[str, torch.Tensor],
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Create the autoencoder input from preprocessing."""
+
+        (
             input_shape,
             process_shape,
             hr_shape,
             pad_shape,
             depth_shape,
-        ) = self._calculate_dispatch_dims(inputs)
-        self._validate_ground_truth_shape(inputs, hr_shape)
-        self._require_cuda_for_slang_forward(inputs)
+        ) = self._calculate_dispatch_dims(preprocess_input)
+        self._validate_ground_truth_shape(preprocess_input, hr_shape)
+        self._require_cuda_for_slang_forward(preprocess_input)
         slang = self._get_slang()
-        reset_occurred = 1.0 - (inputs["reset_event"] == 0.0).float()
-        device = str(inputs["colour_linear"].device)
+        device = str(preprocess_input["colour_linear"].device)
 
         depth_tm1 = slang.depth_scatter(
-            in_motion=inputs[self.motion_key],
-            in_depth=inputs["depth"],
-            in_render_size=inputs["render_size"],
+            in_motion=preprocess_input[self.motion_key],
+            in_depth=preprocess_input["depth"],
+            in_render_size=preprocess_input["render_size"],
             out_constructors={
                 "out_tensor": SlangOutput(
                     init="full",
@@ -185,18 +210,18 @@ class NSSV1Model(BaseNGModel):
             pad_shape if self.preprocess_half_res_input else process_shape
         )
         preprocess_kwargs = {
-            "in_colour": inputs["colour_linear"],
-            "in_history": inputs["history"],
-            "in_motion": inputs[self.motion_key],
-            "in_depth": inputs["depth"],
+            "in_colour": preprocess_input["colour_linear"],
+            "in_history": preprocess_input["history"],
+            "in_motion": preprocess_input[self.motion_key],
+            "in_depth": preprocess_input["depth"],
             "in_depth_tm1": depth_tm1,
-            "in_jitter": inputs["jitter"],
-            "in_jitter_tm1": inputs["jitter_tm1"],
-            "in_feedback_tm1": inputs["temporal_params_tm1"],
-            "in_derivative_tm1": inputs["derivative_tm1"],
-            "in_depth_params": inputs["depth_params"],
-            "in_exposure": inputs["exposure"],
-            "in_render_size": inputs["render_size"],
+            "in_jitter": preprocess_input["jitter"],
+            "in_jitter_tm1": preprocess_input["jitter_tm1"],
+            "in_feedback_tm1": preprocess_input["temporal_params_tm1"],
+            "in_derivative_tm1": preprocess_input["derivative_tm1"],
+            "in_depth_params": preprocess_input["depth_params"],
+            "in_exposure": preprocess_input["exposure"],
+            "in_render_size": preprocess_input["render_size"],
             "out_constructors": {
                 "out_tensor": SlangOutput(
                     shape=pad_shape,
@@ -231,7 +256,25 @@ class NSSV1Model(BaseNGModel):
             nearest_depth_offset,
         ) = slang.pre_process(**preprocess_kwargs)
 
-        kpn_params, temporal_params = self.autoencoder(input_tensor)
+        return input_tensor, derivative, disocclusion_mask, nearest_depth_offset
+
+    def postprocess(
+        self,
+        kpn_params: torch.Tensor,
+        inputs: Dict[str, torch.Tensor],
+        temporal_params: torch.Tensor,
+        nearest_depth_offset: torch.Tensor,
+        derivative: torch.Tensor,
+        disocclusion_mask: torch.Tensor,
+    ) -> Dict[str, torch.Tensor]:
+        """Postprocess neural network outputs."""
+
+        self._require_cuda_for_slang_forward(inputs)
+        slang = self._get_slang()
+        input_shape, _, hr_shape, _, _ = self._calculate_dispatch_dims(inputs)
+        self._validate_ground_truth_shape(inputs, hr_shape)
+        reset_occurred = 1.0 - (inputs["reset_event"] == 0.0).float()
+        device = str(inputs["colour_linear"].device)
 
         offset_lut, idx_modulo = self._generate_offset_lut(
             inputs["jitter"],
@@ -264,7 +307,7 @@ class NSSV1Model(BaseNGModel):
             out_filtered_linear * inputs["exposure"], mode=self.tonemapper
         )
 
-        return {
+        outputs = {
             "output": output_tm,
             "output_linear": output_linear,
             "out_filtered": out_filtered_tm,
@@ -280,6 +323,7 @@ class NSSV1Model(BaseNGModel):
                 mode=self.tonemapper,
             ),
         }
+        return outputs
 
     def define_dynamic_export_model_input(self) -> tuple[dict[int, object], ...]:
         """
