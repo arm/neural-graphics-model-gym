@@ -6,8 +6,6 @@ import unittest
 
 import torch
 
-from ng_model_gym.core.data.data_utils import tonemap_forward
-from ng_model_gym.core.model.shaders.slang_utils import SlangOutput
 from ng_model_gym.usecases.nss.model.model_v1 import NSSV1Model
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
@@ -47,59 +45,37 @@ class TestNSSV1PostprocessGolden(BaseGPUMemoryTest):
                 )
 
                 nss_model = self._create_model(quality, device)
-                slang = nss_model._get_slang()  # pylint: disable=protected-access
-                (
-                    _input_shape,
-                    _process_shape,
-                    hr_shape,
-                    _pad_shape,
-                    _depth_shape,
-                ) = nss_model._calculate_dispatch_dims(  # pylint: disable=protected-access
-                    postprocess_golden_input
+                # Two model input keys that NSSV1Model.postprocess() also reads
+                postprocess_golden_input["ground_truth_linear"] = torch.zeros_like(
+                    postprocess_golden_input["history"]
                 )
+                postprocess_golden_input["reset_event"] = postprocess_golden_input[
+                    "reset"
+                ]
 
-                output_linear, out_filtered_linear = slang.post_process(
-                    in_colour=postprocess_golden_input["colour_linear"],
-                    in_history=postprocess_golden_input["history"],
-                    in_kpn_params=postprocess_golden_input["kpn_params"],
-                    in_temporal_params=postprocess_golden_input["temporal_params"],
-                    in_motion=postprocess_golden_input["motion_lr"],
-                    in_nearest_depth_off=postprocess_golden_input[
-                        "nearest_depth_offset"
-                    ],
-                    in_exposure=postprocess_golden_input["exposure"],
-                    in_jitter=postprocess_golden_input["jitter"],
-                    in_offset_lut=postprocess_golden_input["offset_lut"],
-                    in_idx_modulo=postprocess_golden_input["idx_modulo"],
-                    in_reset=postprocess_golden_input["reset"],
-                    out_constructors={
-                        "out_colour": SlangOutput(shape=hr_shape, device=str(device)),
-                        "out_colour_filtered": SlangOutput(
-                            shape=hr_shape,
-                            device=str(device),
-                        ),
-                    },
-                    dispatch_size=[hr_shape[0], hr_shape[2], hr_shape[3]],
+                derivative = torch.empty_like(
+                    postprocess_golden_input["temporal_params"]
                 )
-                out_filtered = tonemap_forward(
-                    out_filtered_linear * postprocess_golden_input["exposure"],
-                    mode=nss_model.tonemapper,
+                disocclusion_mask = torch.empty_like(
+                    postprocess_golden_input["nearest_depth_offset"]
+                )
+                outputs = nss_model.postprocess(
+                    postprocess_golden_input["kpn_params"],
+                    postprocess_golden_input,
+                    postprocess_golden_input["temporal_params"],
+                    postprocess_golden_input["nearest_depth_offset"],
+                    derivative,
+                    disocclusion_mask,
                 )
 
                 torch.testing.assert_close(
-                    output_linear,
+                    outputs["output_linear"],
                     postprocess_golden_output["output_linear"],
                     rtol=_SHADER_RTOL,
                     atol=_SHADER_ATOL,
                 )
                 torch.testing.assert_close(
-                    out_filtered_linear,
-                    postprocess_golden_output["out_filtered_linear"],
-                    rtol=_SHADER_RTOL,
-                    atol=_SHADER_ATOL,
-                )
-                torch.testing.assert_close(
-                    out_filtered,
+                    outputs["out_filtered"],
                     postprocess_golden_output["out_filtered"],
                     rtol=_SHADER_RTOL,
                     atol=_SHADER_ATOL,
