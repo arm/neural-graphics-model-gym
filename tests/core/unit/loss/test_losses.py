@@ -67,6 +67,59 @@ class TestLossV0_1(unittest.TestCase):
         self.assertAlmostEqual(loss.item(), loss_input["loss"], places=3)
 
 
+class TestLossV1Golden(unittest.TestCase):
+    """Tests for LossV1 golden values."""
+
+    @unittest.skipUnless(
+        torch.cuda.is_available(),
+        "CUDA is required for NSS v1 LossV1 golden with real LPIPS.",
+    )
+    def test_loss_function(self):
+        """Test NSS v1 loss function against golden value."""
+
+        device = torch.device("cuda")
+        loss_input = torch.load(
+            "tests/usecases/nss/unit/data/nss_v1_golden_values/"
+            + "nss_v1_high_loss_golden.pt",
+            map_location=device,
+            weights_only=True,
+        )
+
+        y_true = loss_input["y_true"]
+        y_pred = {
+            "output": loss_input["output"],
+            "out_filtered": loss_input["out_filtered"],
+            "motion": loss_input["motion"],
+            "temporal_params": loss_input["temporal_params"],
+            "disocclusion_mask": loss_input["disocclusion_mask"],
+            "reset_event": loss_input["reset_event"],
+        }
+        loss_args = {
+            "temporal_reg_weight": 0.7,
+            "alpha_reg_weight": 0.0001,
+            "temporal_reg_channels": 1,
+            "min_weight": 0.1,
+        }
+
+        criterion = LossV1(
+            recurrent_samples=2,
+            device=device,
+            loss_args=loss_args,
+        )
+        criterion.eval()
+
+        with torch.no_grad():
+            loss = criterion(y_true, y_pred)
+
+        self.assertEqual(loss_input["loss"].ndim, 0)
+        torch.testing.assert_close(
+            loss,
+            loss_input["loss"],
+            rtol=0,
+            atol=1e-5,
+        )
+
+
 class TestLPIPSSpatialLossV1(unittest.TestCase):
     """Tests for LPIPSSpatialLossV1 class"""
 
