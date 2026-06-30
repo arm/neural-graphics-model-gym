@@ -9,13 +9,12 @@ from ng_model_gym.usecases.nss.model.model_blocks_v1 import (
     AutoEncoderV1,
     get_kpn_prune_indices,
 )
-from tests.base_gpu_test import BaseGPUMemoryTest
 
 _RTOL = 1e-6
 _ATOL = 1e-6
 
 
-class TestNSSV1AutoEncoder(BaseGPUMemoryTest):
+class TestNSSV1AutoEncoder(unittest.TestCase):
     """Tests for the NSS v1 AutoEncoderV1 block."""
 
     def test_output_shapes_for_high_quality_kpn_size(self):
