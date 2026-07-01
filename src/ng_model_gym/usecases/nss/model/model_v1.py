@@ -447,8 +447,7 @@ class NSSV1Model(BaseNGModel):
         )
 
         inputs["history"] = torch.where(mask, gt_frame, inputs["history"])
-        # TODO: Revisit immediate recurrent-state detaches
-        self.history_buffers["history"] = inputs["history"].detach()
+        self.history_buffers["history"] = inputs["history"]
 
         if "reset_event" in inputs:
             reset_mask = mask
@@ -470,14 +469,11 @@ class NSSV1Model(BaseNGModel):
     ) -> None:
         """Update NSS v1 history buffers from a one-frame output."""
 
-        # TODO: Revisit immediate recurrent-state detaches
-        self.history_buffers["history"] = outputs["output_linear"].detach()
-        self.history_buffers["jitter_tm1"] = inputs["jitter"].detach()
-        self.history_buffers["temporal_params_tm1"] = outputs[
-            "temporal_params"
-        ].detach()
-        self.history_buffers["derivative_tm1"] = outputs["derivative"].detach()
-        self.history_buffers["reset_event"] = inputs["seq"].detach()
+        self.history_buffers["history"] = outputs["output_linear"]
+        self.history_buffers["jitter_tm1"] = inputs["jitter"]
+        self.history_buffers["temporal_params_tm1"] = outputs["temporal_params"]
+        self.history_buffers["derivative_tm1"] = outputs["derivative"]
+        self.history_buffers["reset_event"] = inputs["seq"]
 
     def detach_buffers(self) -> None:
         """Detach NSS v1 history buffers."""
