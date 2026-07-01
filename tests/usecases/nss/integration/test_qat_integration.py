@@ -116,6 +116,34 @@ class QATIntegrationTest(NSSV1BaseIntegrationTest):
         """Run entire training pipeline."""
         self.run_training_test_qat()
 
+    def test_qat_eval_pipeline(self):
+        """Run QAT training followed by evaluation."""
+        sub_proc = subprocess.run(
+            [
+                "ng-model-gym",
+                f"--config-path={self.test_cfg_path}",
+                "qat",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(
+            sub_proc.returncode,
+            0,
+            (
+                "NSS v1 QAT evaluate pipeline failed.\n"
+                f"STDOUT:\n{sub_proc.stdout}\n"
+                f"STDERR:\n{sub_proc.stderr}"
+            ),
+        )
+        self.check_log(
+            [
+                "Evaluating the trained model...",
+                "-------------- Evaluation Complete --------------",
+            ]
+        )
+
     def test_model_train_finetune(self):
         """Run entire training pipeline with finetuning."""
         self.run_finetune_training_test()

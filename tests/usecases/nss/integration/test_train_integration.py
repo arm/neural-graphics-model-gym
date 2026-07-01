@@ -127,7 +127,7 @@ class TrainingIntegrationTest(NSSV1BaseIntegrationTest):
         self.check_log("AMP is available: true")
 
     def test_validation(self):
-        """Test train with validation"""
+        """Train with validation and default post-training evaluation."""
         # Update config to enable validation
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
@@ -154,6 +154,54 @@ class TrainingIntegrationTest(NSSV1BaseIntegrationTest):
 
         self.assertEqual(sub_proc.returncode, 0)
         self.assertIn("Validation:", sub_proc.stdout + sub_proc.stderr)
+        self.check_log(
+            [
+                "Evaluating the trained model...",
+                "-------------- Evaluation Complete --------------",
+            ]
+        )
+        self.assertTrue(Path(self.model_out_dir, "results.log").exists())
+
+    def test_validation_validate_frequency_array(self):
+        """Validate only on configured training epochs."""
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        cfg_json["dataset"]["path"]["validation"] = "tests/usecases/nss/datasets/val"
+        cfg_json["train"]["perform_validate"] = True
+        cfg_json["train"]["fp32"]["number_of_epochs"] = 4
+        cfg_json["train"]["validate_frequency"] = [1, 3, 4]
+
+        self.test_cfg_path = Path(self.test_dir, "test_validate_frequency.json")
+        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
+
+        sub_proc = subprocess.run(
+            [
+                "ng-model-gym",
+                f"--config-path={self.test_cfg_path}",
+                "train",
+                "--no-evaluate",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertEqual(
+            sub_proc.returncode,
+            0,
+            (
+                "NSS v1 validation frequency training failed.\n"
+                f"STDOUT:\n{sub_proc.stdout}\n"
+                f"STDERR:\n{sub_proc.stderr}"
+            ),
+        )
+
+        logs = sub_proc.stdout + sub_proc.stderr
+        self.assertIn("Validation: Epoch 1/4", logs)
+        self.assertNotIn("Validation: Epoch 2/4", logs)
+        self.assertIn("Validation: Epoch 3/4", logs)
+        self.assertIn("Validation: Epoch 4/4", logs)
 
     def test_training_with_camera_cut_dataset(self):
         """Smoke test: training CLI accepts safetensors that include camera cuts."""

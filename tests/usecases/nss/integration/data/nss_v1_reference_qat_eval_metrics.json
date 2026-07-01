@@ -1,0 +1,17 @@
+{
+    "high": {
+        "PSNR": 26.32974,
+        "tPSNRStreaming": 24.44157,
+        "SSIM": 0.89595
+    },
+    "mid": {
+        "PSNR": 26.07839,
+        "tPSNRStreaming": 24.04543,
+        "SSIM": 0.90427
+    },
+    "low": {
+        "PSNR": 25.01703,
+        "tPSNRStreaming": 23.43504,
+        "SSIM": 0.87988
+    }
+}
