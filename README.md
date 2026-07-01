@@ -37,7 +37,7 @@ SPDX-License-Identifier: Apache-2.0
 
 ## Introduction
 
-**Neural Graphics Model Gym**  is a Python® toolkit for developing real-time Neural Graphics machine learning models.
+**Neural Graphics Model Gym** is a Python® toolkit for developing real-time Neural Graphics machine learning models.
 
 With **Neural Graphics Model Gym** you can train, finetune and evaluate your Neural Graphics models.
 **Neural Graphics Model Gym** also enables you to perform quantization of your model before exporting it to a format compatible with ML extensions for Vulkan® - allowing you to run on the latest mobile devices.
@@ -85,45 +85,47 @@ Basic usage is shown here. More detailed commands can be found in [usage.md](./d
 
 #### Command line usage
 
-List the available model configuration files:
-```bash
-ng-model-gym init --list
-```
-Running `ng-model-gym init` with no arguments also lists model configuration files.
+Most commands use a configuration file and require the following steps:
 
-Generate a JSON configuration file for a model. If no directory path is provided, files are saved to current directory.
-```bash
-ng-model-gym init <model-template> [save_dir]
-```
-This file contains configuration options for the different usage modes (training, evaluation, and exporting) and paths to local datasets. Some entries have placeholder values (e.g. "<...>"). Make sure to replace those with your own settings.
+1. **List model configuration templates:** Each model (NSS, NFRU, etc.) requires a different type of JSON configuration file. These files are initialized from templates. List available templates using this command:
 
-NFRU configurations can be generated with the `nfru` template:
+   ```bash
+   ng-model-gym init --list
+   ```
 
-```bash
-ng-model-gym init nfru [save_dir]
-```
+2. **Generate a model configuration file from a template:** Use a command of the following form. If no directory path is provided, the configuration file will be saved to the current directory.
 
-> **For Windows users:**
->
-> When editing `config.json`, Windows paths must either use forward slashes (`path/to/location`) or escaped backslashes (`path\\to\\location`). Single backslashes (e.g. `path\to\location`) are invalid JSON and will cause a `JSONDecodeError`.
+   ```bash
+   ng-model-gym init <model-template> [save_dir]
+   ```
 
-Use your custom configuration when invoking CLI commands by providing its path with the `--config-path` or `-c` flag as shown below:
+   Example: NSS and NFRU configuration files are created from the `nss` and `nfru` templates. The following commands will create NSS and NFRU configuration files in the current directory:
 
-```bash
-# Perform model training and evaluation
-ng-model-gym --config-path=<path/to/config.json> train
-# Evaluate a previously trained model
-ng-model-gym -c <path/to/config/file> evaluate --model-path=<path/to/model.pt> --model-type=<fp32|qat_int8>
-# Perform quantization aware training (QAT) and evaluation
-ng-model-gym -c <path/to/config/file> qat
-# Export a trained model to VGF file
-ng-model-gym -c <path/to/config/file> export --model-path=<path/to/model.pt> --export-type=<fp32|qat_int8|ptq_int8>
-```
+   ```bash
+   ng-model-gym init nss
+   ng-model-gym init nfru
+   ```
 
-The `--config-path` (or `-c`) flag is **required** when running the `train`, `qat`, `evaluate`, or `export` commands.
-These commands will fail if a valid config file path is not provided.
+3. **Edit your model configuration file:** Configuration files contain paths to local datasets and options for the different usage modes (training, evaluation, and exporting). Some entries initially contain placeholder values (e.g. `<...>`); make sure to replace those with your own settings.
 
-If you would like to view and download the available pre-trained models, use the following commands:
+   > *For Windows users:*
+   >
+   > Paths must either use forward slashes (`path/to/location`) or escaped backslashes (`path\\to\\location`). Single backslashes (e.g. `path\to\location`) are invalid JSON and will cause a `JSONDecodeError`.
+
+4. **Run Model Gym commands:** Provide the path to the configuration file using the `--config-path`/`-c` flag. For example:
+
+   ```bash
+   # Perform model training and evaluation
+   ng-model-gym --config-path=<path/to/config/file> train
+   # Evaluate a previously trained model
+   ng-model-gym -c <path/to/config/file> evaluate --model-path=<path/to/model.pt> --model-type=<fp32|qat_int8>
+   # Perform quantization aware training (QAT) and evaluation
+   ng-model-gym -c <path/to/config/file> qat
+   # Export a trained model to VGF file
+   ng-model-gym -c <path/to/config/file> export --model-path=<path/to/model.pt> --export-type=<fp32|qat_int8|ptq_int8>
+   ```
+
+Pre-trained models can be viewed and downloaded without `--config-path`/`-c`:
 
 ```bash
 # List downloadable models hosted on the configured repositories
@@ -171,7 +173,7 @@ ngmg.do_evaluate(config, trained_model_path, ngmg.TrainEvalMode.FP32)
 ngmg.do_export(config, trained_model_path, export_type=ngmg.ExportType.FP32)
 ```
 
-Jupyter® notebook tutorials on how to use the package, including:
+Jupyter® Notebook tutorials on how to use the package, including:
 * Training
 * Quantization-aware training and exporting
 * Evaluation
@@ -246,7 +248,7 @@ We also support defining custom use cases to group together related models, data
 
 To train the Neural Super Sampling model, you will first need to capture training data from your game engine in the format expected by the model. A [data capture guide for NSS](./docs/nss/nss_data_capture_guide.md) explaining the steps required to capture datasets is available and the expected layout of the dataset can been seen at [nss_dataset_specification.md](./docs/nss/nss_dataset_specification.md). A plugin for Unreal® Engine is also available [here](https://github.com/arm/neural-graphics-data-capture-for-unreal) that can capture datasets for NSS from a game.
 
-For information regarding the types of data to capture for Neural Frame Rate Upscaling and how to convert your captured frames , see [nfru_data_generation.md](./docs/nfru/nfru_data_generation.md).
+For information regarding the types of data to capture for Neural Frame Rate Upscaling and how to convert your captured frames, see [nfru_data_generation.md](./docs/nfru/nfru_data_generation.md).
 
 
 ## Troubleshooting
@@ -280,7 +282,7 @@ Neural Graphics Model Gym is licensed under [Apache License 2.0](LICENSE.md).
 * Ubuntu® is a registered trademark of Canonical.
 * Docker and the Docker logo are trademarks or registered trademarks of Docker, Inc. in the United States and/or other countries. Docker, Inc. and other parties may also have trademark rights in other terms used herein.
 * NVIDIA and the NVIDIA logo are trademarks and/or registered trademarks of NVIDIA Corporation in the U.S. and other countries.
-* “Jupyter” and the Jupyter logos are trademarks or registered trademarks of LF Charities.
+* Jupyter and the Jupyter logos are trademarks or registered trademarks of LF Charities.
 * Vulkan is a registered trademark and the Vulkan SC logo is a trademark of the Khronos Group Inc.
 * Microsoft, Windows are trademarks of the Microsoft group of companies
 * Unreal® is a trademark or registered trademark of Epic Games, Inc. in the United States of America and elsewhere.

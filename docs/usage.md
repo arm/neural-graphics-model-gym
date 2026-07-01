@@ -19,36 +19,46 @@ ng-model-gym --help
 
 #### Configuration file
 
-Neural Graphics Model Gym is configured using a JSON file, containing all the necessary model parameters and paths to datasets.
+Neural Graphics Model Gym is configured using a JSON file containing all necessary model parameters and paths to datasets. This file is initialized from a configuration template appropriate to the model in use.
 
-To list the available configuration templates, run:
+To list configuration templates, run:
 ```bash
 ng-model-gym init --list
+# Or simply: ng-model-gym init
 ```
-Running `ng-model-gym init` with no arguments also lists templates.
 
-The standard templates include `nss` and `nfru`.
+Standard templates include `nss` and `nfru`; these relate to Model Gym's NSS and NFRU models.
 
-To generate a configuration file, run:
+To generate a configuration file from a template, use a command of this form:
 ```bash
-ng-model-gym init <model-template> [save_dir]
+ng-model-gym init <configuration-template> [save_dir]
+
+# e.g.
+# - Generate an NSS configuration file in the current directory:
+ng-model-gym init nss
+# - Generate an NFRU configuration file in a "config-dir" subdirectory:
+ng-model-gym init nfru config-dir
 ```
 
 This command creates two files in the selected output directory (or your working directory if path is omitted):
 
-- `<model-name>.json`
-    - Template populated with default values. Some entries have placeholder values (e.g. "<...>"). Make sure to replace those with your own settings. Dataset paths are expected to be folders containing datasets, not individual files.
+- `<model-name>_config.json`
+  - Template populated with default values. Some entries have placeholder values (e.g. "<...>"). Make sure to replace those with your own settings. Dataset paths are expected to be folders containing datasets, not individual files.
 
 - `schema_config.json`
   -  An accompanying file detailing all available configuration parameters
 
-NFRU configuration files can be generated with:
+Edit `<model-name>_config.json` to customize Model Gym's behavior.
 
-```bash
-ng-model-gym init nfru [save_dir]
-```
+> *Example:*
+>
+> The NSS model accepts a "quality" setting in its `nss_config.json` file. This provides different compromises between speed and output quality:
+>
+> - "high": slowest but best-quality option. Checks the current frame and depth/motion detail more thoroughly, uses a larger image filter for clean-up, and samples previous frames more accurately.
+> - "low": fastest but lowest-quality option. Uses lighter current-frame and depth/motion checks, and samples previous frames less accurately. May show more flicker or motion artifacts around fine detail and moving objects.
+> - "mid": balanced option. Similar to “low” but samples previous frames more accurately, like “high”.
 
-Use your custom configuration when invoking CLI commands by providing its path with the `--config-path` or `-c` flag as shown below:
+Use your custom configuration when invoking CLI commands by providing its path with the `--config-path` or `-c` flag, as shown below:
 
 ```bash
 ng-model-gym --config-path=<path/to/model_config.json> train
@@ -192,7 +202,7 @@ ng-model-gym -c <path/to/config/file> export --model-path=@<repo_name>/<filename
 ng-model-gym -c <path/to/config/file> export --model-path=@neural-super-sampling/nss_v0.1.0_fp32.pt --export-type=fp32
 ```
 
-Ensure you select an export-type of fp32, qat_int8, or ptq_int8 with `--export-type`. Only QAT trained models can be exported to qat_int8.
+Ensure you select an export-type of `fp32`, `qat_int8`, or `ptq_int8` with `--export-type`. Only QAT trained models can be exported to `qat_int8`.
 
 The configuration file specifies the output directory for the generated VGF file.
 
