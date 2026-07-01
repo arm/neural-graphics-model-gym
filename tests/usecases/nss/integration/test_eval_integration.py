@@ -6,20 +6,32 @@ import re
 import subprocess
 from pathlib import Path
 
-from tests.usecases.nss.integration.base_integration import NSSV0_1BaseIntegrationTest
+from tests.usecases.nss.integration.base_integration_v1 import NSSV1BaseIntegrationTest
 
 # pylint: disable=duplicate-code
 
+NSS_V1_REFERENCE_METRICS_PATH = (
+    Path(__file__).parent / "data" / "nss_v1_reference_eval_metrics.json"
+)
+NSS_V1_REFERENCE_QAT_METRICS_PATH = (
+    Path(__file__).parent / "data" / "nss_v1_reference_qat_eval_metrics.json"
+)
+NSS_V1_REFERENCE_SCALE_1_5_METRICS_PATH = (
+    Path(__file__).parent / "data" / "nss_v1_reference_eval_metrics_scale_1_5.json"
+)
 
-class EvaluationIntegrationTest(NSSV0_1BaseIntegrationTest):
-    """Tests for NSS Evaluation pipeline."""
+
+class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
+    """Tests for NSS v1 evaluation pipeline."""
+
+    _REFERENCE_METRIC_FLOOR_DELTA = 0.0001
+    _PSNR_METRIC_FLOOR_DELTA = 0.001
 
     def _extract_metric_value(self, metric, log_line):
         """Helper function to extract metric values from log line."""
         match = re.search(f"{metric}" + r": (\d+\.\d+),", log_line)
         if match:
-            ans = float(match.group(1))
-            return ans
+            return float(match.group(1))
         return None
 
     def _read_metric_value(self, metric, file_path):
@@ -30,294 +42,272 @@ class EvaluationIntegrationTest(NSSV0_1BaseIntegrationTest):
                     return metric_val
         return None
 
-    # pylint: disable=duplicate-code
-    def test_train_eval_pipeline(self):
-        """E2E test of training a model and evaluating it"""
-        sub_proc = subprocess.run(
-            [
-                "ng-model-gym",
-                f"--config-path={self.test_cfg_path}",
-                "train",
-                "--evaluate",
-            ],
+    def _read_final_metric_values(self, output_dir):
+        """Read final structured metric values from an evaluation output dir."""
+        metrics_paths = sorted(Path(output_dir).glob("eval_metrics_*.json"))
+        self.assertTrue(metrics_paths)
+
+        with open(metrics_paths[-1], encoding="utf-8") as f:
+            metric_history = json.load(f)
+
+        final_metrics = {}
+        for metric, values in metric_history.items():
+            final_key = max(values, key=int)
+            final_metrics[metric] = values[final_key]
+        return final_metrics
+
+    def _assert_metric_at_least_reference(
+        self,
+        metric_value,
+        expected_value,
+        *,
+        floor_delta,
+        msg,
+    ):
+        """Assert a metric is not materially worse than the reference value."""
+        self.assertGreaterEqual(
+            metric_value,
+            expected_value - floor_delta,
+            f"{msg} Delta: {metric_value - expected_value:+.6f}.",
         )
 
-        self.assertEqual(sub_proc.returncode, 0)
-        self.check_log(
-            [
-                "Evaluating the trained model...",
-                "-------------- Evaluation Complete --------------",
-            ]
+    def _reference_metric_floor_delta(self, model_type, quality, metric):
+        """Return the allowed one-sided reference delta for a metric."""
+        del model_type, quality
+        if metric in ("PSNR", "tPSNRStreaming"):
+            return self._PSNR_METRIC_FLOOR_DELTA
+
+        return self._REFERENCE_METRIC_FLOOR_DELTA
+
+    def test_reference_metric_floor_delta_uses_psnr_like_tolerance(self):
+        """PSNR-like metrics use a larger floor delta for platform differences."""
+        self.assertEqual(
+            self._reference_metric_floor_delta("fp32", "mid", "PSNR"),
+            self._PSNR_METRIC_FLOOR_DELTA,
+        )
+        self.assertEqual(
+            self._reference_metric_floor_delta("fp32", "mid", "tPSNRStreaming"),
+            self._PSNR_METRIC_FLOOR_DELTA,
+        )
+        self.assertEqual(
+            self._reference_metric_floor_delta("qat_int8", "mid", "PSNR"),
+            self._PSNR_METRIC_FLOOR_DELTA,
+        )
+        self.assertEqual(
+            self._reference_metric_floor_delta("qat_int8", "mid", "tPSNRStreaming"),
+            self._PSNR_METRIC_FLOOR_DELTA,
+        )
+        self.assertEqual(
+            self._reference_metric_floor_delta("fp32", "mid", "SSIM"),
+            self._REFERENCE_METRIC_FLOOR_DELTA,
         )
 
-    def test_qat_eval_pipeline(self):
-        """E2E test of QAT model and evaluating it"""
-        sub_proc = subprocess.run(
-            [
-                "ng-model-gym",
-                f"--config-path={self.test_cfg_path}",
-                "qat",
-                "--evaluate",
-            ],
-        )
-
-        self.assertEqual(sub_proc.returncode, 0)
-        self.check_log(
-            [
-                "Evaluating the trained model...",
-                "-------------- Evaluation Complete --------------",
-            ]
-        )
-
-    # pylint: enable=duplicate-code
-
-    def _evaluate_from_checkpoints(self, model_path):
-        """E2E test of evaluating a previously trained model from checkpoints"""
-        # Update config to enable frame export
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        # Override to ensure we test frames export
-        cfg_json["output"]["export_frame_png"] = True
+    def _write_quality_eval_config(
+        self,
+        quality,
+        *,
+        output_suffix=None,
+        export_frame_png=False,
+        scale=2.0,
+    ):
+        """Write an evaluation config for the requested quality mode."""
+        cfg_json = json.loads(json.dumps(self.cfg_json))
+        cfg_json["model"]["quality"] = quality
+        cfg_json["model"]["scale"] = scale
         cfg_json["dataset"]["path"]["train"] = "tests/usecases/nss/datasets/train"
+        cfg_json["dataset"]["path"]["validation"] = "tests/usecases/nss/datasets/val"
         cfg_json["dataset"]["path"]["test"] = "tests/usecases/nss/datasets/test"
-        self.test_cfg_path = Path(self.test_dir, "test_eval_export_frame.json")
+        cfg_json["metrics"] = ["PSNR", "SSIM", "tPSNR"]
+        cfg_json["output"]["export_frame_png"] = export_frame_png
 
-        # pylint: disable=duplicate-code
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+        if output_suffix is None:
+            output_suffix = quality
+        output_dir = Path(self.test_dir, f"model_output_{output_suffix}")
+        cfg_json["output"]["dir"] = str(output_dir)
+
+        config_path = Path(self.test_dir, f"test_eval_{output_suffix}.json")
+        with open(config_path, "w", encoding="utf-8") as f:
             json.dump(cfg_json, f)
 
+        return config_path, output_dir
+
+    @staticmethod
+    def _model_path_for_quality(_quality):
+        """Return the FP32 checkpoint path for the requested quality mode."""
+        return "tests/usecases/nss/weights/nss_v1_high_fp32.pt"
+
+    @staticmethod
+    def _qat_model_path_for_quality(quality):
+        """Return the quantized checkpoint path for the requested quality mode."""
+        if quality == "high":
+            return "tests/usecases/nss/weights/nss_v1_high_int8.pt"
+
+        return "tests/usecases/nss/weights/nss_v1_mid_low_int8.pt"
+
+    def _evaluate_from_checkpoint(
+        self,
+        model_path,
+        *,
+        output_suffix,
+        quality="high",
+        model_type="fp32",
+        export_frame_png=False,
+        scale=2.0,
+    ):
+        """Evaluate an NSS v1 checkpoint."""
+        config_path, output_dir = self._write_quality_eval_config(
+            quality,
+            output_suffix=output_suffix,
+            export_frame_png=export_frame_png,
+            scale=scale,
+        )
+
         sub_proc = subprocess.run(
             [
                 "ng-model-gym",
-                f"--config-path={self.test_cfg_path}",
+                f"--config-path={config_path}",
                 "evaluate",
                 f"--model-path={model_path}",
-                "--model-type=fp32",
-            ],
-        )
-        # pylint: enable=duplicate-code
-
-        self.assertEqual(sub_proc.returncode, 0)
-        self.check_log(
-            [
-                f"Loading model from checkpoint: {model_path}",
-                "Evaluating the trained model...",
-                "-------------- Evaluation Complete --------------",
-            ]
-        )
-
-        # Check that results are logged to the correct file.
-        expected_results_path = Path(self.model_out_dir, "results.log")
-        self.assertTrue(Path(expected_results_path).exists())
-
-        # Check that the logged metric values are reasonably high.
-        expected_psnr = 26.4
-        expected_tpsnr = 24.4
-        expected_recpsnr = 26.3
-        expected_ssim = 0.89
-        ssim_max = 1.0
-
-        # Test PSNR value.
-        psnr = self._read_metric_value("PSNR", expected_results_path)
-        self.assertIsNotNone(psnr)
-        self.assertGreater(
-            psnr, expected_psnr, f"PSNR should be greater than {expected_psnr}"
-        )
-
-        # Test tPSNR value.
-        tpsnr = self._read_metric_value("tPSNRStreaming", expected_results_path)
-        self.assertIsNotNone(tpsnr)
-        self.assertGreater(
-            tpsnr,
-            expected_tpsnr,
-            f"tPSNRStreaming should be greater than {expected_tpsnr}",
-        )
-
-        # Test recPSNR value.
-        recpsnr = self._read_metric_value("recPSNRStreaming", expected_results_path)
-        self.assertIsNotNone(recpsnr)
-        self.assertGreater(
-            recpsnr,
-            expected_recpsnr,
-            f"recPSNRStreaming should be greater than {expected_recpsnr}",
-        )
-        # Ensure png directory is created for exporting ground truth and predicted images.
-        exported_png = Path(
-            self.model_out_dir, "png", "predicted", "frame_0000_pred.png"
-        )
-        self.assertTrue(exported_png.exists())
-        exported_png = Path(
-            self.model_out_dir, "png", "ground_truth", "frame_0000_gt.png"
-        )
-        self.assertTrue(exported_png.exists())
-
-        # Test SSIM value.
-        ssim = self._read_metric_value("SSIM", expected_results_path)
-        self.assertIsNotNone(ssim)
-        self.assertGreater(
-            ssim, expected_ssim, f"SSIM should be greater than {expected_ssim}"
-        )
-        self.assertLessEqual(
-            ssim, ssim_max, f"SSIM should be less than or equal to {ssim_max}"
-        )
-
-    def test_evaluate_from_checkpoints_qat(self):
-        """E2E test of evaluating a previously trained model from checkpoints QAT"""
-        model_path = "./tests/usecases/nss/weights/nss_v0.1.1_int8.pt"
-
-        # Update config to use full datasets
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        cfg_json["dataset"]["path"]["train"] = "tests/usecases/nss/datasets/train"
-        cfg_json["dataset"]["path"]["test"] = "tests/usecases/nss/datasets/test"
-
-        # pylint: disable=duplicate-code
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(cfg_json, f)
-
-        sub_proc = subprocess.run(
-            [
-                "ng-model-gym",
-                f"--config-path={self.test_cfg_path}",
-                "evaluate",
-                f"--model-path={model_path}",
-                "--model-type=qat_int8",
-            ],
-        )
-
-        self.assertEqual(sub_proc.returncode, 0)
-        self.check_log(
-            [
-                "Evaluating the trained model...",
-                "-------------- Evaluation Complete --------------",
-            ]
-        )
-
-        # Check that results are logged to the correct file.
-        expected_results_path = Path(self.model_out_dir, "results.log")
-        self.assertTrue(Path(expected_results_path).exists())
-
-        # Check that the logged metric values are reasonably high.
-        expected_psnr = 26.6
-        expected_tpsnr = 24.6
-        expected_recpsnr = 26.6
-        expected_ssim = 0.89
-        ssim_max = 1.0
-
-        # Test PSNR value.
-        psnr = self._read_metric_value("PSNR", expected_results_path)
-        self.assertIsNotNone(psnr)
-        self.assertGreater(
-            psnr, expected_psnr, f"PSNR should be greater than {expected_psnr}"
-        )
-
-        # Test tPSNR value.
-        tpsnr = self._read_metric_value("tPSNRStreaming", expected_results_path)
-        self.assertIsNotNone(tpsnr)
-        self.assertGreater(
-            tpsnr,
-            expected_tpsnr,
-            f"tPSNRStreaming should be greater than {expected_tpsnr}",
-        )
-
-        # Test recPSNR value.
-        recpsnr = self._read_metric_value("recPSNRStreaming", expected_results_path)
-        self.assertIsNotNone(recpsnr)
-        self.assertGreater(
-            recpsnr,
-            expected_recpsnr,
-            f"recPSNRStreaming should be greater than {expected_recpsnr}",
-        )
-
-        # Test SSIM value.
-        ssim = self._read_metric_value("SSIM", expected_results_path)
-        self.assertIsNotNone(ssim)
-        self.assertGreater(
-            ssim, expected_ssim, f"SSIM should be greater than {expected_ssim}"
-        )
-        self.assertLessEqual(
-            ssim, ssim_max, f"SSIM should be less than or equal to {ssim_max}"
-        )
-
-    # pylint: disable=duplicate-code
-    def test_validation(self):
-        """E2E test of evaluating on a validation set after each training epoch"""
-        # Update config to enable validation
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        # Override validation dataset path and perform_validate
-        cfg_json["dataset"]["path"]["validation"] = "tests/usecases/nss/datasets/val"
-        cfg_json["train"]["perform_validate"] = True
-        self.test_cfg_path = Path(self.test_dir, "test_validate.json")
-
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(cfg_json, f)
-
-        sub_proc = subprocess.run(
-            [
-                "ng-model-gym",
-                f"--config-path={self.test_cfg_path}",
-                "train",
-                "--evaluate",
-            ]
-        )
-
-        self.assertEqual(sub_proc.returncode, 0)
-
-    def test_validation_validate_frequency_array(self):
-        """E2E test of evaluating on a validation set after specific training epochs"""
-        # Update config to enable validation
-        with open(self.test_cfg_path, encoding="utf-8") as f:
-            cfg_json = json.load(f)
-
-        # Override number_of_epochs to test resuming
-        cfg_json["dataset"]["path"]["validation"] = "tests/usecases/nss/datasets/val"
-        cfg_json["train"]["perform_validate"] = True
-
-        # Set specific epochs to perform validation after
-        cfg_json["train"]["fp32"]["number_of_epochs"] = 4
-        cfg_json["train"]["validate_frequency"] = [1, 3, 4]
-        self.test_cfg_path = Path(self.test_dir, "test_validate.json")
-
-        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
-            json.dump(cfg_json, f)
-
-        sub_proc = subprocess.run(
-            [
-                "ng-model-gym",
-                f"--config-path={self.test_cfg_path}",
-                "train",
-                "--evaluate",
+                f"--model-type={model_type}",
             ],
             capture_output=True,
             text=True,
         )
 
-        self.assertEqual(sub_proc.returncode, 0)
+        self.assertEqual(
+            sub_proc.returncode,
+            0,
+            (
+                "NSS v1 evaluation failed.\n"
+                f"STDOUT:\n{sub_proc.stdout}\n"
+                f"STDERR:\n{sub_proc.stderr}"
+            ),
+        )
+        results_path = Path(output_dir, "results.log")
+        self.assertTrue(results_path.exists())
+        return output_dir, results_path
 
-        # Ensure Validation only runs for specific epochs
-        self.assertIn("Validation: Epoch 1/4", sub_proc.stderr)
-        self.assertNotIn("Validation: Epoch 2/4", sub_proc.stderr)
-        self.assertIn("Validation: Epoch 3/4", sub_proc.stderr)
-        self.assertIn("Validation: Epoch 4/4", sub_proc.stderr)
+    def test_evaluate_from_checkpoints_matches_reference_metrics_by_quality(self):
+        """Evaluate NSS v1 quality modes against reference metric values."""
+        with open(NSS_V1_REFERENCE_METRICS_PATH, encoding="utf-8") as f:
+            reference_metrics = json.load(f)
 
-    # pylint: enable=duplicate-code
+        for quality, expected_metrics in reference_metrics.items():
+            with self.subTest(quality=quality):
+                output_dir, _ = self._evaluate_from_checkpoint(
+                    self._model_path_for_quality(quality),
+                    output_suffix=quality,
+                    quality=quality,
+                    model_type="fp32",
+                )
+                metric_values = self._read_final_metric_values(output_dir)
+
+                for metric, expected_value in expected_metrics.items():
+                    metric_value = metric_values.get(metric)
+                    self.assertIsNotNone(metric_value)
+                    self._assert_metric_at_least_reference(
+                        metric_value,
+                        expected_value,
+                        floor_delta=self._reference_metric_floor_delta(
+                            "fp32",
+                            quality,
+                            metric,
+                        ),
+                        msg=f"{quality} {metric} differs from reference value.",
+                    )
+
+    def test_evaluate_from_identifier(self):
+        """Evaluate NSS v1 using a remote model identifier."""
+        _, results_path = self._evaluate_from_checkpoint(
+            "@neural-super-sampling/nss_v1_high_fp32.pt",
+            output_suffix="high_identifier",
+        )
+
+        for metric in ("PSNR", "SSIM", "tPSNRStreaming"):
+            self.assertIsNotNone(self._read_metric_value(metric, results_path))
+
+    def test_evaluate_from_checkpoint_with_non_default_scale(self):
+        """Evaluate NSS v1 non-default scale against reference metric values."""
+        with open(NSS_V1_REFERENCE_SCALE_1_5_METRICS_PATH, encoding="utf-8") as f:
+            expected_metrics = json.load(f)["high"]
+
+        output_dir, _ = self._evaluate_from_checkpoint(
+            self._model_path_for_quality("high"),
+            output_suffix="high_scale_1_5",
+            scale=1.5,
+        )
+        metric_values = self._read_final_metric_values(output_dir)
+
+        for metric, expected_value in expected_metrics.items():
+            metric_value = metric_values.get(metric)
+            self.assertIsNotNone(metric_value)
+            self._assert_metric_at_least_reference(
+                metric_value,
+                expected_value,
+                floor_delta=self._reference_metric_floor_delta(
+                    "fp32",
+                    "high",
+                    metric,
+                ),
+                msg=f"high scale 1.5 {metric} differs from reference value.",
+            )
+
+    def test_evaluate_from_qat_checkpoint(self):
+        """Evaluate NSS v1 quantized quality modes against reference metric values."""
+        with open(NSS_V1_REFERENCE_QAT_METRICS_PATH, encoding="utf-8") as f:
+            reference_metrics = json.load(f)
+
+        for quality, expected_metrics in reference_metrics.items():
+            with self.subTest(quality=quality):
+                output_dir, _ = self._evaluate_from_checkpoint(
+                    self._qat_model_path_for_quality(quality),
+                    output_suffix=f"{quality}_qat",
+                    quality=quality,
+                    model_type="qat_int8",
+                )
+                metric_values = self._read_final_metric_values(output_dir)
+
+                for metric, expected_value in expected_metrics.items():
+                    metric_value = metric_values.get(metric)
+                    self.assertIsNotNone(metric_value)
+                    self._assert_metric_at_least_reference(
+                        metric_value,
+                        expected_value,
+                        floor_delta=self._reference_metric_floor_delta(
+                            "qat_int8",
+                            quality,
+                            metric,
+                        ),
+                        msg=f"{quality} {metric} differs from reference value.",
+                    )
+
+    def test_evaluate_exports_png_frames(self):
+        """Evaluate NSS v1 and export predicted and ground-truth frames."""
+        output_dir, _ = self._evaluate_from_checkpoint(
+            self._model_path_for_quality("high"),
+            output_suffix="high_export_frames",
+            export_frame_png=True,
+        )
+
+        exported_prediction = Path(
+            output_dir,
+            "png",
+            "predicted",
+            "frame_0000_pred.png",
+        )
+        exported_ground_truth = Path(
+            output_dir,
+            "png",
+            "ground_truth",
+            "frame_0000_gt.png",
+        )
+        self.assertTrue(exported_prediction.exists())
+        self.assertTrue(exported_ground_truth.exists())
 
     def test_trace_profiler(self):
-        """Test JSON trace is generated with profiler=trace flag"""
+        """Evaluate NSS v1 with trace profiling enabled."""
         self.run_model_profiler("eval")
 
     def test_cuda_profiler(self):
-        """Test trace is generated with profiler=gpu_memory flag"""
+        """Evaluate NSS v1 with CUDA memory profiling enabled."""
         self.run_cuda_profiler_test("eval")
-
-    def test_evaluate_from_checkpoint_local(self):
-        """Evaluate using local model"""
-        self._evaluate_from_checkpoints("tests/usecases/nss/weights/nss_v0.1.0_fp32.pt")
-
-    def test_evaluate_from_identifier(self):
-        """Evaluate using remote model"""
-        self._evaluate_from_checkpoints("@neural-super-sampling/nss_v0.1.0_fp32.pt")
