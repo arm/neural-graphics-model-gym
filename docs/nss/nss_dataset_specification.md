@@ -128,12 +128,12 @@ Metadata is split up into two parts "per sequence," which reflects global inform
 | Metadata    | DTYPE  | Description | Requirement |
 | -------- | ------- | ------- | ------- |
 |`Frame` | `int` | Frame index. | Mandatory |
-|`FovX` | `float` | Horizontal Fov of the camera (radians). | Mandatory |
-|`FovY` | `float` | Vertical Fov of the camera (radians). | Mandatory |
+|`FovX` | `float` | Horizontal field of view of the camera (radians). | Mandatory |
+|`FovY` | `float` | Vertical field of view of the camera (radians). | Mandatory |
 |`CameraNearPlane` | `float` | Near plane of the camera in meters. | Mandatory |
 |`CameraFarPlane` | `float` | Far plane in meters from the camera. `-1.0` is used to indicate an infinite far plane.| Mandatory |
-|`ViewProjection` | `list` | ViewProjection matrix's raw data (`float`, column major). | Mandatory |
+|`ViewProjection` | `list` | `ViewProjection` matrix's raw data (`float`, column major). | Mandatory |
 |`Jitter` | `dict` | The frame's raw jitter offset in pixels. e.g., `{"X": 0.25, "Y": 0.67}`. | Mandatory |
-|`NormalizedPerRatioJitter` | `list` | List containing per-upscaling ratio normalized jitter offsets (i.e. NormalizedPerRatioJitter [x2_index] would be the jitter offset used for decimating the textures in the x2 scenario). Normalized jitter values are the `Jitter {-0.5, 0.5}` divided by the SrcRes (i.e 960x540) | Mandatory |
+|`NormalizedPerRatioJitter` | `list` | List containing per-upscaling ratio normalized jitter offsets (i.e. `NormalizedPerRatioJitter` [`x2_index`] would be the jitter offset used for decimating the textures in the x2 scenario). Normalized jitter values are the `Jitter {-0.5, 0.5}` divided by the `SrcRes` (i.e 960x540) | Mandatory |
 |`Exposure` | `float` | Exposure value used in the frame for color correction. | Optional |
 |`CameraCut` | `bool` | `true` when the current frame is the first frame after a camera cut, otherwise `false`. | Optional |

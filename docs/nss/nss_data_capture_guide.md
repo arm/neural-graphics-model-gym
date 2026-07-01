@@ -22,9 +22,11 @@ SPDX-License-Identifier: Apache-2.0
         * [Ground Truth Motion (4x4 nearest depth)](#ground-truth-motion-4x4-nearest-depth)
         * [Jittered input decimation](#jittered-input-decimation)
         * [Quantized Halton Sequence](#quantized-halton-sequence)
+5. [Trademarks and copyrights](#trademarks-and-copyrights)
 
 
 ## Requirements
+
 Before capturing frames, check the requirements for using NSS in your game. Your game must:
 
 * Have support for jittered rendering.
@@ -33,27 +35,33 @@ Before capturing frames, check the requirements for using NSS in your game. Your
 
 We recommend integrating the [runtime portion of NSS](https://github.com/arm/neural-graphics-sdk-for-game-engines) and verify that it runs correctly before proceeding with fine-tuning.
 
-Locate the point in your engine's rendering pipeline before most post-processing effects are applied. For more information on the correct point in the rendering pipeline, see FidelityFX Super Resolution 2.3.3 (FSR2) | GPUOpen Manuals.
+Locate the point in your engine's rendering pipeline before most post-processing effects are applied. For more information on the correct point in the rendering pipeline, see [the FidelityFX™ Super Resolution 2.3.3 (FSR2) manual](https://gpuopen.com/manuals/fidelityfx_sdk/techniques/super-resolution-temporal/).
+
 
 ## Data Capture Steps
-1. Capture the very-high-resolution (CaptureResolution)  color, motion vector, and depth buffers.
-2. To create the low-resolution (SrcResolution) input frames, pass the color, motion vector, and depth buffers into one or more shaders which decimate and jitter them.
-3. To generate the high-quality (TargetResolution) ground-truth frames, downsample the color as recommended in the [Data Capture Theory](#data-capture-theory) section of this document.
+
+1. Capture the very-high-resolution (`CaptureResolution`) color, motion vector, and depth buffers.
+2. To create the low-resolution (`SrcResolution`) input frames, pass the color, motion vector, and depth buffers into one or more shaders which decimate and jitter them.
+3. To generate the high-quality (`TargetResolution`) ground-truth frames, downsample the color as recommended in the [Data Capture Theory](#data-capture-theory) section of this document.
 4. Save these textures to disk in the layout as defined in the [Dataset Specification](nss_dataset_specification.md). You do not need to continue the rendering pipeline after this step.
 5. After you render the required number of frames, write a JSON file with required metadata. You can see an [example](../../tests/datasets/test_nss_exr/0002.json) in the Neural Graphics Model Gym. If your capturing method used Camera Cuts (or large rotations/translations during a capture sequence), please ensure every frame includes a `CameraCut` boolean so the tooling can split captures into cut-free sequences (see [Annotating Camera Cuts](#annotating-camera-cuts)).
 6. Optionally, to capture frames of a pre-authored sequence, use **Replay** functionality in your game engine to simplify the capture process and make it repeatable.
 
+
 ## Recommendations
+
 ### Sequences
+
 Neural Super Sampling (NSS) is a recurrent model that uses previous predictions and outputs to generate new outputs.
 
-You must train NSS in a recurrent manner. The training input consists of a sequence of t_train consecutive frames. Typically, t_train is set to a value such as 16.
+You must train NSS in a recurrent manner. The training input consists of a sequence of `t_train` consecutive frames. Typically, `t_train` is set to a value such as 16.
 
-To generate the sequences of t_train frames, you must capture frame sequences from your game. The length of these captured sequences are labelled as t_captured, where t_captured > t_train. Once collections of longer sequences have been captured, then the code within the model-gym handles the generation of batches of data of length t_train for the training process.
+To generate the sequences of `t_train` frames, you must capture frame sequences from your game. The length of these captured sequences are labelled as `t_captured`, where `t_captured` > `t_train`. Once collections of longer sequences have been captured, then the code within the model-gym handles the generation of batches of data of length `t_train` for the training process.
 
-We recommend capturing many short sequences of frames from different scenes rather than a few long ones from a single scene. This approach simplifies dataset curation and increases training set diversity - which should help when training NSS. We typically set t_captured to approximately 100
+We recommend capturing many short sequences of frames from different scenes rather than a few long ones from a single scene. This approach simplifies dataset curation and increases training set diversity - which should help when training NSS. We typically set `t_captured` to approximately 100.
 
 ### Annotating Camera Cuts
+
 Camera cuts reset the NSS temporal history. If your method of data capture involves camera cuts in a single capture, you must:
 
 - Set `CameraCut=true` for the first frame of each capture, and for the first frame following any teleport, hard cut, or other discontinuity that invalidates history buffers.
@@ -63,11 +71,14 @@ Camera cuts reset the NSS temporal history. If your method of data capture invol
 The EXR→Safetensors writer copies this metadata into a `camera_cut` tensor, and the NSS dataset loader refuses to emit recurrent windows that cross a flagged frame, dropping sequences which are shorter than `recurrent_samples`.
 
 ### Dataset Size
+
 In general, larger datasets improve machine learning model performance.
 
 * We use a dataset of >50,000 frames, divided into ~300 sequences to **train** Neural Super Sampling (NSS) **from scratch**.
  To **finetune** NSS for your game, ~5,000 frames are required to achieve good results.
+
 ### Types of Content to Capture
+
 When collecting training data for Neural Super Sampling (NSS), we recommend using a wide variety of scenes that reflect the types of content NSS must handle in your game.
 
 Based on our experience developing NSS, we recommend capturing at least the following types of content:
@@ -94,10 +105,14 @@ We recommend that a training dataset is comprised as follows:
 Although we recommend capturing specific types of content, it is most important to collect data that reflects actual gameplay. Ideally, the captured data includes a mix of content, for example, a moving camera, a moving character, particle effects, and complex textures.
 > **NOTE** \
 > If you have identified visual artifacts while using NSS in your game, you must capture the problematic scenes and include them as part of your training set.
+
 ### Check data licensing
+
 When capturing sequences, it is the user's responsibility to ensure licenses on all their assets are legally acceptable for ML training.
 
+
 ## Data Capture Theory
+
 To capture data from a game engine we render each frame, and corresponding Geometry buffer, at native 8k (`7680 × 4320`) resolution, the same 8K textures are then used to construct both the inputs and ground truth frames for Neural Super Sampling training.
 
 Ground truth frames are constructed by downsampling the 8K textures to 1080p. For ground truth color (`ground_truth` image), we apply a 4x4 box filter, to form a 1080p color texture with 16 samples-per-pixel.
@@ -123,7 +138,9 @@ The index is calculated by quantizing a low discrepancy sequence, such as Halton
 This methodology ensures the closest possible attainable sample consistency, as both the input and ground truth are derived from the same source, whilst also maintaining a considerable degree of similarity between the 1 SPP aliased input and typical jittered rendering, which is the expected inference-time input.
 
 ![Jitter Pattern](../figures/jitter_pattern.png)
+
 ### Examples
+
 #### Ground truth color (4x4 box filter)
 
 For ground truth color (`ground_truth` image), we apply a 4x4 box filter, to form a 1080p color texture with 16 samples-per-pixel.
@@ -237,3 +254,8 @@ Vector2 GenerateRandomOffset(int sampleIndex, int quantGridSize = 8)
     return offset;
 }
 ```
+
+
+## Trademarks and copyrights
+
+* AMD FidelityFX™ is a trademark of Advanced Micro Devices, Inc.
