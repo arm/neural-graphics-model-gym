@@ -27,7 +27,7 @@ from ng_model_gym.core.utils.enum_definitions import (
 
 # pylint: disable=line-too-long
 
-CONFIG_SCHEMA_VERSION = "6"
+CONFIG_SCHEMA_VERSION = "7"
 
 # Pydantic models representing the configuration file structure.
 # For fields which are not core to all model types (e.g. recurrent_samples),
@@ -201,7 +201,7 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
         ),
     )
     gt_history_augmentation: bool = Field(
-        default=False,
+        default=True,
         description=(
             "Enable NSS v1 training-time recurrent history augmentation. "
             "When enabled, the first recurrent frame can initialize history "

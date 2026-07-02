@@ -1,6 +1,6 @@
 {
     "config_schema_version": {
-        "default": "6",
+        "default": "7",
         "description": "Config schema version. Used to check compatibility.",
         "type": "string"
     },
@@ -76,7 +76,7 @@
                             "description": "Whether NSS dataset loading normalizes low-resolution motion vectors. If omitted, NSS v0.1 keeps the legacy normalized default and NSS v1 preserves raw low-resolution motion."
                         },
                         "gt_history_augmentation": {
-                            "default": false,
+                            "default": true,
                             "description": "Enable NSS v1 training-time recurrent history augmentation. When enabled, the first recurrent frame can initialize history from ground truth instead of the reset history buffer.",
                             "type": "boolean"
                         },

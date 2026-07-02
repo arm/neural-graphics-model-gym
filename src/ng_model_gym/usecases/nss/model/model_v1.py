@@ -124,9 +124,14 @@ class NSSV1Model(BaseNGModel):
             raise ValueError("NSS-v1 forward requires at least one recurrent frame.")
 
         outputs: Dict[str, list[torch.Tensor]] = {}
+        ground_truth = getattr(self, "y_true", None)
         for t, inputs in enumerate(inputs_over_time):
             inputs = self.set_buffers(inputs)
-            inputs = self._maybe_apply_gt_history_augmentation(inputs, time_index=t)
+            inputs = self._maybe_apply_gt_history_augmentation(
+                inputs,
+                ground_truth=ground_truth,
+                time_index=t,
+            )
             y_pred = self.core_forward(inputs)
             y_pred.pop("motion", None)
             y_pred.pop("reset_event", None)
@@ -408,23 +413,25 @@ class NSSV1Model(BaseNGModel):
         self,
         inputs: Dict[str, torch.Tensor],
         *,
+        ground_truth: Optional[torch.Tensor],
         time_index: int,
     ) -> Dict[str, torch.Tensor]:
-        """Randomly initialize first-frame history from ground truth in training."""
+        """Randomly initialize first-frame history from target-space ground truth."""
 
         if (
             not self.training
             or not self.gt_history_augmentation
+            or ground_truth is None
             or self.gt_history_augmentation_chance <= 0.0
             or time_index != 0
         ):
             return inputs
 
-        gt_frame = inputs.get("ground_truth_linear")
-        if gt_frame is None:
-            return inputs
-
-        if gt_frame.ndim != 4:
+        if ground_truth.ndim == 5:
+            gt_frame = ground_truth[:, 0, ...]
+        elif ground_truth.ndim == 4:
+            gt_frame = ground_truth
+        else:
             return inputs
 
         gt_frame = gt_frame.to(
@@ -529,15 +536,13 @@ class NSSV1Model(BaseNGModel):
 
         frames: list[Dict[str, torch.Tensor]] = [{} for _ in range(sequence_length)]
         for key, tensor in data.items():
-            if tensor.ndim >= 5:
-                if tensor.shape[1] < sequence_length:
-                    raise ValueError(
-                        f"Input '{key}' has {tensor.shape[1]} recurrent frames, "
-                        f"but {sequence_length} are required."
-                    )
-                chunks = tensor.split(split_size=1, dim=1)
-                for frame, chunk in zip(frames, chunks[:sequence_length]):
-                    frame[key] = chunk.squeeze(1)
+            if (
+                isinstance(tensor, torch.Tensor)
+                and tensor.ndim >= 2
+                and tensor.shape[1] >= sequence_length
+            ):
+                for frame_idx, frame in enumerate(frames):
+                    frame[key] = tensor.select(dim=1, index=frame_idx)
             else:
                 for frame in frames:
                     frame[key] = tensor
@@ -610,9 +615,17 @@ class NSSV1Model(BaseNGModel):
         derivative_shape = (
             padded_shape if self.preprocess_half_res_input else (lr_h, lr_w)
         )
+        output_h, output_w = self.get_output_spatial_shape(lr_h, lr_w)
 
         return {
-            "history": torch.zeros_like(inputs["ground_truth_linear"]),
+            "history": torch.zeros(
+                batch,
+                3,
+                output_h,
+                output_w,
+                device=device,
+                dtype=dtype,
+            ),
             "jitter_tm1": torch.zeros_like(inputs["jitter"]),
             "temporal_params_tm1": torch.zeros(
                 batch,
