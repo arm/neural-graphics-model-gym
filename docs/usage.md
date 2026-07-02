@@ -123,7 +123,7 @@ To perform evaluation of a remote trained model, run:
 ng-model-gym -c <path/to/config/file> evaluate --model-path=@<repo_name>/<filename> --model-type=<fp32|qat_int8>
 
 # e.g.
-ng-model-gym -c <path/to/config/file> evaluate --model-path=@neural-super-sampling/nss_v0.1.0_fp32.pt --model-type=fp32
+ng-model-gym -c <path/to/config/file> evaluate --model-path=@neural-super-sampling/nss_v1_high_fp32.pt --model-type=fp32
 ```
 
 Ensure you select the correct `--model-type` to match the format of your saved model.
@@ -157,7 +157,7 @@ To load a remote set of previously trained model weights and perform fine-tuning
 ng-model-gym -c <path/to/config/file> qat --finetune @<repo_name>/<filename>
 
 # e.g.
-ng-model-gym -c <path/to/config/file> qat --finetune @neural-super-sampling/nss_v0.1.0_fp32.pt
+ng-model-gym -c <path/to/config/file> qat --finetune @neural-super-sampling/nss_v1_high_fp32.pt
 ```
 
 To resume QAT from the latest saved checkpoint specified in your configuration file, run:
@@ -191,7 +191,7 @@ To export a remote trained model to a VGF file, run:
 ng-model-gym -c <path/to/config/file> export --model-path=@<repo_name>/<filename> --export-type=<fp32|qat_int8|ptq_int8>
 
 # e.g.
-ng-model-gym -c <path/to/config/file> export --model-path=@neural-super-sampling/nss_v0.1.0_fp32.pt --export-type=fp32
+ng-model-gym -c <path/to/config/file> export --model-path=@neural-super-sampling/nss_v1_high_fp32.pt --export-type=fp32
 ```
 
 Ensure you select an export-type of `fp32`, `qat_int8`, or `ptq_int8` with `--export-type`. Only QAT trained models can be exported to `qat_int8`.

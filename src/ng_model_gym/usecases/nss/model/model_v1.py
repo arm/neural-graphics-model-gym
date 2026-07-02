@@ -55,8 +55,6 @@ class NSSV1Model(BaseNGModel):
             raise TypeError(
                 "model section in parameter is not of type NSSModelSettings"
             )
-        if not self.params.processing.shader_accurate:
-            raise ValueError("NSS-v1 requires processing.shader_accurate=True.")
 
         self.quality = resolve_nss_v1_quality(self.params.model.quality)
         quality_settings = NSSV1QualitySettings.preset(self.quality)
@@ -72,8 +70,6 @@ class NSSV1Model(BaseNGModel):
         self.autoencoder = AutoEncoderV1(batch_norm=False, kpn_size=self.kpn_size)
         self.history_buffers = self.init_history_buffers()
 
-        # NSS v1 training and evaluation configs use shader-accurate NSS with
-        # low-resolution motion vectors.
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
         self.slang_shader_file = "nss_v1.slang"
         self.slang: Optional[object] = None
@@ -93,12 +89,6 @@ class NSSV1Model(BaseNGModel):
         self.required_multiple = (8, 8)
         self.filter_kernel_size = quality_settings.filter_kernel_size
         self.filter_kernel_taps = self.filter_kernel_size * self.filter_kernel_size
-        if self.params.model.normalize_lr_motion:
-            raise ValueError(
-                "NSS-v1 requires model.normalize_lr_motion=False to preserve "
-                "low-resolution motion vectors."
-            )
-
         self.motion_key = "motion_lr"
 
         self._lut_in_shape: Optional[tuple[int, int, int, int]] = None

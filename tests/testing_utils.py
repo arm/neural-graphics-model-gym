@@ -12,30 +12,6 @@ from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.utils.io.file_utils import create_directory
 
 TEST_PARAMS_PRESETS = {
-    "nss": {
-        "model": {
-            "name": "NSS",
-            "model_source": "prebuilt",
-            "version": "0.1",
-            "scale": 2.0,
-            "recurrent_samples": 16,
-        },
-        "dataset": {
-            "name": "NSS",
-            "version": "1",
-            "path": {
-                "train": "",
-                "validation": "",
-                "test": "",
-            },
-            "exposure": 2,
-            "tonemapper": "reinhard",
-            "health_check": True,
-            "gt_augmentation": True,
-            "num_workers": 0 if platform.system() == "Windows" else 4,
-            "prefetch_factor": 1,
-        },
-    },
     "nss_v1": {
         "model": {
             "name": "NSS",
@@ -44,7 +20,6 @@ TEST_PARAMS_PRESETS = {
             "scale": 2.0,
             "recurrent_samples": 16,
             "quality": "high",
-            "normalize_lr_motion": False,
             "gt_history_augmentation": False,
             "gt_history_augmentation_chance": 30.0,
         },
@@ -71,8 +46,15 @@ TEST_PARAMS_PRESETS = {
                 "temporal_reg_channels": 1,
                 "min_weight": 0.1,
             },
+            "fp32": {
+                "optimizer": {
+                    "optimizer_type": "lars_adam",
+                    "learning_rate": "2e-3",
+                    "eps": 1e-7,
+                },
+            },
         },
-        "processing": {"shader_accurate": True},
+        "metrics": ["PSNR", "tPSNR", "RecPSNR", "SSIM"],
     },
     "nfru": {
         "model": {
@@ -81,6 +63,8 @@ TEST_PARAMS_PRESETS = {
             "version": "1",
             "scale_factor": 2.0,
             "legacy_nfru_capture_paths": [],
+            "dynamic_mask_is_runtime_accurate": False,
+            "mv_similarity_threshold": None,
         },
         "dataset": {
             "name": "NFRU",
@@ -109,6 +93,18 @@ TEST_PARAMS_PRESETS = {
                 },
             },
         },
+        "train": {
+            "loss_fn": "lpips_spatial_loss_v1",
+            "loss_args": {"alpha": 0.1},
+            "fp32": {
+                "optimizer": {
+                    "optimizer_type": "adam",
+                    "learning_rate": "1e-3",
+                    "eps": 1e-7,
+                },
+            },
+        },
+        "metrics": ["PSNR", "SSIM", "STLPIPS"],
     },
 }
 
@@ -133,6 +129,16 @@ def get_test_representative_dataset(shape, size=100):
     return dataset
 
 
+def _deep_merge_dict(base: dict, overrides: dict) -> dict:
+    """Recursively merge ``overrides`` into ``base`` and return ``base``."""
+    for key, value in overrides.items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            _deep_merge_dict(base[key], value)
+        else:
+            base[key] = value
+    return base
+
+
 def create_simple_params(
     usecase,
     dataset_path=None,
@@ -142,7 +148,9 @@ def create_simple_params(
     """
     Returns configuration created with test parameters dependent on use-case.
 
-    E.g. create_simple_params(usecase="nss", output_dir="./output", dataset_path="path/to/dataset")
+    E.g. create_simple_params(usecase="nss_v1",
+                            output_dir="./output",
+                            dataset_path="path/to/dataset")
     """
     usecase_preset = TEST_PARAMS_PRESETS[usecase.lower()]
 
@@ -153,10 +161,8 @@ def create_simple_params(
 
     model = copy.deepcopy(usecase_preset["model"])
     dataset = copy.deepcopy(usecase_preset["dataset"])
+    metrics = copy.deepcopy(usecase_preset["metrics"])
     train_overrides = copy.deepcopy(usecase_preset.get("train", {}))
-    processing = copy.deepcopy(
-        usecase_preset.get("processing", {"shader_accurate": False})
-    )
 
     dataset["path"] = {
         "train": dataset_path,
@@ -170,7 +176,6 @@ def create_simple_params(
 
     default_params = {
         "model": model,
-        "processing": processing,
         "dataset": dataset,
         "output": {
             "dir": output_dir,
@@ -181,11 +186,11 @@ def create_simple_params(
                 "dynamic_shape": True,
             },
         },
+        "metrics": metrics,
         "train": {
             "batch_size": 8,
             "seed": 123456,
             "perform_validate": False,
-            "loss_fn": "loss_v0_1",
             "fp32": {
                 "number_of_epochs": 1,
                 "checkpoints": {
@@ -196,7 +201,6 @@ def create_simple_params(
                     "warmup_percentage": 0.05,
                     "min_lr": 2e-4,
                 },
-                "optimizer": {"optimizer_type": "lars_adam", "learning_rate": "2e-3"},
             },
             "qat": {
                 "number_of_epochs": 1,
@@ -208,13 +212,16 @@ def create_simple_params(
                     "warmup_percentage": 0.05,
                     "min_lr": 1e-5,
                 },
-                "optimizer": {"optimizer_type": "lars_adam", "learning_rate": "2e-3"},
+                "optimizer": {
+                    "optimizer_type": "lars_adam",
+                    "learning_rate": "2e-3",
+                    "eps": 1e-7,
+                },
             },
         },
-        "metrics": ["PSNR", "tPSNR", "RecPSNR", "SSIM"],
     }
 
-    default_params["train"].update(train_overrides)
+    _deep_merge_dict(default_params["train"], train_overrides)
 
     # Create output and checkpoint directories
     # Output dir

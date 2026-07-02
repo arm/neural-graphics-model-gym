@@ -85,7 +85,6 @@ class _NSSV1ModelTestMixin:
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.params = create_simple_params(usecase="nss_v1")
-        self.params.processing.shader_accurate = True
         self.params.model_train_eval_mode = TrainEvalMode.FP32
         self.params.train.batch_size = 2
         self.params.model.recurrent_samples = 4
@@ -178,19 +177,6 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         self.assertFalse(settings.nss_v1_luma_derivative)
         self.assertFalse(settings.nss_v1_sharp_theta)
 
-    def test_config_preserves_legacy_nss_scale_contract(self) -> None:
-        """Legacy NSS configs remain restricted to the existing 2x scale."""
-
-        with self.assertRaisesRegex(ValidationError, "NSS scale must be 2.0"):
-            NSSModelSettings(
-                name="nss",
-                model_source="prebuilt",
-                version="0.1",
-                scale=1.5,
-                recurrent_samples=4,
-                quality="high",
-            )
-
     def test_create_nss_v1_model(self) -> None:
         """NSS v1 creates a BaseNGModel with AutoEncoderV1."""
 
@@ -199,32 +185,6 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         self.assertIsInstance(model, BaseNGModel)
         self.assertIsInstance(model.get_neural_network(), AutoEncoderV1)
         self.assertEqual(model.motion_key, "motion_lr")
-
-    def test_shader_inaccurate_processing_is_rejected_for_nss_v1(self) -> None:
-        """NSS v1 requires shader-accurate processing config."""
-
-        self.params.processing.shader_accurate = False
-
-        with self.assertRaisesRegex(
-            ValueError,
-            "processing.shader_accurate=True",
-        ):
-            create_model(self.params, self.device)
-
-    def test_normalized_lr_motion_is_rejected_for_nss_v1(self) -> None:
-        """NSS v1 requires preserved low-resolution motion vectors."""
-
-        self.params.model.normalize_lr_motion = True
-
-        for model_quality in ("high", "mid", "low"):
-            with self.subTest(model_quality=model_quality):
-                self.params.model.quality = model_quality
-
-                with self.assertRaisesRegex(
-                    ValueError,
-                    "model.normalize_lr_motion=False",
-                ):
-                    create_model(self.params, self.device)
 
     def test_device_reports_autoencoder_device(self) -> None:
         """NSS v1 device tracks the trainable network device."""

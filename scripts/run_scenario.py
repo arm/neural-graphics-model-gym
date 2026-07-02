@@ -355,7 +355,7 @@ def write_scenario(
 
     # Link to DDS files produced from the previous frame (using symlinks to avoid copies)
     # The first frame needs special handling as there is no previous frame.
-    # This logic should match that in _init_history_buffers of model_v0_1.py
+    # This logic should match that in init_history_buffers of model_v1.py
     if frame_idx == 0:
         os.symlink("in_depth.dds", dest_scenario_path / "in_depth_tm1.dds")
 

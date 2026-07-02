@@ -132,14 +132,6 @@ class ColorPreprocessingConfig(PydanticConfigModel):
     )
 
 
-class Processing(PydanticConfigModel):
-    """Processing specific configuration"""
-
-    shader_accurate: bool = Field(
-        description="Use slang shaders that match deployment shaders"
-    )
-
-
 class MetricsConfig(PydanticConfigModel):
     """Metrics configuration for train/val/test splits."""
 
@@ -211,14 +203,6 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
             "postprocessing. Disable to evaluate the alternate runtime variant."
         ),
     )
-    normalize_lr_motion: Optional[bool] = Field(
-        default=None,
-        description=(
-            "Whether NSS dataset loading normalizes low-resolution motion vectors. "
-            "Only useful for NSS v0.1. NSS v1 requires this to be false or omitted "
-            "(both mean the same)."
-        ),
-    )
     gt_history_augmentation: bool = Field(
         default=True,
         description=(
@@ -236,15 +220,6 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
             "history with ground truth when gt_history_augmentation is enabled."
         ),
     )
-
-    # TODO: Remove this validator when we drop support for NSS v0.1
-    @model_validator(mode="after")
-    def _validate_nss_scale_for_version(self):
-        """Keep legacy NSS versions on their existing 2x scale contract."""
-        if self.version != "1" and self.scale != 2.0:
-            raise ValueError("NSS scale must be 2.0 for versions before v1")
-
-        return self
 
 
 class NFRUModelSettings(PrebuiltModelSettingsBase):
@@ -585,7 +560,6 @@ class ConfigModel(PydanticConfigModel):
     dataset: Dataset
     output: Output
     train: Train
-    processing: Processing
     metrics: Optional[Union[List[str], MetricsConfig]] = Field(
         default=None,
         description=(

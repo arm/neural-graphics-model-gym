@@ -130,7 +130,6 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
         }
         network.flow_method = reference["flow_method"]
         network.scale_factor = int(reference["scale_factor"])
-        network.shader_accurate = bool(reference["shader_accurate"])
 
     def _prepare_inputs(
         self, reference: Dict[str, torch.Tensor]

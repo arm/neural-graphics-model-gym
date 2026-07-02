@@ -245,22 +245,6 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
         config = ConfigModel.model_validate(raw_config)
         self.assertTrue(config.dataset.align_data)
 
-    def test_nfru_config_rejects_processing_scale_factor(self):
-        """processing.scale_factor should be rejected as an unknown field."""
-        raw_config = json.loads(NFRU_TEMPLATE_PATH.read_text(encoding="utf-8"))
-        raw_config["dataset"]["path"] = {
-            "train": str(NFRU_SAMPLE_DIR),
-            "validation": str(NFRU_SAMPLE_DIR),
-            "test": str(NFRU_SAMPLE_DIR),
-        }
-        raw_config["processing"]["scale_factor"] = 3
-
-        with self.assertRaises(ValidationError) as exc:
-            ConfigModel.model_validate(raw_config)
-
-        self.assertIn("scale_factor", str(exc.exception))
-        self.assertIn("Extra inputs are not permitted", str(exc.exception))
-
     def test_len_matches_expected_window_count_train(self):
         """Train mode should produce 3 windows for Length=10 with default offsets/stride."""
         dataset = self._dataset(DataLoaderMode.TRAIN)
