@@ -4,6 +4,7 @@
 import unittest
 
 import torch
+from torch import nn
 
 from ng_model_gym.usecases.nss.model.model_blocks_v1 import (
     AutoEncoderV1,
@@ -38,6 +39,85 @@ class TestNSSV1AutoEncoder(unittest.TestCase):
 
         self.assertEqual(kpn_params.shape, (2, 16, 32, 32))
         self.assertEqual(temporal_params.shape, (2, 4, 128, 128))
+
+    def test_forward_pass_consistency_high_quality(self):
+        """Test if the AutoEncoderV1 produces stable values for high-quality KPN size."""
+
+        autoencoder = AutoEncoderV1(kpn_size=(6, 6))
+        x = torch.randn(2, 12, 128, 128)
+
+        kpn_params1, temporal_params1 = autoencoder(x)
+        kpn_params2, temporal_params2 = autoencoder(x)
+
+        torch.testing.assert_close(kpn_params1, kpn_params2, rtol=_RTOL, atol=_ATOL)
+        torch.testing.assert_close(
+            temporal_params1, temporal_params2, rtol=_RTOL, atol=_ATOL
+        )
+
+    def test_forward_pass_consistency_low_mid_quality(self):
+        """Test if the AutoEncoderV1 produces stable values for low/mid-quality KPN size."""
+
+        autoencoder = AutoEncoderV1(kpn_size=(4, 4))
+        x = torch.randn(2, 12, 128, 128)
+
+        kpn_params1, temporal_params1 = autoencoder(x)
+        kpn_params2, temporal_params2 = autoencoder(x)
+
+        torch.testing.assert_close(kpn_params1, kpn_params2, rtol=_RTOL, atol=_ATOL)
+        torch.testing.assert_close(
+            temporal_params1, temporal_params2, rtol=_RTOL, atol=_ATOL
+        )
+
+    def test_output_values_for_known_input(self):
+        """Test AutoEncoderV1 output values for a known input tensor."""
+        autoencoder = AutoEncoderV1(kpn_size=(4, 4))
+
+        def init_weights(module):
+            """Initializes every nn.Conv2d weight and bias to 0.1"""
+            if isinstance(module, nn.Conv2d):
+                nn.init.constant_(module.weight, 0.1)
+                if module.bias is not None:
+                    nn.init.constant_(module.bias, 0.1)
+
+        autoencoder.apply(init_weights)
+        x = torch.ones((1, 12, 128, 128))
+
+        with torch.no_grad():
+            kpn_params, temporal_params = autoencoder(x)
+
+        self.assertEqual(kpn_params.shape, (1, 16, 32, 32))
+        self.assertEqual(temporal_params.shape, (1, 4, 128, 128))
+        self.assertTrue(torch.isfinite(kpn_params).all().item())
+        self.assertTrue(torch.isfinite(temporal_params).all().item())
+
+        self.assertAlmostEqual(kpn_params.flatten()[0].item(), 1.0, places=6)
+        self.assertAlmostEqual(temporal_params.flatten()[0].item(), 1.0, places=6)
+
+    def test_model_training(self):
+        """Test we can do backward pass"""
+        autoencoder = AutoEncoderV1(kpn_size=(4, 4))
+        input_tensor = torch.ones(2, 12, 128, 128)
+
+        kpn_params, temporal_params = autoencoder(input_tensor)
+        loss = kpn_params.mean() + temporal_params.mean()
+        loss.backward()
+
+        # Check that gradients are here
+        for param in autoencoder.parameters():
+            self.assertIsNotNone(param.grad)
+
+    def test_zero_input(self):
+        """Test AutoEncoderV1 output for a zero input tensor."""
+        autoencoder = AutoEncoderV1(kpn_size=(4, 4))
+        zero_input = torch.zeros(2, 12, 128, 128)
+
+        kpn_params, temporal_params = autoencoder(zero_input)
+
+        # Should not have NaN or Inf in any output
+        self.assertFalse(torch.isinf(kpn_params).any())
+        self.assertFalse(torch.isnan(kpn_params).any())
+        self.assertFalse(torch.isinf(temporal_params).any())
+        self.assertFalse(torch.isnan(temporal_params).any())
 
     def test_get_kpn_prune_indices_returns_centered_column_major_indices(self):
         """Test centered pruning indices preserve column-major tap ordering."""

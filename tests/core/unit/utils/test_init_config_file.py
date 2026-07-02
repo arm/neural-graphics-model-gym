@@ -94,15 +94,15 @@ class TestGeneratingConfigFile(unittest.TestCase):
             },
         )
 
-    def test_generate_nss_v0_1_config_file(self):
-        """Test generating the legacy NSS v0.1 config template."""
-        config_path, _ = generate_config_file("NSS_v0.1", self.output_path)
+    def test_generate_nss_config_file_is_v1_by_default(self):
+        """Test generating NSS keeps the v1 template as the default."""
+        config_path, _ = generate_config_file("NSS", self.output_path)
 
         with open(config_path, "r", encoding="utf-8") as f:
             config_data = json.load(f)
 
-        self.assertEqual(config_path.name, "nss_v0.1_config.json")
-        self.assertEqual(config_data["model"]["version"], "0.1")
+        self.assertEqual(config_path.name, "nss_config.json")
+        self.assertEqual(config_data["model"]["version"], "1")
 
     def test_nss_in_template_list(self):
         """Test list config templates includes nss"""
@@ -110,11 +110,12 @@ class TestGeneratingConfigFile(unittest.TestCase):
 
         self.assertIn("NSS", templates)
 
-    def test_nss_v0_1_in_template_list(self):
-        """Test list config templates includes legacy NSS v0.1."""
+    def test_nss_v1_template_uses_default_name_in_template_list(self):
+        """Test list config templates exposes the v1 template through the NSS alias."""
         templates = list_config_templates()
 
-        self.assertIn("NSS_v0.1", templates)
+        self.assertIn("NSS", templates)
+        self.assertNotIn("NSS_v1", templates)
 
     def test_nfru_in_template_list(self):
         """Test list config templates includes nfru"""

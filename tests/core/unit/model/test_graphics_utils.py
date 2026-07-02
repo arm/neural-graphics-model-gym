@@ -383,7 +383,9 @@ class TestShapeAwareLRToHRTile(unittest.TestCase):
         torch.testing.assert_close(fp32_tile[0, 2], expected_mask, rtol=0, atol=0)
 
     def test_legacy_lut_still_rejects_unknown_presets(self):
-        """Existing NSS v0.1 callers keep the legacy preset guardrail."""
+        """
+        The LUT helper rejects unknown presets (i.e. scale values other than 2.0, 1.5, and 1.3).
+        """
 
         with self.assertRaises(ValueError):
             generate_lr_to_hr_lut(1.7, self.jitter)

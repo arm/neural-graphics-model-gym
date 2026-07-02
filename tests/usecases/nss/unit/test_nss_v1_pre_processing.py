@@ -16,6 +16,148 @@ _SHADER_RTOL = 1e-5
 _SHADER_ATOL = 5e-6
 
 
+class TestNSSV1PreprocessSmoke(BaseGPUMemoryTest):
+    """Standalone smoke tests for NSS v1 preprocess."""
+
+    @unittest.skipUnless(
+        torch.cuda.is_available(),
+        "CUDA is required for NSS v1 Slang-backed preprocess smoke tests.",
+    )
+    def test_preprocess_smoke_shapes_and_finiteness(self):
+        """Synthetic preprocess inputs should produce finite tensors."""
+
+        device = torch.device("cuda")
+
+        for quality in ("high", "mid"):
+            with self.subTest(quality=quality):
+                nss_model, preprocess_input = self._create_synthetic_inputs(
+                    quality, device
+                )
+                (
+                    input_shape,
+                    process_shape,
+                    _hr_shape,
+                    pad_shape,
+                    _depth_shape,
+                ) = nss_model._calculate_dispatch_dims(  # pylint: disable=protected-access
+                    preprocess_input
+                )
+                derivative_shape = (
+                    pad_shape if nss_model.preprocess_half_res_input else input_shape
+                )
+                nearest_offset_shape = (
+                    pad_shape if nss_model.preprocess_half_res_input else process_shape
+                )
+
+                (
+                    input_tensor,
+                    derivative,
+                    disocclusion_mask,
+                    nearest_depth_offset,
+                ) = nss_model.preprocess(preprocess_input)
+
+                self.assertEqual(
+                    input_tensor.shape, (pad_shape[0], 12, pad_shape[2], pad_shape[3])
+                )
+                self.assertEqual(
+                    derivative.shape,
+                    (derivative_shape[0], 4, derivative_shape[2], derivative_shape[3]),
+                )
+                self.assertEqual(
+                    disocclusion_mask.shape,
+                    (process_shape[0], 2, process_shape[2], process_shape[3]),
+                )
+                self.assertEqual(
+                    nearest_depth_offset.shape,
+                    (
+                        nearest_offset_shape[0],
+                        nss_model._nearest_depth_offset_channels(),
+                        nearest_offset_shape[2],
+                        nearest_offset_shape[3],
+                    ),
+                )
+                self.assertTrue(torch.isfinite(input_tensor).all().item())
+                self.assertTrue(torch.isfinite(derivative).all().item())
+                self.assertTrue(torch.isfinite(disocclusion_mask).all().item())
+                self.assertTrue(torch.isfinite(nearest_depth_offset).all().item())
+
+    @staticmethod
+    def _create_model(quality, device):
+        params = create_simple_params(usecase="nss_v1")
+        params.model.quality = quality
+        params.model.recurrent_samples = 2
+        params.train.batch_size = 2
+        model = NSSV1Model(params).to(device)
+        model.eval()
+        return model
+
+    @classmethod
+    def _create_synthetic_inputs(cls, quality, device):
+        nss_model = cls._create_model(quality, device)
+
+        batch_size = 2
+        lr_height = 128
+        lr_width = 128
+        hr_height = 256
+        hr_width = 256
+
+        render_size = torch.zeros(batch_size, 2, 1, 1, device=device)
+        render_size[:, 0, :, :] = lr_height
+        render_size[:, 1, :, :] = lr_width
+
+        preprocess_input = {
+            "colour_linear": torch.rand(
+                batch_size, 3, lr_height, lr_width, device=device
+            ),
+            "history": torch.rand(batch_size, 3, hr_height, hr_width, device=device),
+            "motion_lr": torch.zeros(batch_size, 2, lr_height, lr_width, device=device),
+            "depth": torch.rand(batch_size, 1, lr_height, lr_width, device=device),
+            "jitter": torch.zeros(batch_size, 2, 1, 1, device=device),
+            "jitter_tm1": torch.zeros(batch_size, 2, 1, 1, device=device),
+            "depth_params": torch.rand(batch_size, 4, 1, 1, device=device),
+            "exposure": torch.ones(batch_size, 1, 1, 1, device=device),
+            "render_size": render_size,
+        }
+
+        (
+            _input_shape,
+            _process_shape,
+            _hr_shape,
+            pad_shape,
+            _depth_shape,
+        ) = nss_model._calculate_dispatch_dims(  # pylint: disable=protected-access
+            {
+                **preprocess_input,
+                "ground_truth_linear": torch.rand(
+                    batch_size, 3, hr_height, hr_width, device=device
+                ),
+                "motion": torch.zeros(
+                    batch_size, 2, hr_height, hr_width, device=device
+                ),
+                "seq": torch.ones(batch_size, 1, 1, 1, device=device),
+                "reset_event": torch.ones(batch_size, 1, 1, 1, device=device),
+            }
+        )
+        derivative_shape = (
+            pad_shape
+            if nss_model.preprocess_half_res_input
+            else (batch_size, 3, lr_height, lr_width)
+        )
+
+        preprocess_input["temporal_params_tm1"] = torch.rand(
+            batch_size, 4, pad_shape[2], pad_shape[3], device=device
+        )
+        preprocess_input["derivative_tm1"] = torch.rand(
+            batch_size,
+            4,
+            derivative_shape[2],
+            derivative_shape[3],
+            device=device,
+        )
+
+        return nss_model, preprocess_input
+
+
 class TestNSSV1PreprocessGolden(BaseGPUMemoryTest):
     """Test NSS v1 preprocess implementation against known inputs and outputs."""
 

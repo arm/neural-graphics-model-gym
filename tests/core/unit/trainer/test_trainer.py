@@ -13,7 +13,7 @@ from unittest.mock import Mock
 import torch
 from torch import nn, optim
 
-from ng_model_gym.core.loss import LossV0_1, LossV1
+from ng_model_gym.core.loss import LossV1
 from ng_model_gym.core.optimizers import LARS
 from ng_model_gym.core.trainer import get_loss_fn, get_optimizer_type, Trainer
 from ng_model_gym.core.utils.enum_definitions import (
@@ -307,7 +307,7 @@ class TestTrainerMethods(unittest.TestCase):
             mock_resume_trainer.lr_schedule.load_state_dict = Mock()
             mock_resume_trainer.lr_schedule.step = Mock()
 
-            mock_resume_trainer.params = create_simple_params(usecase="nss")
+            mock_resume_trainer.params = create_simple_params(usecase="nss_v1")
             mock_resume_trainer.params.train.resume = Path(
                 model_save_path, "ckpt-10.pt"
             )
@@ -404,16 +404,9 @@ class TestLossFnFactory(unittest.TestCase):
     """Tests for loss function factory method: get_loss_fn()"""
 
     # pylint: disable=C0116
-    def test_get_loss_fn_with_valid_loss_v0_1(self):
-        """Test get_loss_fn() returns LossV0_1 when requested"""
-        params = create_simple_params(usecase="nss")
-        params.train.loss_fn = LossFn.LOSS_V0_1.value
-        loss_obj = get_loss_fn(params, torch.device("cpu"))
-        self.assertIsInstance(loss_obj, LossV0_1)
-
     def test_get_loss_fn_with_valid_loss_v1(self):
         """Test get_loss_fn() returns LossV1 when requested"""
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.loss_fn = LossFn.LOSS_V1.value
         params.train.loss_args = {
             "temporal_reg_weight": 0.1,
@@ -431,9 +424,22 @@ class TestLossFnFactory(unittest.TestCase):
         self.assertEqual(loss_obj.loss_args, params.train.loss_args)
 
     def test_get_loss_fn_with_loss_v1_default_loss_args(self):
-        """Test get_loss_fn() defaults LossV1 loss_args to an empty dict"""
-        params = create_simple_params(usecase="nss")
+        """Test get_loss_fn() preserves the NSS v1 preset loss_args defaults."""
+        params = create_simple_params(usecase="nss_v1")
         params.train.loss_fn = LossFn.LOSS_V1.value
+        device = torch.device("cpu")
+
+        loss_obj = get_loss_fn(params, device)
+
+        self.assertIsInstance(loss_obj, LossV1)
+        self.assertIsNotNone(params.train.loss_args)
+        self.assertEqual(loss_obj.loss_args, params.train.loss_args)
+
+    def test_get_loss_fn_with_loss_v1_none_loss_args_defaults_to_empty_dict(self):
+        """Test get_loss_fn() defaults LossV1 loss_args to an empty dict when unset."""
+        params = create_simple_params(usecase="nss_v1")
+        params.train.loss_fn = LossFn.LOSS_V1.value
+        params.train.loss_args = None
         device = torch.device("cpu")
 
         loss_obj = get_loss_fn(params, device)
@@ -443,7 +449,7 @@ class TestLossFnFactory(unittest.TestCase):
         self.assertEqual(loss_obj.loss_args, {})
 
     def test_get_loss_fn_raises_exception(self):
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.loss_fn = "does_not_exist"
         with self.assertRaises(ValueError):
             _ = get_loss_fn(params, torch.device("cpu"))
@@ -456,7 +462,7 @@ class TestOptimizerFactory(unittest.TestCase):
 
     # pylint: disable=C0116
     def test_get_optimizer_type_with_valid_lars_adam_fp32(self):
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.fp32.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
 
         mock_trainer = Mock(spec=Trainer)
@@ -472,7 +478,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertEqual(optimizer_obj.optim.__class__, optim.Adam)
 
     def test_get_optimizer_type_with_valid_lars_adam_qat(self):
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.qat.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
 
         mock_trainer = Mock(spec=Trainer)
@@ -488,7 +494,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertEqual(optimizer_obj.optim.__class__, optim.Adam)
 
     def test_get_optimizer_type_with_valid_adam_w_fp32(self):
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.fp32.optimizer.optimizer_type = OptimizerType.ADAM_W.value
 
         mock_trainer = Mock(spec=Trainer)
@@ -503,7 +509,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertIsInstance(optimizer_obj, optim.AdamW)
 
     def test_get_optimizer_type_with_valid_adam_w_qat(self):
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.qat.optimizer.optimizer_type = OptimizerType.ADAM_W.value
 
         mock_trainer = Mock(spec=Trainer)
@@ -518,7 +524,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertIsInstance(optimizer_obj, optim.AdamW)
 
     def test_get_optimizer_type_with_custom_eps_for_adam_w(self):
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.fp32.optimizer.optimizer_type = OptimizerType.ADAM_W.value
         params.train.fp32.optimizer.eps = 1e-5
 
@@ -535,7 +541,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertAlmostEqual(optimizer_obj.defaults["eps"], 1e-5)
 
     def test_get_optimizer_type_with_valid_adam_uses_default_eps(self):
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.fp32.optimizer.optimizer_type = OptimizerType.ADAM.value
 
         mock_trainer = Mock(spec=Trainer)
@@ -551,7 +557,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertAlmostEqual(optimizer_obj.defaults["eps"], 1e-7)
 
     def test_get_optimizer_type_with_custom_eps(self):
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.fp32.optimizer.optimizer_type = OptimizerType.ADAM.value
         params.train.fp32.optimizer.eps = 1e-5
 
@@ -568,7 +574,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertAlmostEqual(optimizer_obj.defaults["eps"], 1e-5)
 
     def test_get_optimizer_type_with_custom_eps_for_lars_adam(self):
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.fp32.optimizer.optimizer_type = OptimizerType.LARS_ADAM.value
         params.train.fp32.optimizer.eps = 1e-5
 
@@ -587,7 +593,7 @@ class TestOptimizerFactory(unittest.TestCase):
         self.assertAlmostEqual(optimizer_obj.eps, 1e-8)
 
     def test_get_optimizer_type_raises_exception(self):
-        params = create_simple_params(usecase="nss")
+        params = create_simple_params(usecase="nss_v1")
         params.train.fp32.optimizer.optimizer_type = "does_not_exist"
 
         mock_trainer = Mock(spec=Trainer)
