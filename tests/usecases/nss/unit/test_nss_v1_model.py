@@ -320,6 +320,22 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
             one_frame["derivative_tm1"].shape, (self.batch_size, 4, 129, 131)
         )
 
+    def test_reset_history_shape_uses_scale_not_ground_truth(
+        self,
+    ) -> None:
+        """Reset history uses rounded output shape not 2x GT shape."""
+
+        self.params.model.scale = 1.3
+        model = create_model(self.params, self.device)
+        one_frame = {
+            key: tensor[:, 0, :, :, :]
+            for key, tensor in self._data_creator_helper(129, 131, 258, 262).items()
+        }
+
+        one_frame = model.set_buffers(one_frame)
+
+        self.assertEqual(one_frame["history"].shape, (self.batch_size, 3, 168, 170))
+
     def test_ground_truth_shape_mismatch_raises_clear_error(self) -> None:
         """NSS v1 rejects GT tensors that do not match rounded HR shape."""
 
@@ -535,8 +551,8 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         self.assertEqual(len(captured_inputs), 1)
         self.assertEqual(model_out["output_linear"].shape[1], 1)
 
-    def test_split_inputs_over_time_matches_direct_time_indexing(self) -> None:
-        """Pre-split per-frame inputs match the previous direct indexing."""
+    def test_split_inputs_over_time_matches_select_indexing(self) -> None:
+        """Pre-split per-frame inputs match select-based indexing."""
 
         model = create_model(self.params, self.device)
         data = self._data_creator_helper(128, 128, 256, 256, recurrence=3)
@@ -545,19 +561,18 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
 
         self.assertEqual(len(frames), 3)
         for t, frame in enumerate(frames):
-            direct_frame = model._get_input_data_at_t(data, t=t)
-            self.assertEqual(frame.keys(), direct_frame.keys())
+            self.assertEqual(frame.keys(), data.keys())
             for key, value in frame.items():
                 torch.testing.assert_close(
                     value,
-                    direct_frame[key],
+                    data[key].select(dim=1, index=t),
                     rtol=0,
                     atol=0,
                     msg=key,
                 )
 
-    def test_split_inputs_over_time_reuses_non_recurrent_metadata(self) -> None:
-        """Non-recurrent tensors are passed through to every per-frame input."""
+    def test_split_inputs_over_time_splits_rank_two_and_higher_tensors(self) -> None:
+        """Split tensors with a long-enough time dimension."""
 
         model = create_model(self.params, self.device)
         data = {
@@ -566,30 +581,35 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
                 device=self.device,
                 dtype=torch.float32,
             ).reshape(self.batch_size, 2, 3, 4, 4),
-            "metadata": torch.arange(
+            "rank2_metadata": torch.arange(
                 self.batch_size * 2,
                 device=self.device,
                 dtype=torch.float32,
             ).reshape(self.batch_size, 2),
+            "rank3_metadata": torch.arange(
+                self.batch_size * 2 * 3,
+                device=self.device,
+                dtype=torch.float32,
+            ).reshape(self.batch_size, 2, 3),
+            "rank4_metadata": torch.arange(
+                self.batch_size * 2 * 3 * 4,
+                device=self.device,
+                dtype=torch.float32,
+            ).reshape(self.batch_size, 2, 3, 4),
         }
 
         frames = model._split_inputs_over_time(data, sequence_length=2)
 
         self.assertEqual(len(frames), 2)
-        self.assertIs(frames[0]["metadata"], data["metadata"])
-        self.assertIs(frames[1]["metadata"], data["metadata"])
-        torch.testing.assert_close(
-            frames[0]["colour_linear"],
-            data["colour_linear"][:, 0],
-            rtol=0,
-            atol=0,
-        )
-        torch.testing.assert_close(
-            frames[1]["colour_linear"],
-            data["colour_linear"][:, 1],
-            rtol=0,
-            atol=0,
-        )
+        for frame_idx, frame in enumerate(frames):
+            for key, value in frame.items():
+                torch.testing.assert_close(
+                    value,
+                    data[key].select(dim=1, index=frame_idx),
+                    rtol=0,
+                    atol=0,
+                    msg=key,
+                )
 
     def test_forward_exposes_loss_context_keys(self) -> None:
         """NSS v1 recurrent output includes loss context tensors."""
@@ -746,10 +766,10 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         self.assertTrue(torch.all(captured_inputs[2]["motion"] == 0))
         self.assertTrue(torch.all(captured_inputs[2]["motion_lr"] == 0))
 
-    def test_gt_history_augmentation_uses_linear_initial_history_during_training(
+    def test_gt_history_augmentation_uses_target_space_history_during_training(
         self,
     ) -> None:
-        """GT history augmentation seeds first-frame history from linear GT."""
+        """GT history augmentation seeds first-frame history from loss target."""
 
         self.params.model.gt_history_augmentation = True
         self.params.model.gt_history_augmentation_chance = 100.0
@@ -769,7 +789,7 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
 
         torch.testing.assert_close(
             captured_inputs[0]["history"],
-            data["ground_truth_linear"][:, 0, ...],
+            y_true[:, 0, ...],
             rtol=0,
             atol=0,
         )

@@ -81,7 +81,7 @@ class TestGeneratingConfigFile(unittest.TestCase):
         self.assertEqual(config_data["model"]["version"], "1")
         self.assertEqual(config_data["model"]["quality"], "high")
         self.assertFalse(config_data["model"]["normalize_lr_motion"])
-        self.assertFalse(config_data["model"]["gt_history_augmentation"])
+        self.assertTrue(config_data["model"]["gt_history_augmentation"])
         self.assertEqual(config_data["model"]["gt_history_augmentation_chance"], 30.0)
         self.assertEqual(config_data["train"]["loss_fn"], "loss_v1")
         self.assertEqual(
