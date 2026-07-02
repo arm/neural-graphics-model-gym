@@ -12,7 +12,7 @@ import torch
 
 from ng_model_gym.core.data import DataLoaderMode
 from ng_model_gym.core.evaluator.evaluator import NGModelEvaluator
-from ng_model_gym.usecases.nss.model.model_v0_1 import NSSModel
+from ng_model_gym.usecases.nss.model.model_v1 import NSSV1Model
 from tests.testing_utils import create_simple_params
 
 
@@ -32,12 +32,12 @@ class TestNGModelEvaluator(unittest.TestCase):
         output_dir.mkdir()
 
         # Create config model using our own data
-        self.params = create_simple_params(usecase="nss", output_dir=str(output_dir))
+        self.params = create_simple_params(usecase="nss_v1", output_dir=str(output_dir))
         self.params.dataset.path.train = train_data_dir
         self.params.dataset.path.validation = val_data_dir
         self.params.dataset.path.test = test_data_dir
 
-        self.model = Mock(spec=NSSModel)
+        self.model = Mock(spec=NSSV1Model)
         self.model.device = torch.device("cpu")
 
     def tearDown(self):

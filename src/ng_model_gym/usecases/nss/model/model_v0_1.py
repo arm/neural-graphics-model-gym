@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # pylint: disable=duplicate-code
 import logging
+import warnings
 from typing import Tuple
 
 import torch
@@ -40,12 +41,21 @@ logger = logging.getLogger(__name__)
 
 @register_model(name="NSS", version="0.1")
 class NSSModel(BaseNGModel):
-    """NSS Model"""
+    """Legacy NSS v0.1 model.
+    Deprecated:
+        NSS v0.1 is deprecated and will be removed in a future release.
+        Use NSS v1 for new NSS training and evaluation workflows.
+    """
 
     def __init__(self, params: ConfigModel):
         """Set up the model."""
         super().__init__(params)
-
+        warnings.warn(
+            "NSS v0.1 is deprecated and will be removed in a future release. "
+            "Use NSS v1 for new NSS training and evaluation workflows.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if not isinstance(self.params.model, NSSModelSettings):
             raise TypeError(
                 "model section in parameter is not of type NSSModelSettings"

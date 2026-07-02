@@ -18,6 +18,7 @@ from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
 
 
+# pylint: disable=too-many-lines
 class _NSSV1ModelTestMixin:
     """Shared NSS v1 model test helpers."""
 
@@ -499,6 +500,24 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
                     atol=0,
                 )
 
+    def test_half_res_post_process_metadata_requires_initialized_lut_cache(
+        self,
+    ) -> None:
+        """Half-resolution post-process metadata rejects use before LUT initialization."""
+
+        self.params.model.quality = "mid"
+        model = create_model(self.params, self.device)
+        jitter = torch.zeros(self.batch_size, 2, 1, 1, device=self.device)
+
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Offset LUT modulo must be initialized first",
+        ):
+            model._post_process_idx_modulo(
+                jitter,
+                in_shape=(self.batch_size, 3, 8, 10),
+            )
+
     def test_common_slang_defines(self) -> None:
         """
         Test Slang defines which should be used at all quality levels. Assume NSS v1.
@@ -861,6 +880,36 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
 
         self.assertTrue(torch.all(captured_inputs[0]["history"] == 0.0))
         self.assertTrue(torch.all(captured_inputs[0]["reset_event"] == 0.0))
+
+    def test_gt_history_augmentation_rejects_mismatched_ground_truth_shape(
+        self,
+    ) -> None:
+        """GT history augmentation fails clearly when GT shape diverges from history."""
+
+        self.params.model.gt_history_augmentation = True
+        self.params.model.gt_history_augmentation_chance = 100.0
+        model = create_model(self.params, self.device)
+        model.train()
+        data = self._data_creator_helper(128, 128, 256, 256, recurrence=1)
+        one_frame = model._get_input_data_at_t(data, t=0)
+        one_frame = model.set_buffers(one_frame)
+        ground_truth = torch.rand(
+            self.batch_size,
+            3,
+            255,
+            256,
+            device=self.device,
+        )
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "GT history augmentation shape mismatch",
+        ):
+            model._maybe_apply_gt_history_augmentation(
+                one_frame,
+                ground_truth=ground_truth,
+                time_index=0,
+            )
 
     def test_gt_history_augmentation_is_training_only(self) -> None:
         """GT history augmentation is disabled in eval mode."""

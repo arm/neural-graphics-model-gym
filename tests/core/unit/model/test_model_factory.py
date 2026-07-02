@@ -51,7 +51,7 @@ class TestModelFactory(unittest.TestCase):
     """Test Model Factory."""
 
     def setUp(self):
-        self.params = create_simple_params(usecase="nss")
+        self.params = create_simple_params(usecase="nss_v1")
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def tearDown(self):
@@ -67,7 +67,7 @@ class TestModelFactory(unittest.TestCase):
                 model_cls = get_model_from_config(self.params)
 
                 self.assertTrue(isinstance(model_cls, type))
-                self.assertEqual(model_cls.__name__, "NSSModel")
+                self.assertEqual(model_cls.__name__, "NSSV1Model")
 
     def test_get_nss_v1_model_from_config(self):
         """Test getting NSS v1 from the model registry."""
@@ -78,16 +78,6 @@ class TestModelFactory(unittest.TestCase):
 
         self.assertTrue(isinstance(model_cls, type))
         self.assertEqual(model_cls.__name__, "NSSV1Model")
-
-    def test_nss_v0_1_still_resolves(self):
-        """Test NSS v0.1 remains registered while v1 is added."""
-
-        params = create_simple_params(usecase="nss")
-
-        model_cls = get_model_from_config(params)
-
-        self.assertTrue(isinstance(model_cls, type))
-        self.assertEqual(model_cls.__name__, "NSSModel")
 
     @patch("ng_model_gym.core.model.model_registry.nn.Module", new=MockNNModule)
     @patch("ng_model_gym.core.model.model_registry.BaseNGModel", new=MockBaseNGModel)
