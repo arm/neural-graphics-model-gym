@@ -5,12 +5,12 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from tests.usecases.nss.integration.base_integration import NSSV0_1BaseIntegrationTest
+from tests.usecases.nss.integration.base_integration_v1 import NSSV1BaseIntegrationTest
 
 # pylint: disable=duplicate-code
 
 
-class CLIIntegrationTest(NSSV0_1BaseIntegrationTest):
+class CLIIntegrationTest(NSSV1BaseIntegrationTest):
     """Tests for NSS training pipeline CLI options."""
 
     def test_listing_models(self):

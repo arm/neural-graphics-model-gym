@@ -26,7 +26,6 @@ tensorboard-logs/*
 checkpoints/*
 .cache/*
 *.pt
-!tests/usecases/nss/unit/data/nss_v0_1_golden_values/*.pt
 !tests/usecases/nss/unit/data/nss_v1_golden_values/*.pt
 !tests/usecases/nfru/unit/data/nfru_v1_golden_values/*.pt
 *.safetensors

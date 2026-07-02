@@ -24,7 +24,7 @@ class Registry(Generic[T]):
         class NSS_V1(BaseNGModel):
             pass
 
-        nss_model = MODEL_REGISTRY.get("NSS-v0.1")
+        nss_model = MODEL_REGISTRY.get("NSS-v1")
         print(f"All available models: {MODEL_REGISTRY.list_registered()}")
     """
 

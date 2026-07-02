@@ -99,7 +99,7 @@ class TestCLIDatasetValidationIntegration(unittest.TestCase):
         result = self._run_cli(
             config,
             "evaluate",
-            "--model-path=tests/usecases/nss/weights/nss_v0.1.0_fp32.pt",
+            "--model-path=tests/usecases/nss/weights/nss_v1_high_fp32.pt",
             "--model-type=fp32",
         )
         self.assertNotEqual(result.returncode, 0)

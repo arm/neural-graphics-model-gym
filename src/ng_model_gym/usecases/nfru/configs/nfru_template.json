@@ -110,8 +110,5 @@
                 "eps": 1e-7
             }
         }
-    },
-    "processing": {
-        "shader_accurate": true
     }
 }

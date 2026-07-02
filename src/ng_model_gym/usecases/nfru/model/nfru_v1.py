@@ -116,7 +116,6 @@ class NFRUv1(BaseNGModel):
             quant_params=quant_params.copy(),
             device=self.device,
             scale_factor=self.params.model.scale_factor,
-            shader_accurate=self.params.processing.shader_accurate,
             dynamic_mask_is_runtime_accurate=(
                 self.params.model.dynamic_mask_is_runtime_accurate
             ),
@@ -202,7 +201,6 @@ class NFRUv1Core(nn.Module):
             "cuda" if torch.cuda.is_available() else "cpu"
         ),
         scale_factor: int = _DEFAULT_SCALE_FACTOR,
-        shader_accurate: bool = False,
         dynamic_mask_is_runtime_accurate: bool = False,
         mv_similarity_threshold: Optional[float] = None,
     ):
@@ -221,7 +219,6 @@ class NFRUv1Core(nn.Module):
                 dynamic_mask_is_runtime_accurate
             )
         )
-        self.shader_accurate = shader_accurate
         self.scale_factor = scale_factor
 
         self.in_ch = _NFRU_AUTOENCODER_INPUT_CHANNELS

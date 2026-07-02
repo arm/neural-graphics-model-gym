@@ -417,7 +417,9 @@ class TestNSSSafetensorsWriter(unittest.TestCase):
 
             output_root = self._writer_output_root(args)
 
-            params = create_simple_params(usecase="nss", dataset_path=str(output_root))
+            params = create_simple_params(
+                usecase="nss_v1", dataset_path=str(output_root)
+            )
             params.dataset.path.test = output_root
             dataset = NSSDataset(params, DataLoaderMode.TEST)
 

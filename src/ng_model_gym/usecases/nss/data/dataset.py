@@ -15,7 +15,6 @@ from tqdm.auto import tqdm
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.data.data_utils import DataLoaderMode, DatasetType
 from ng_model_gym.core.data.dataset_registry import register_dataset
-from ng_model_gym.core.model.graphics_utils import fixed_normalize_mvs
 from ng_model_gym.core.model.layers.dense_warp import DenseWarp
 from ng_model_gym.core.model.layers.resampling import DownSampling2D
 from ng_model_gym.usecases.nss.data.process_functions import process_nss_data
@@ -42,7 +41,6 @@ class NSSDataset(Dataset):
         self.config_params = config_params
         self.loader_mode = loader_mode
         self.recurrent_samples = self._resolve_recurrent_samples()
-        self.normalize_lr_motion = self._resolve_normalize_lr_motion()
         self.data_path = getattr(self.config_params.dataset.path, self.loader_mode)
 
         if self.recurrent_samples == 1 and loader_mode != DataLoaderMode.TEST:
@@ -166,16 +164,6 @@ class NSSDataset(Dataset):
             )
 
         return recurrent_samples
-
-    def _resolve_normalize_lr_motion(self) -> bool:
-        """Resolve low-resolution motion normalization for NSS model versions."""
-
-        configured = getattr(self.config_params.model, "normalize_lr_motion", None)
-        if configured is not None:
-            return bool(configured)
-
-        model_version = getattr(self.config_params.model, "version", None)
-        return str(model_version) != "1"
 
     def __len__(self):
         return len(self.frame_indexes)
@@ -407,9 +395,4 @@ class NSSDataset(Dataset):
                     (stop - start, 1), dtype=torch.float32
                 )
 
-        if self.normalize_lr_motion:
-            # Height and weight are hardcoded to match the legacy NSS v0.1 shader path.
-            data_frame["motion_lr"] = fixed_normalize_mvs(
-                data_frame["motion_lr"], height=544.0, width=960.0
-            )
         return data_frame

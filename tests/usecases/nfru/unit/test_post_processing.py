@@ -40,7 +40,6 @@ class TestPostProcess(BaseGPUMemoryTest):
         self.model = create_model(self.params, self.device)
 
         self.network = self.model.network
-        self.network.shader_accurate = False
 
         self.batch_size = batch_size = 4
         self.height = height = 64
@@ -125,7 +124,6 @@ class TestPostprocessGolden(BaseGPUMemoryTest):
         self.model = create_model(self.params, self.device)
 
         self.network = self.model.network
-        self.network.shader_accurate = False
 
     def test_postprocess(self):
         """Test postprocess implementation"""

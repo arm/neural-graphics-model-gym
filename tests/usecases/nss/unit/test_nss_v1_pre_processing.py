@@ -332,7 +332,6 @@ class TestNSSV1PreprocessGolden(BaseGPUMemoryTest):
     @staticmethod
     def _create_model(quality, device, scale=2.0):
         params = create_simple_params(usecase="nss_v1")
-        params.processing.shader_accurate = True
         params.model.quality = quality
         params.model.scale = scale
         params.model.recurrent_samples = 2

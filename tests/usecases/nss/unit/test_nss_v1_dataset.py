@@ -109,28 +109,6 @@ class TestNSSV1Dataset(unittest.TestCase):
 
         torch.testing.assert_close(x["motion_lr"], expected_motion_lr)
 
-    def test_omitted_normalize_lr_motion_defaults_to_raw_motion(self):
-        """Omitting normalize_lr_motion should still preserve raw low-res motion."""
-        params_json = create_simple_params(
-            usecase="nss_v1",
-            dataset_path=Path("tests/usecases/nss/datasets/train"),
-        ).model_dump(mode="json")
-        params_json["model"].pop("normalize_lr_motion", None)
-        params = validate_params(params_json)
-        params.model.recurrent_samples = 4
-        params.dataset.gt_augmentation = False
-
-        dataset = NSSDataset(params, DataLoaderMode.TRAIN)
-        x, _ = dataset[0]
-
-        self.assertFalse(dataset.normalize_lr_motion)
-        with safe_open(dataset.captures[0], framework="pt", device="cpu") as f:
-            expected_motion_lr = f.get_slice("motion_lr")[
-                0 : params.model.recurrent_samples
-            ].to(torch.float32)
-
-        torch.testing.assert_close(x["motion_lr"], expected_motion_lr)
-
     def test_derives_motion_lr_without_legacy_normalization(self):
         """NSS v1 derives raw low-res motion from motion when motion_lr is absent."""
         original_safetensor_path = Path(
@@ -154,7 +132,6 @@ class TestNSSV1Dataset(unittest.TestCase):
             params_json = create_simple_params(
                 usecase="nss_v1", dataset_path=dataset_dir
             ).model_dump(mode="json")
-            params_json["model"].pop("normalize_lr_motion", None)
             params = validate_params(params_json)
             params.model.recurrent_samples = 4
 
@@ -174,7 +151,6 @@ class TestNSSV1Dataset(unittest.TestCase):
                 * 0.5
             )
 
-            self.assertFalse(dataset.normalize_lr_motion)
             torch.testing.assert_close(data_frame["motion_lr"], expected_motion_lr)
 
     def test_windows_skip_mid_sequence_cuts(self):
