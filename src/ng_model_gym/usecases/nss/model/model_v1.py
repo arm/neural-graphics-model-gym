@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: <text>Copyright 2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+# pylint: disable=too-many-lines,too-many-public-methods
 """NSS v1 model for FP32 training and evaluation."""
 
 import logging
@@ -10,7 +11,7 @@ import torch
 from torch import nn
 
 from ng_model_gym.core.config.config_model import ConfigModel, NSSModelSettings
-from ng_model_gym.core.data.data_utils import tonemap_forward
+from ng_model_gym.core.data.data_utils import HDR_MAX, tonemap_forward
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.graphics_utils import (
     calculate_lr_to_hr_modulo,
@@ -18,11 +19,15 @@ from ng_model_gym.core.model.graphics_utils import (
 )
 from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.model.shaders.slang_utils import load_slang_module, SlangOutput
+from ng_model_gym.core.utils.torch_utils import clamp_tensor
 from ng_model_gym.usecases.nss.model.model_blocks_v1 import AutoEncoderV1
 from ng_model_gym.usecases.nss.model.quality_modes import (
     NSSV1Quality,
     NSSV1QualitySettings,
     resolve_nss_v1_quality,
+)
+from ng_model_gym.usecases.nss.utils.ground_truth_utils import (
+    resize_ground_truth_to_spatial_shape,
 )
 
 logger = logging.getLogger(__name__)
@@ -519,6 +524,19 @@ class NSSV1Model(BaseNGModel):
 
         self.reset_history_buffers()
 
+    def on_after_batch_transfer(self, batch):
+        """Resize NSS v1 ground truth tensors to the rounded output size."""
+
+        if not isinstance(batch, (tuple, list)) or len(batch) != 2:
+            return batch
+
+        inputs, ground_truth = batch
+        inputs, ground_truth = self._resize_ground_truth_for_inputs(
+            inputs,
+            ground_truth,
+        )
+        return inputs, ground_truth
+
     def _get_input_data_at_t(
         self, data: Dict[str, torch.Tensor], t: int
     ) -> Dict[str, torch.Tensor]:
@@ -665,12 +683,72 @@ class NSSV1Model(BaseNGModel):
 
         return int(round(input_h * self.scale)), int(round(input_w * self.scale))
 
+    def _resize_ground_truth_for_inputs(
+        self,
+        inputs: Dict[str, torch.Tensor],
+        ground_truth: Optional[torch.Tensor] = None,
+    ) -> tuple[Dict[str, torch.Tensor], Optional[torch.Tensor]]:
+        """Resize linear ground truth, then rebuild the loss target."""
+
+        if not isinstance(inputs, dict) or "colour_linear" not in inputs:
+            return inputs, ground_truth
+
+        output_spatial_shape = self.get_output_spatial_shape(
+            inputs["colour_linear"].shape[-2],
+            inputs["colour_linear"].shape[-1],
+        )
+        resized_inputs = inputs
+        if (
+            "ground_truth_linear" in inputs
+            and inputs["ground_truth_linear"].shape[-2:] != output_spatial_shape
+        ):
+            resized_inputs = dict(inputs)
+            resized_ground_truth = resize_ground_truth_to_spatial_shape(
+                inputs["ground_truth_linear"],
+                output_spatial_shape,
+            )
+            resized_inputs["ground_truth_linear"] = resized_ground_truth
+
+        if (
+            isinstance(ground_truth, torch.Tensor)
+            and "ground_truth_linear" in resized_inputs
+        ):
+            ground_truth = self._extract_ground_truth_target(resized_inputs)
+        elif (
+            isinstance(ground_truth, torch.Tensor)
+            and ground_truth.shape[-2:] != output_spatial_shape
+        ):
+            ground_truth = resize_ground_truth_to_spatial_shape(
+                ground_truth,
+                output_spatial_shape,
+            )
+
+        return resized_inputs, ground_truth
+
+    def _extract_ground_truth_target(
+        self, inputs: Dict[str, torch.Tensor]
+    ) -> torch.Tensor:
+        """Create the tonemapped loss target from linear ground truth."""
+
+        exposure = inputs["exposure"]
+        ground_truth_linear = inputs["ground_truth_linear"]
+        max_val = HDR_MAX / exposure
+        ground_truth_linear = clamp_tensor(
+            ground_truth_linear,
+            torch.zeros_like(max_val),
+            max_val,
+        )
+        return tonemap_forward(
+            exposure * ground_truth_linear,
+            mode=self.tonemapper,
+        )
+
     def _validate_ground_truth_shape(
         self,
         inputs: Dict[str, torch.Tensor],
         hr_shape: tuple[int, int, int, int],
     ) -> None:
-        """Require ground_truth_linear to match the rounded HR shape."""
+        """Require ground_truth_linear batch and channel dimensions to match."""
 
         ground_truth = inputs.get("ground_truth_linear")
         if ground_truth is None:
@@ -678,7 +756,10 @@ class NSSV1Model(BaseNGModel):
 
         expected_shape = tuple(hr_shape)
         actual_shape = tuple(ground_truth.shape)
-        if actual_shape != expected_shape:
+        if ground_truth.ndim != len(expected_shape) or actual_shape[:2] != (
+            expected_shape[0],
+            expected_shape[1],
+        ):
             raise ValueError(
                 "NSS-v1 ground_truth_linear shape mismatch: expected "
                 f"{expected_shape} from input scale {self.scale}, got "
