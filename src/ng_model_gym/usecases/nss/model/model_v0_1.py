@@ -22,10 +22,6 @@ from ng_model_gym.usecases.nss.model.history_buffer import (
     HistoryBufferResetFunction,
 )
 from ng_model_gym.usecases.nss.model.model_blocks import AutoEncoderV0_1
-from ng_model_gym.usecases.nss.model.nss_padding_utils import (
-    NSSPaddingPolicy,
-    Resolution,
-)
 from ng_model_gym.usecases.nss.model.post_processing import (
     PostProcessV0_1,
     PostProcessV0_1_ShaderAccurate,
@@ -33,6 +29,10 @@ from ng_model_gym.usecases.nss.model.post_processing import (
 from ng_model_gym.usecases.nss.model.pre_processing import (
     PreProcessV0_1,
     PreProcessV0_1_ShaderAccurate,
+)
+from ng_model_gym.usecases.nss.utils.nss_padding_utils import (
+    NSSPaddingPolicy,
+    Resolution,
 )
 
 logger = logging.getLogger(__name__)

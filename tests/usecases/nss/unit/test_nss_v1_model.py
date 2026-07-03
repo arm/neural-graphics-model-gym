@@ -1,13 +1,16 @@
 # SPDX-FileCopyrightText: <text>Copyright 2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+# pylint: disable=duplicate-code,too-many-lines
 import unittest
 from unittest.mock import patch
 
 import torch
+import torch.nn.functional as F
 from pydantic import ValidationError
 
 from ng_model_gym.core.config.config_model import NSSModelSettings
+from ng_model_gym.core.data.data_utils import tonemap_forward
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks_v1 import AutoEncoderV1
@@ -336,23 +339,61 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
 
         self.assertEqual(one_frame["history"].shape, (self.batch_size, 3, 168, 170))
 
-    def test_ground_truth_shape_mismatch_raises_clear_error(self) -> None:
-        """NSS v1 rejects GT tensors that do not match rounded HR shape."""
+    def test_ground_truth_linear_resizes_to_rounded_output_shape(self) -> None:
+        """NSS v1 resizes 2x dataset GT to the configured output scale."""
 
         self.params.model.scale = 1.3
         model = create_model(self.params, self.device)
-        one_frame = {
-            key: tensor[:, 0, :, :, :]
-            for key, tensor in self._data_creator_helper(129, 131, 167, 170).items()
-        }
+        data = self._data_creator_helper(129, 131, 258, 262, recurrence=2)
+        data["ground_truth_linear"] = data["ground_truth_linear"] * 8.0
+        data["exposure"] = torch.full_like(data["exposure"], 1.7)
+        y_true = tonemap_forward(
+            data["ground_truth_linear"] * data["exposure"],
+            mode=model.tonemapper,
+        )
 
-        with self.assertRaisesRegex(
-            ValueError,
-            "NSS-v1 ground_truth_linear shape mismatch",
-        ):
-            model._validate_ground_truth_shape(
-                one_frame, (self.batch_size, 3, 168, 170)
+        resized_inputs, resized_y = model.on_after_batch_transfer((data, y_true))
+
+        expected_linear = F.interpolate(
+            data["ground_truth_linear"].reshape(self.batch_size * 2, 3, 258, 262),
+            size=(168, 170),
+            mode="bicubic",
+            align_corners=False,
+            antialias=True,
+        ).reshape(self.batch_size, 2, 3, 168, 170)
+        resized_tonemapped_y = F.interpolate(
+            y_true.reshape(self.batch_size * 2, 3, 258, 262),
+            size=(168, 170),
+            mode="bicubic",
+            align_corners=False,
+            antialias=True,
+        ).reshape(self.batch_size, 2, 3, 168, 170)
+        expected_y = tonemap_forward(
+            expected_linear * data["exposure"],
+            mode=model.tonemapper,
+        )
+
+        self.assertEqual(
+            resized_inputs["ground_truth_linear"].shape,
+            (self.batch_size, 2, 3, 168, 170),
+        )
+        self.assertEqual(resized_y.shape, (self.batch_size, 2, 3, 168, 170))
+        torch.testing.assert_close(
+            resized_inputs["ground_truth_linear"],
+            expected_linear,
+        )
+        torch.testing.assert_close(
+            resized_y,
+            expected_y,
+        )
+        self.assertFalse(
+            torch.allclose(
+                resized_y,
+                resized_tonemapped_y,
+                rtol=1e-4,
+                atol=1e-4,
             )
+        )
 
     def test_ground_truth_channel_mismatch_raises_clear_error(self) -> None:
         """NSS v1 rejects GT tensors with wrong channel count."""
