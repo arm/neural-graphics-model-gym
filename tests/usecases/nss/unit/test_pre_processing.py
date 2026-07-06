@@ -71,8 +71,8 @@ class TestPreProcess(BaseGPUMemoryTest):
         }
 
         # Used in backprop
-        self.out_luma = torch.randn(batch_size, 1, 1, 1, device=self.device)
-        self.out_tensor = torch.randn(batch_size, 3, 64, 64, device=self.device)
+        self.out_luma = torch.randn(batch_size, 2, 64, 64, device=self.device)
+        self.out_tensor = torch.randn(batch_size, 12, 64, 64, device=self.device)
 
         # Move Input Tensors to GPU
         self.inputs = {
