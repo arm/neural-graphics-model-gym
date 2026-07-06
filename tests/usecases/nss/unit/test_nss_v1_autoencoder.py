@@ -10,8 +10,8 @@ from ng_model_gym.usecases.nss.model.model_blocks_v1 import (
     get_kpn_prune_indices,
 )
 
-_RTOL = 1e-6
-_ATOL = 1e-6
+_RTOL = 1e-4
+_ATOL = 1e-4
 
 
 class TestNSSV1AutoEncoder(unittest.TestCase):

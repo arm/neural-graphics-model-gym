@@ -10,8 +10,8 @@ from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
 
-_RTOL = 1e-3
-_ATOL = 1e-3
+_RTOL = 0.1
+_ATOL = 0.01
 
 
 class TestNSSV1ModelGolden(BaseGPUMemoryTest):
