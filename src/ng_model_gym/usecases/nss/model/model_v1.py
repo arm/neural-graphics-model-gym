@@ -83,7 +83,7 @@ class NSSV1Model(BaseNGModel):
         self.nss_v1_luma_derivative = True
         self.nss_v1_sharp_theta = True
         self.required_multiple = (8, 8)
-        self.filter_kernel_size = 3
+        self.filter_kernel_size = quality_settings.filter_kernel_size
         self.filter_kernel_taps = self.filter_kernel_size * self.filter_kernel_size
         self.effective_shader_accurate = (
             self.shader_accurate or self.preprocess_half_res_input

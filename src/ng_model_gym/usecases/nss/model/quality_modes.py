@@ -60,6 +60,7 @@ class NSSV1QualitySettings:
     use_history_catmull: bool
     packed_nearest_offset_quad: bool
     kpn_size: Tuple[int, int]
+    filter_kernel_size: int
 
     @classmethod
     def preset(cls, quality: NSSV1Quality) -> "NSSV1QualitySettings":
@@ -77,6 +78,7 @@ class NSSV1QualitySettings:
                 use_history_catmull=False,
                 packed_nearest_offset_quad=True,
                 kpn_size=(4, 4),
+                filter_kernel_size=2,
             )
 
         if quality == NSSV1Quality.MID:
@@ -88,6 +90,7 @@ class NSSV1QualitySettings:
                 use_history_catmull=True,
                 packed_nearest_offset_quad=True,
                 kpn_size=(4, 4),
+                filter_kernel_size=2,
             )
 
         assert quality == NSSV1Quality.HIGH  # nosec B101
@@ -100,4 +103,5 @@ class NSSV1QualitySettings:
             use_history_catmull=True,
             packed_nearest_offset_quad=False,
             kpn_size=(6, 6),
+            filter_kernel_size=3,
         )
