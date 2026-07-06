@@ -484,7 +484,7 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
                     out_shape=(self.batch_size, 3, 12, 15),
                 )
 
-                self.assertEqual(offset_lut.shape, (self.batch_size, 6, 9, 9))
+                self.assertEqual(offset_lut.shape, (self.batch_size, 6, 9, 4))
 
                 # Low- and mid-quality use half-resolution, turning 8 and 10
                 # (in_shape, above) into 4.0 and 5.0.
@@ -504,7 +504,9 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         Test Slang defines which should be used at all quality levels. Assume NSS v1.
         """
 
-        for model_quality in ("low", "mid", "high"):
+        expected_filter_kernel_taps = {"low": 4, "mid": 4, "high": 9}
+
+        for model_quality, expected_taps in expected_filter_kernel_taps.items():
             with self.subTest(model_quality=model_quality):
                 self.params.model.quality = model_quality
                 model = create_model(self.params, self.device)
@@ -518,7 +520,7 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
                 self.assertEqual(defines["NSS_QUALITY_LOW"], 0)
                 self.assertEqual(defines["NSS_QUALITY_MEDIUM"], 1)
                 self.assertEqual(defines["NSS_QUALITY_HIGH"], 2)
-                self.assertEqual(defines["FILTER_COLOUR_KERNEL_SZ"], 9)
+                self.assertEqual(defines["FILTER_COLOUR_KERNEL_SZ"], expected_taps)
                 self.assertEqual(defines["NSS_V1_LUMA_DERIVATIVE"], 1)
                 self.assertEqual(defines["NSS_V1_SHARP_THETA"], 1)
 
