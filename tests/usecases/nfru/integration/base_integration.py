@@ -42,12 +42,11 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
         create_directory(self.tensorboard_dir)
 
         self.sample_data_dir = "tests/usecases/nfru/data/nfru_sample"
-        # TODO Add mini dataset
-        self.mini_dataset_dir = self.sample_data_dir
+        self.mini_dataset_dir = "tests/usecases/nfru/data/mini_datasets"
 
         if os.getenv("FAST_TEST") == "1":
-            self.train_data_dir = self.mini_dataset_dir
-            self.test_data_dir = self.mini_dataset_dir
+            self.train_data_dir = f"{self.mini_dataset_dir}/train"
+            self.test_data_dir = f"{self.mini_dataset_dir}/test"
         else:
             self.train_data_dir = self.sample_data_dir
             self.test_data_dir = self.sample_data_dir
@@ -141,6 +140,11 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
         expected_stlpips_max: float = 0.13,
     ):
         """Evaluate a local checkpoint and assert metrics and png export."""
+        if os.getenv("FAST_TEST") == "1":
+            expected_psnr = min(expected_psnr, 25.0)
+            expected_ssim = min(expected_ssim, 0.75)
+            expected_stlpips_max = max(expected_stlpips_max, 0.14)
+
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
