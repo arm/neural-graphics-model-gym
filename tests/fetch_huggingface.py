@@ -15,6 +15,9 @@ if str(REPO_ROOT) not in sys.path:
 # pylint: disable=wrong-import-position
 from scripts.safetensors_generator.safetensor_truncate import truncate_safetensor_file
 
+MINI_DATASET_DESIRED_FRAMES = 20
+DATASET_SPLITS = ("train", "test", "val")
+
 
 def nfru_test_assets_enabled() -> bool:
     """Return whether optional NFRU test asset validation is enabled."""
@@ -119,30 +122,41 @@ def validate_nfru_datasets(dataset_dir: Path):
         ) from e
 
 
-def create_mini_safetensor_dataset(original_dataset_path: Path):
-    """Create a smaller NSS dataset for quicker integration tests."""
+def create_mini_safetensor_dataset(
+    original_dataset_path: Path,
+    usecase_name: str = "dataset",
+):
+    """Create a smaller split mini dataset from train/test/val safetensors."""
     mini_dataset_root = original_dataset_path.parent / "mini_datasets"
-    dataset_names = ("train", "test", "val")
 
     try:
-        for subset in dataset_names:
-            source_dir = original_dataset_path / subset
-            if not source_dir.exists():
+        if not original_dataset_path.exists():
+            raise FileNotFoundError(
+                f"Expected source dataset directory at {original_dataset_path}"
+            )
+
+        for split in DATASET_SPLITS:
+            source_split_dir = original_dataset_path / split
+            if not source_split_dir.is_dir():
                 raise FileNotFoundError(
-                    f"Expected source dataset directory at {source_dir}"
+                    f"Expected {usecase_name} split directory at {source_split_dir}"
                 )
 
-            safetensor_files = sorted(source_dir.glob("*.safetensors"))
+            safetensor_files = sorted(source_split_dir.glob("*.safetensors"))
             if not safetensor_files:
-                raise FileNotFoundError(f"No .safetensors files found in {source_dir}")
+                raise FileNotFoundError(
+                    f"No .safetensors files found in {source_split_dir}"
+                )
 
-            mini_dir = mini_dataset_root / subset
-            mini_dir.mkdir(parents=True, exist_ok=True)
+            mini_split_dir = mini_dataset_root / split
+            mini_split_dir.mkdir(parents=True, exist_ok=True)
 
             for source_file in safetensor_files:
-                target_file = mini_dir / f"{source_file.stem}.safetensors"
-                truncate_safetensor_file(source_file, target_file, desired_frames=20)
-                print(f"Created mini dataset at {target_file}")
+                target_file = mini_split_dir / f"{source_file.stem}.safetensors"
+                truncate_safetensor_file(
+                    source_file, target_file, desired_frames=MINI_DATASET_DESIRED_FRAMES
+                )
+                print(f"Created {usecase_name} mini dataset at {target_file}")
 
     except FileNotFoundError as e:
         raise type(e)(
@@ -152,9 +166,17 @@ def create_mini_safetensor_dataset(original_dataset_path: Path):
 
 if __name__ == "__main__":
     download_pretrained_nss_weights()
+
     nss_datasets_path = Path("tests/usecases/nss/datasets")
     download_nss_datasets(nss_datasets_path)
     validate_nss_downloads(nss_datasets_path)
-    create_mini_safetensor_dataset(nss_datasets_path)
+    create_mini_safetensor_dataset(nss_datasets_path, usecase_name="NSS")
+
     if nfru_test_assets_enabled():
-        validate_nfru_datasets(Path("tests/usecases/nfru/data/nfru_sample"))
+        nfru_datasets_path = Path("tests/usecases/nfru/datasets")
+        # TODO: download NFRU datasets once available on HuggingFace
+        validate_nfru_datasets(nfru_datasets_path)
+        create_mini_safetensor_dataset(
+            nfru_datasets_path,
+            usecase_name="NFRU",
+        )
