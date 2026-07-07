@@ -343,58 +343,70 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
     def test_ground_truth_linear_resizes_to_rounded_output_shape(self) -> None:
         """NSS v1 resizes 2x dataset GT to the configured output scale."""
 
-        self.params.model.scale = 1.3
-        model = create_model(self.params, self.device)
-        data = self._data_creator_helper(129, 131, 258, 262, recurrence=2)
-        data["ground_truth_linear"] = data["ground_truth_linear"] * 8.0
-        data["exposure"] = torch.full_like(data["exposure"], 1.7)
-        y_true = tonemap_forward(
-            data["ground_truth_linear"] * data["exposure"],
-            mode=model.tonemapper,
-        )
+        for scale in (1.3, 1.5, 1.8):
+            with self.subTest(scale=scale):
+                self.params.model.scale = scale
+                model = create_model(self.params, self.device)
+                data = self._data_creator_helper(129, 131, 258, 262, recurrence=2)
+                data["ground_truth_linear"] = data["ground_truth_linear"] * 8.0
+                data["exposure"] = torch.full_like(data["exposure"], 1.7)
+                y_true = tonemap_forward(
+                    data["ground_truth_linear"] * data["exposure"],
+                    mode=model.tonemapper,
+                )
 
-        resized_inputs, resized_y = model.on_after_batch_transfer((data, y_true))
+                resized_inputs, resized_y = model.on_after_batch_transfer(
+                    (data, y_true)
+                )
 
-        expected_linear = F.interpolate(
-            data["ground_truth_linear"].reshape(self.batch_size * 2, 3, 258, 262),
-            size=(168, 170),
-            mode="bicubic",
-            align_corners=False,
-            antialias=True,
-        ).reshape(self.batch_size, 2, 3, 168, 170)
-        resized_tonemapped_y = F.interpolate(
-            y_true.reshape(self.batch_size * 2, 3, 258, 262),
-            size=(168, 170),
-            mode="bicubic",
-            align_corners=False,
-            antialias=True,
-        ).reshape(self.batch_size, 2, 3, 168, 170)
-        expected_y = tonemap_forward(
-            expected_linear * data["exposure"],
-            mode=model.tonemapper,
-        )
+                lr_h, lr_w = data["colour_linear"].shape[-2:]
+                output_h = int(round(lr_h * scale))
+                output_w = int(round(lr_w * scale))
+                gt_h, gt_w = data["ground_truth_linear"].shape[-2:]
+                expected_linear = F.interpolate(
+                    data["ground_truth_linear"].reshape(
+                        self.batch_size * 2, 3, gt_h, gt_w
+                    ),
+                    size=(output_h, output_w),
+                    mode="bicubic",
+                    align_corners=False,
+                    antialias=True,
+                ).reshape(self.batch_size, 2, 3, output_h, output_w)
+                resized_tonemapped_y = F.interpolate(
+                    y_true.reshape(self.batch_size * 2, 3, gt_h, gt_w),
+                    size=(output_h, output_w),
+                    mode="bicubic",
+                    align_corners=False,
+                    antialias=True,
+                ).reshape(self.batch_size, 2, 3, output_h, output_w)
+                expected_y = tonemap_forward(
+                    expected_linear * data["exposure"],
+                    mode=model.tonemapper,
+                )
 
-        self.assertEqual(
-            resized_inputs["ground_truth_linear"].shape,
-            (self.batch_size, 2, 3, 168, 170),
-        )
-        self.assertEqual(resized_y.shape, (self.batch_size, 2, 3, 168, 170))
-        torch.testing.assert_close(
-            resized_inputs["ground_truth_linear"],
-            expected_linear,
-        )
-        torch.testing.assert_close(
-            resized_y,
-            expected_y,
-        )
-        self.assertFalse(
-            torch.allclose(
-                resized_y,
-                resized_tonemapped_y,
-                rtol=1e-4,
-                atol=1e-4,
-            )
-        )
+                self.assertEqual(
+                    resized_inputs["ground_truth_linear"].shape,
+                    (self.batch_size, 2, 3, output_h, output_w),
+                )
+                self.assertEqual(
+                    resized_y.shape, (self.batch_size, 2, 3, output_h, output_w)
+                )
+                torch.testing.assert_close(
+                    resized_inputs["ground_truth_linear"],
+                    expected_linear,
+                )
+                torch.testing.assert_close(
+                    resized_y,
+                    expected_y,
+                )
+                self.assertFalse(
+                    torch.allclose(
+                        resized_y,
+                        resized_tonemapped_y,
+                        rtol=1e-4,
+                        atol=1e-4,
+                    )
+                )
 
     def test_ground_truth_channel_mismatch_raises_clear_error(self) -> None:
         """NSS v1 rejects GT tensors with wrong channel count."""
