@@ -270,10 +270,72 @@ class TestNSSV1PreprocessGolden(BaseGPUMemoryTest):
                     atol=_SHADER_ATOL,
                 )
 
+    def test_offset_lut_non_integer_scale_high_quality(self):
+        """Test offset LUT generation for a non-integer scale (high quality)."""
+
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        scale = 1.5
+
+        offset_lut_golden_input = torch.load(
+            "tests/usecases/nss/unit/data/nss_v1_golden_values/"
+            "nss_v1_high_offset_lut_input_scale1p5_golden.pt",
+            map_location=device,
+            weights_only=True,
+        )
+
+        offset_lut_golden_output = torch.load(
+            "tests/usecases/nss/unit/data/nss_v1_golden_values/"
+            "nss_v1_high_offset_lut_output_scale1p5_golden.pt",
+            map_location=device,
+            weights_only=True,
+        )
+
+        input_shape = tuple(
+            int(value) for value in offset_lut_golden_input["input_shape"].tolist()
+        )
+        lr_h, lr_w = input_shape[-2:]
+        output_shape = (
+            input_shape[0],
+            input_shape[1],
+            int(round(lr_h * scale)),
+            int(round(lr_w * scale)),
+        )
+
+        self.assertEqual(
+            tuple(
+                int(value) for value in offset_lut_golden_input["output_shape"].tolist()
+            ),
+            output_shape,
+        )
+
+        nss_model = self._create_model("high", device, scale=scale)
+        (
+            offset_lut,
+            idx_modulo,
+        ) = nss_model._generate_offset_lut(  # pylint: disable=protected-access
+            offset_lut_golden_input["jitter"],
+            input_shape,
+            output_shape,
+        )
+
+        torch.testing.assert_close(
+            offset_lut,
+            offset_lut_golden_output["offset_lut"],
+            rtol=_SHADER_RTOL,
+            atol=_SHADER_ATOL,
+        )
+        torch.testing.assert_close(
+            idx_modulo,
+            offset_lut_golden_output["idx_modulo"],
+            rtol=_SHADER_RTOL,
+            atol=_SHADER_ATOL,
+        )
+
     @staticmethod
-    def _create_model(quality, device):
+    def _create_model(quality, device, scale=2.0):
         params = create_simple_params(usecase="nss_v1")
         params.model.quality = quality
+        params.model.scale = scale
         params.model.recurrent_samples = 2
         params.train.batch_size = 2
         model = NSSV1Model(params).to(device)
