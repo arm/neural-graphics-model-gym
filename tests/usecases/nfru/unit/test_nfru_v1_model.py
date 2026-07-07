@@ -350,13 +350,13 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
             atol=_SWAP_COEFF_ATOL,
         )
 
-    def test_on_after_batch_transfer_applies_colour_pipeline(self) -> None:
-        """Colour-correct ground truth tensors and preserve device/dtype."""
+    def test_on_after_batch_transfer_applies_color_pipeline(self) -> None:
+        """Color-correct ground truth tensors and preserve device/dtype."""
         batch_inputs = {"MotionMat": torch.zeros(1, 2, 4, 4, device=self.device)}
         ground_truth = torch.rand(1, 3, 4, 4, device=self.device, dtype=torch.float32)
 
         self.model.eval()
-        expected = self.model.network.colour_pipeline(
+        expected = self.model.network.color_pipeline(
             ground_truth, batch_inputs, time_index="m1"
         )
         if not isinstance(expected, torch.Tensor):
@@ -373,21 +373,21 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
         self.assertEqual(processed_gt.dtype, torch.float32)
 
     def test_on_after_batch_transfer_resamples_random_effects_in_train(self) -> None:
-        """Train-mode batch transfer should resample random colour effects once."""
+        """Train-mode batch transfer should resample random color effects once."""
         batch_inputs = {"MotionMat": torch.zeros(1, 2, 4, 4, device=self.device)}
         ground_truth = torch.rand(1, 3, 4, 4, device=self.device, dtype=torch.float32)
 
         self.model.train()
         self.model.on_train_epoch_start()
-        colour_pipeline = self.model.network.colour_pipeline
+        color_pipeline = self.model.network.color_pipeline
         calls = {"count": 0}
 
         def _record_resample() -> None:
             calls["count"] += 1
 
-        if not hasattr(colour_pipeline, "resample_effects"):
+        if not hasattr(color_pipeline, "resample_effects"):
             self.fail("Train pipeline should support per-batch effect resampling")
-        colour_pipeline.resample_effects = _record_resample
+        color_pipeline.resample_effects = _record_resample
 
         _, processed_gt = self.model.on_after_batch_transfer(
             (batch_inputs, ground_truth.clone())
@@ -397,47 +397,47 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
         self.assertEqual(processed_gt.device, ground_truth.device)
         self.assertEqual(processed_gt.dtype, torch.float32)
 
-    def test_model_hooks_switch_colour_pipeline_by_split(self) -> None:
-        """Explicit lifecycle hooks should select the colour pipeline by split."""
+    def test_model_hooks_switch_color_pipeline_by_split(self) -> None:
+        """Explicit lifecycle hooks should select the color pipeline by split."""
         network = self.model.network
-        train_pipeline = network.available_colour_pipeline["train"]
-        validation_pipeline = network.available_colour_pipeline["validation"]
-        test_pipeline = network.available_colour_pipeline["test"]
+        train_pipeline = network.available_color_pipeline["train"]
+        validation_pipeline = network.available_color_pipeline["validation"]
+        test_pipeline = network.available_color_pipeline["test"]
 
         self.model.train()
         self.model.on_train_epoch_start()
-        self.assertIs(network.colour_pipeline, train_pipeline)
+        self.assertIs(network.color_pipeline, train_pipeline)
 
         self.model.eval()
         self.model.on_validation_start()
-        self.assertIs(network.colour_pipeline, validation_pipeline)
+        self.assertIs(network.color_pipeline, validation_pipeline)
 
         self.model.on_evaluation_start()
-        self.assertIs(network.colour_pipeline, test_pipeline)
+        self.assertIs(network.color_pipeline, test_pipeline)
 
-    def test_model_requires_colour_preprocessing(self) -> None:
-        """NFRU v1 should reject configs without explicit colour preprocessing."""
+    def test_model_requires_color_preprocessing(self) -> None:
+        """NFRU v1 should reject configs without explicit color preprocessing."""
         params = create_simple_params(usecase="nfru")
-        params.dataset.colour_preprocessing = None
-        with self.assertRaisesRegex(ValueError, "dataset.colour_preprocessing"):
+        params.dataset.color_preprocessing = None
+        with self.assertRaisesRegex(ValueError, "dataset.color_preprocessing"):
             create_model(params, self.device)
 
-    def test_model_requires_all_colour_preprocessing_splits(self) -> None:
+    def test_model_requires_all_color_preprocessing_splits(self) -> None:
         """NFRU v1 should reject configs missing validation/test/train splits."""
         params = create_simple_params(usecase="nfru")
-        if params.dataset.colour_preprocessing is None:
-            self.fail("Expected colour_preprocessing config in simple NFRU params")
-        params.dataset.colour_preprocessing.validation = None
+        if params.dataset.color_preprocessing is None:
+            self.fail("Expected color_preprocessing config in simple NFRU params")
+        params.dataset.color_preprocessing.validation = None
 
         with self.assertRaisesRegex(
             ValueError, "Missing or invalid splits: validation"
         ):
             create_model(params, self.device)
 
-    def test_set_colour_pipeline_requires_exact_split_name(self) -> None:
+    def test_set_color_pipeline_requires_exact_split_name(self) -> None:
         """Unexpected split names should fail instead of falling back silently."""
         with self.assertRaisesRegex(ValueError, "preview"):
-            self.model.network.set_colour_pipeline("preview")
+            self.model.network.set_color_pipeline("preview")
 
     def test_forward_pass_rejects_scale_factor_one(self) -> None:
         """Runtime guard should reject scale factors with no interpolation steps."""

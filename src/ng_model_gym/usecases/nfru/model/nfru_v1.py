@@ -31,7 +31,7 @@ from ng_model_gym.usecases.nfru.model.optical_flow.blockmatch_v321 import (
     BlockMatchV321,
     upscale_and_dilate_flow,
 )
-from ng_model_gym.usecases.nfru.utils.colour_pipeline import build_colour_pipeline
+from ng_model_gym.usecases.nfru.utils.color_pipeline import build_color_pipeline
 from ng_model_gym.usecases.nfru.utils.constants import (
     _BITS_EXP,
     _BITS_X,
@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 _SHADER_DIR = "ng_model_gym.usecases.nfru.model.shaders"
 _SHADER_FILE = "nfru_v1_sa.slang"
 _FLOW_METHOD = "blockmatch_v321"
-_REQUIRED_COLOUR_SPLITS = ("train", "validation", "test")
+_REQUIRED_COLOR_SPLITS = ("train", "validation", "test")
 _MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK = 0.01
 _MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK_RUNTIME_ACCURATE = 0.3
 _MV_SIMILARITY_NOISE_THRESHOLD_DYNAMIC_MASK = 0.001
@@ -55,41 +55,39 @@ _MV_SIMILARITY_NOISE_THRESHOLD_DYNAMIC_MASK_RUNTIME_ACCURATE = 1.0
 m = load_slang_module(_SHADER_DIR, _SHADER_FILE, autograd=True)
 
 
-def _get_colour_config(params: ConfigModel) -> dict[str, dict]:
-    colour_preprocessing = getattr(params.dataset, "colour_preprocessing", None)
-    if colour_preprocessing is None:
+def _get_color_config(params: ConfigModel) -> dict[str, dict]:
+    color_preprocessing = getattr(params.dataset, "color_preprocessing", None)
+    if color_preprocessing is None:
         raise ValueError(
-            "NFRU requires dataset.colour_preprocessing.train, "
-            "dataset.colour_preprocessing.validation, and "
-            "dataset.colour_preprocessing.test. "
+            "NFRU requires dataset.color_preprocessing.train, "
+            "dataset.color_preprocessing.validation, and "
+            "dataset.color_preprocessing.test. "
         )
 
-    if hasattr(colour_preprocessing, "model_dump"):
-        colour_preprocessing = colour_preprocessing.model_dump(mode="json")
+    if hasattr(color_preprocessing, "model_dump"):
+        color_preprocessing = color_preprocessing.model_dump(mode="json")
 
-    if not isinstance(colour_preprocessing, dict) or not colour_preprocessing:
+    if not isinstance(color_preprocessing, dict) or not color_preprocessing:
         raise ValueError(
-            "NFRU requires dataset.colour_preprocessing.train, "
-            "dataset.colour_preprocessing.validation, and "
-            "dataset.colour_preprocessing.test. "
+            "NFRU requires dataset.color_preprocessing.train, "
+            "dataset.color_preprocessing.validation, and "
+            "dataset.color_preprocessing.test. "
         )
 
     missing_or_invalid_splits = tuple(
         split
-        for split in _REQUIRED_COLOUR_SPLITS
-        if not isinstance(colour_preprocessing.get(split), dict)
+        for split in _REQUIRED_COLOR_SPLITS
+        if not isinstance(color_preprocessing.get(split), dict)
     )
     if missing_or_invalid_splits:
         missing_split_names = ", ".join(missing_or_invalid_splits)
         raise ValueError(
-            "NFRU dataset.colour_preprocessing must define object configurations for "
+            "NFRU dataset.color_preprocessing must define object configurations for "
             "train, validation, and test. Missing or invalid splits: "
             f"{missing_split_names}."
         )
 
-    return {
-        split: dict(colour_preprocessing[split]) for split in _REQUIRED_COLOUR_SPLITS
-    }
+    return {split: dict(color_preprocessing[split]) for split in _REQUIRED_COLOR_SPLITS}
 
 
 @register_model(name="NFRU", version="1")
@@ -111,10 +109,10 @@ class NFRUv1(BaseNGModel):
             "bits_x": _BITS_X,
             "bits_y": _BITS_Y,
         }
-        colour_config = _get_colour_config(params)
+        color_config = _get_color_config(params)
 
         self.network = NFRUv1Core(
-            colour_config=colour_config,
+            color_config=color_config,
             quant_params=quant_params.copy(),
             device=self.device,
             scale_factor=self.params.model.scale_factor,
@@ -145,21 +143,21 @@ class NFRUv1(BaseNGModel):
         self, batch: tuple[Dict[str, torch.Tensor], torch.Tensor]
     ) -> tuple[Dict[str, torch.Tensor], torch.Tensor]:
         inputs_dataset, ground_truth_data = batch
-        colour_pipeline = getattr(self.network, "colour_pipeline", None)
-        if colour_pipeline is None:
+        color_pipeline = getattr(self.network, "color_pipeline", None)
+        if color_pipeline is None:
             logger.warning(
-                "Colour pipeline not configured. Returning unprocessed ground truth."
+                "Color pipeline not configured. Returning unprocessed ground truth."
             )
             return inputs_dataset, ground_truth_data
 
-        if self.training and hasattr(colour_pipeline, "resample_effects"):
-            colour_pipeline.resample_effects()
+        if self.training and hasattr(color_pipeline, "resample_effects"):
+            color_pipeline.resample_effects()
 
-        coloured = colour_pipeline(ground_truth_data, inputs_dataset, time_index="m1")
-        if not isinstance(coloured, torch.Tensor):
-            coloured = torch.from_numpy(coloured)
+        colored = color_pipeline(ground_truth_data, inputs_dataset, time_index="m1")
+        if not isinstance(colored, torch.Tensor):
+            colored = torch.from_numpy(colored)
 
-        return inputs_dataset, coloured.to(
+        return inputs_dataset, colored.to(
             device=ground_truth_data.device, dtype=torch.float32
         )
 
@@ -168,16 +166,16 @@ class NFRUv1(BaseNGModel):
         return self.network(inputs)
 
     def on_train_epoch_start(self) -> None:
-        """Select the training colour-preprocessing pipeline."""
-        self.network.set_colour_pipeline("train")
+        """Select the training color-preprocessing pipeline."""
+        self.network.set_color_pipeline("train")
 
     def on_validation_start(self) -> None:
-        """Select the validation colour-preprocessing pipeline."""
-        self.network.set_colour_pipeline("validation")
+        """Select the validation color-preprocessing pipeline."""
+        self.network.set_color_pipeline("validation")
 
     def on_evaluation_start(self) -> None:
-        """Select the evaluation/test colour-preprocessing pipeline."""
-        self.network.set_colour_pipeline("test")
+        """Select the evaluation/test color-preprocessing pipeline."""
+        self.network.set_color_pipeline("test")
 
     def define_dynamic_export_model_input(self) -> tuple[Dict[int, Any]]:
         """Describe the dynamic batch and spatial dimensions for export."""
@@ -197,7 +195,7 @@ class NFRUv1Core(nn.Module):
 
     def __init__(
         self,
-        colour_config: Dict[str, Dict],
+        color_config: Dict[str, Dict],
         quant_params: Optional[Dict[str, int]] = None,
         device: torch.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu"
@@ -229,11 +227,11 @@ class NFRUv1Core(nn.Module):
         self.auto_encoder = NFRUAutoEncoder()
         self.quant_params = quant_params.copy() if quant_params else {}
 
-        self.available_colour_pipeline = {
-            split: build_colour_pipeline(colour_config[split])
-            for split in _REQUIRED_COLOUR_SPLITS
+        self.available_color_pipeline = {
+            split: build_color_pipeline(color_config[split])
+            for split in _REQUIRED_COLOR_SPLITS
         }
-        self.set_colour_pipeline("train")
+        self.set_color_pipeline("train")
         self._validate_scale_factor()
 
         self.dynamic_flow_model = BlockMatchV321()
@@ -243,16 +241,16 @@ class NFRUv1Core(nn.Module):
         )
         self.coeff_softmax = nn.Softmax(dim=1)
 
-    def set_colour_pipeline(self, split: str) -> None:
-        """Select the configured colour pipeline for the requested split."""
-        pipeline = self.available_colour_pipeline.get(split)
+    def set_color_pipeline(self, split: str) -> None:
+        """Select the configured color pipeline for the requested split."""
+        pipeline = self.available_color_pipeline.get(split)
         if pipeline is None:
-            available_splits = ", ".join(self.available_colour_pipeline)
+            available_splits = ", ".join(self.available_color_pipeline)
             raise ValueError(
-                f"Colour pipeline split '{split}' is not configured. "
+                f"Color pipeline split '{split}' is not configured. "
                 f"Available splits: {available_splits}."
             )
-        self.colour_pipeline = pipeline
+        self.color_pipeline = pipeline
 
     def _validate_scale_factor(self) -> None:
         """Ensure the runtime scale factor yields at least one interpolation step."""
@@ -445,7 +443,7 @@ class NFRUv1Core(nn.Module):
             in_params=learnt_params,
             in_timestep=timestep,
             out_constructors={
-                "out_colour": SlangOutput(shape=rgb_m1.shape, device=str(rgb_m1.device))
+                "out_color": SlangOutput(shape=rgb_m1.shape, device=str(rgb_m1.device))
             },
             dispatch_size=[rgb_m1.shape[0], rgb_m1.shape[2], rgb_m1.shape[3]],
         )
@@ -457,12 +455,12 @@ class NFRUv1Core(nn.Module):
         batch = inputs["rgb_linear_m1"].shape[0]
         motion_mat = inputs["MotionMat"]
 
-        rgb_m1 = self.colour_pipeline(inputs["rgb_linear_m1"], inputs, "m1")
+        rgb_m1 = self.color_pipeline(inputs["rgb_linear_m1"], inputs, "m1")
         if not isinstance(rgb_m1, torch.Tensor):
             rgb_m1 = torch.from_numpy(rgb_m1)
         rgb_m1 = rgb_m1.to(self.device)
 
-        rgb_p1 = self.colour_pipeline(inputs["rgb_linear_p1"], inputs, "p1")
+        rgb_p1 = self.color_pipeline(inputs["rgb_linear_p1"], inputs, "p1")
         if not isinstance(rgb_p1, torch.Tensor):
             rgb_p1 = torch.from_numpy(rgb_p1)
         rgb_p1 = rgb_p1.to(self.device)

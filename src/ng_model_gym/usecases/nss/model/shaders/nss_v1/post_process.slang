@@ -33,9 +33,9 @@ import "nss_common";
 #define NSS_DISABLE_HISTORY_CLAMP 0
 #endif // DISABLE_HISTORY_CLAMP
 #endif // !NSS_DISABLE_HISTORY_CLAMP
-#ifndef FILTER_COLOUR_KERNEL_SZ
-#define FILTER_COLOUR_KERNEL_SZ 9
-#endif // !FILTER_COLOUR_KERNEL_SZ
+#ifndef FILTER_COLOR_KERNEL_SZ
+#define FILTER_COLOR_KERNEL_SZ 9
+#endif // !FILTER_COLOR_KERNEL_SZ
 
 #define EPS 1e-7
 
@@ -43,7 +43,7 @@ import "nss_common";
 // Argument plumbing
 // ─────────────────────────────────────────────────────────────────────────────
 #define POSTPROCESS_PARAMS(X)                   \
-    X(TensorView<float>, in_colour),            \
+    X(TensorView<float>, in_color),            \
     X(DiffTensorView,   in_history),            \
     X(DiffTensorView,   in_kpn_params),         \
     X(DiffTensorView,   in_temporal_params),    \
@@ -54,8 +54,8 @@ import "nss_common";
     X(TensorView<float>, in_offset_lut),        \
     X(TensorView<float>, in_idx_modulo),        \
     X(TensorView<float>, in_reset),             \
-    X(DiffTensorView,   out_colour),            \
-    X(DiffTensorView,   out_colour_filtered)
+    X(DiffTensorView,   out_color),            \
+    X(DiffTensorView,   out_color_filtered)
 
 #define DECL(type, name) type name
 #define NAME_ONLY(_, name) name
@@ -63,7 +63,7 @@ import "nss_common";
 
 
 struct Bindings {
-    TensorView<float> _ColourTex;
+    TensorView<float> _ColorTex;
     DiffTensorView _HistoryTex;
     DiffTensorView _KpnParamsTensor;
     DiffTensorView _TemporalParamsTex;
@@ -71,8 +71,8 @@ struct Bindings {
     TensorView<float> _NearestDepthOffsetTex;
     TensorView<float> _OffsetLutTex;
 
-    DiffTensorView _ColourOut;
-    DiffTensorView _ColourFilteredOut;
+    DiffTensorView _ColorOut;
+    DiffTensorView _ColorFilteredOut;
 };
 
 
@@ -119,18 +119,18 @@ Globals makeGlobals(POSTPROCESS_PARAMS(DECL), uint batch)
 {
     Globals g;
 
-    g.b._ColourTex = in_colour;
+    g.b._ColorTex = in_color;
     g.b._HistoryTex = in_history;
     g.b._KpnParamsTensor = in_kpn_params;
     g.b._TemporalParamsTex = in_temporal_params;
     g.b._MotionVectorTex = in_motion;
     g.b._NearestDepthOffsetTex = in_nearest_depth_off;
     g.b._OffsetLutTex = in_offset_lut;
-    g.b._ColourOut = out_colour;
-    g.b._ColourFilteredOut = out_colour_filtered;
+    g.b._ColorOut = out_color;
+    g.b._ColorFilteredOut = out_color_filtered;
 
-    const int2 in_dims = int2(tensor_size(in_colour).zw);
-    const int2 out_dims = int2(tensor_size(out_colour).zw);
+    const int2 in_dims = int2(tensor_size(in_color).zw);
+    const int2 out_dims = int2(tensor_size(out_color).zw);
     const int2 kpn_dims = int2(tensor_size(in_kpn_params).zw);
     const int2 temporal_dims = int2(tensor_size(in_temporal_params).zw);
     const float2 inv_temporal_dims = rcp(float2(temporal_dims));
@@ -230,12 +230,12 @@ inline float2 LoadMotion(Globals g, uint b, uint2 coord)
 
 
 [Differentiable]
-inline float3 LoadColourTap(Globals g, uint b, int2 lr_tap, float exposure)
+inline float3 LoadColorTap(Globals g, uint b, int2 lr_tap, float exposure)
 {
     return MaxHalf(float3(
-        no_diff(g.b._ColourTex[uint4(b, 0, lr_tap)]),
-        no_diff(g.b._ColourTex[uint4(b, 1, lr_tap)]),
-        no_diff(g.b._ColourTex[uint4(b, 2, lr_tap)])
+        no_diff(g.b._ColorTex[uint4(b, 0, lr_tap)]),
+        no_diff(g.b._ColorTex[uint4(b, 1, lr_tap)]),
+        no_diff(g.b._ColorTex[uint4(b, 2, lr_tap)])
     ) * exposure);
 }
 
@@ -290,7 +290,7 @@ inline int MapSparse2x2KpnChannel(int tap_z)
 
 
 [Differentiable]
-inline void FilterColour(
+inline void FilterColor(
     Globals g,
     uint b,
     int2 output_px,
@@ -301,7 +301,7 @@ inline void FilterColour(
     out float4 center_sample
 )
 {
-    const int2 colour_size = g.pc._InputDims;
+    const int2 color_size = g.pc._InputDims;
     const int2 kpn_size = g.pc._KpnDims;
     const float2 inv_scale = g.pc._InvScale;
     const float2 kpn_scale = g.pc._KpnScale;
@@ -316,7 +316,7 @@ inline void FilterColour(
     center_sample = float4(0.f);
 
     [ForceUnroll]
-    for (int i = 0; i < FILTER_COLOUR_KERNEL_SZ; i++) {
+    for (int i = 0; i < FILTER_COLOR_KERNEL_SZ; i++) {
         float3 tile = float3(
             no_diff(g.b._OffsetLutTex[uint4(b, 0, lut_idx, i)]),
             no_diff(g.b._OffsetLutTex[uint4(b, 1, lut_idx, i)]),
@@ -329,16 +329,16 @@ inline void FilterColour(
         );
 
         int2 tap = output_px + int2(tap_pos.xy);
-        int2 lr_tap = clamp(int2(floor((tap + 0.5f) * inv_scale + 1e-3)) + int2(tile.xy), 0, colour_size - 1);
+        int2 lr_tap = clamp(int2(floor((tap + 0.5f) * inv_scale + 1e-3)) + int2(tile.xy), 0, color_size - 1);
         float is_center = float(tap_pos.x == 0.f && tap_pos.y == 0.f);
-        float3 colour_tap = LoadColourTap(g, b, lr_tap, exposure);
-        center_sample = lerp(center_sample, float4(colour_tap, 1.f), is_center);
+        float3 color_tap = LoadColorTap(g, b, lr_tap, exposure);
+        center_sample = lerp(center_sample, float4(color_tap, 1.f), is_center);
 
 #if NSS_USE_SPARSE_2X2_FILTER || NSS_PREPROCESS_HALF_RES_INPUT
         int2 kpn_tap = clamp(
             int2(
-                KpnCoordFromInputCoord(lr_tap.x, colour_size.x, kpn_size.x),
-                KpnCoordFromInputCoord(lr_tap.y, colour_size.y, kpn_size.y)
+                KpnCoordFromInputCoord(lr_tap.x, color_size.x, kpn_size.x),
+                KpnCoordFromInputCoord(lr_tap.y, color_size.y, kpn_size.y)
             ),
             int2(0),
             kpn_size - 1
@@ -355,9 +355,9 @@ inline void FilterColour(
 #endif // NSS_USE_SPARSE_2X2_FILTER
         weight *= tile.z;
 
-        m1 += colour_tap * weight;
+        m1 += color_tap * weight;
 #if !NSS_DISABLE_HISTORY_CLAMP
-        m2 += colour_tap * colour_tap * weight;
+        m2 += color_tap * color_tap * weight;
 #endif // !NSS_DISABLE_HISTORY_CLAMP
         weight_sum += weight;
     }
@@ -413,7 +413,7 @@ inline void WarpHistory(
     int2 output_px,
     float2 uv,
     float exposure,
-    out float3 warped_colour,
+    out float3 warped_color,
     out float onscreen
 )
 {
@@ -421,7 +421,7 @@ inline void WarpHistory(
     float2 motion = LoadMotion(g, b, uint2(output_px));
     float2 reproj_uv = uv - (motion * inv_out_size);
     onscreen = float(all(reproj_uv >= 0.f) && all(reproj_uv <= 1.f));
-    warped_colour = LoadWarpedHistory(g, b, reproj_uv, exposure);
+    warped_color = LoadWarpedHistory(g, b, reproj_uv, exposure);
 }
 
 
@@ -459,20 +459,20 @@ inline float3 ClampToInvertibleRange(Globals g, float3 accumulated)
 
 
 [Differentiable]
-inline void WriteColourOut(Globals g, uint3 idx, float3 out_linear)
+inline void WriteColorOut(Globals g, uint3 idx, float3 out_linear)
 {
-    g.b._ColourOut.storeOnce(uint4(idx.x, 0, idx.yz), out_linear.r);
-    g.b._ColourOut.storeOnce(uint4(idx.x, 1, idx.yz), out_linear.g);
-    g.b._ColourOut.storeOnce(uint4(idx.x, 2, idx.yz), out_linear.b);
+    g.b._ColorOut.storeOnce(uint4(idx.x, 0, idx.yz), out_linear.r);
+    g.b._ColorOut.storeOnce(uint4(idx.x, 1, idx.yz), out_linear.g);
+    g.b._ColorOut.storeOnce(uint4(idx.x, 2, idx.yz), out_linear.b);
 }
 
 
 [Differentiable]
-inline void WriteColourFilteredOut(Globals g, uint3 idx, float3 filtered)
+inline void WriteColorFilteredOut(Globals g, uint3 idx, float3 filtered)
 {
-    g.b._ColourFilteredOut.storeOnce(uint4(idx.x, 0, idx.yz), filtered.r);
-    g.b._ColourFilteredOut.storeOnce(uint4(idx.x, 1, idx.yz), filtered.g);
-    g.b._ColourFilteredOut.storeOnce(uint4(idx.x, 2, idx.yz), filtered.b);
+    g.b._ColorFilteredOut.storeOnce(uint4(idx.x, 0, idx.yz), filtered.r);
+    g.b._ColorFilteredOut.storeOnce(uint4(idx.x, 1, idx.yz), filtered.g);
+    g.b._ColorFilteredOut.storeOnce(uint4(idx.x, 2, idx.yz), filtered.b);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -484,7 +484,7 @@ inline void WriteColourFilteredOut(Globals g, uint3 idx, float3 filtered)
 public void post_process(POSTPROCESS_PARAMS(DECL))
 {
     uint tId = (cudaThreadIdx() + cudaBlockIdx() * cudaBlockDim()).x;
-    uint3 size = tensor_size(out_colour).xzw;
+    uint3 size = tensor_size(out_color).xzw;
     uint3 idx = tensor_idx(tId, size);
     if (any(idx >= size)) return;
 
@@ -501,7 +501,7 @@ public void post_process(POSTPROCESS_PARAMS(DECL))
     float3 m1;
     float3 m2;
     float4 center_sample;
-    FilterColour(g, idx.x, output_px, uv, exposure, m1, m2, center_sample);
+    FilterColor(g, idx.x, output_px, uv, exposure, m1, m2, center_sample);
 
     // Upsample temporal params (may be padded)
     float theta;
@@ -510,28 +510,28 @@ public void post_process(POSTPROCESS_PARAMS(DECL))
     SampleTemporalParams(g, idx.x, uv, theta, alpha, gamma);
 
     // Warp history
-    float3 warped_colour;
+    float3 warped_color;
     float onscreen;
-    WarpHistory(g, idx.x, output_px, uv, exposure, warped_colour, onscreen);
+    WarpHistory(g, idx.x, output_px, uv, exposure, warped_color, onscreen);
 
     // Clamp history to neighbourhood stats
     float3 rectified;
-    ClampHistoryToStats(m1, m2, warped_colour, theta, gamma, reset, onscreen, rectified);
+    ClampHistoryToStats(m1, m2, warped_color, theta, gamma, reset, onscreen, rectified);
 
     // Accumulate in TM domain
     float3 rectified_tm = tonemap_forward(rectified, TonemapMode.Karis);
     float learnt_masked_alpha = alpha * center_sample.a * reset;
-    float3 colour_to_accum_tm = tonemap_forward(center_sample.rgb, TonemapMode.Karis);
-    float3 accumulated = lerp(rectified_tm, colour_to_accum_tm, learnt_masked_alpha);
+    float3 color_to_accum_tm = tonemap_forward(center_sample.rgb, TonemapMode.Karis);
+    float3 accumulated = lerp(rectified_tm, color_to_accum_tm, learnt_masked_alpha);
 
     // Clamp to invertible range and write
     float3 out_linear = ClampToInvertibleRange(g, accumulated);
 
     // Write Output(s)
-    WriteColourOut(g, idx, out_linear);
+    WriteColorOut(g, idx, out_linear);
 
     float3 filtered_to_write = m1 * g.pc._Exposure.y;
-    WriteColourFilteredOut(g, idx, filtered_to_write);
+    WriteColorFilteredOut(g, idx, filtered_to_write);
 }
 
 #undef POSTPROCESS_PARAMS

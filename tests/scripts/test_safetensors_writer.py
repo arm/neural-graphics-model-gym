@@ -267,11 +267,11 @@ class TestNSSSafetensorsWriter(unittest.TestCase):
         self.assertEqual(gt_w, self.args.crop_size)
 
         # Check height and width of scaled tensor after cropping
-        _, colour_h, colour_w = data["colour_linear"].shape
+        _, color_h, color_w = data["colour_linear"].shape
         scale = data["scale"]
 
-        self.assertEqual(colour_h, math.ceil(self.args.crop_size / scale))
-        self.assertEqual(colour_w, math.ceil(self.args.crop_size / scale))
+        self.assertEqual(color_h, math.ceil(self.args.crop_size / scale))
+        self.assertEqual(color_w, math.ceil(self.args.crop_size / scale))
 
     def test_reverse_z_depth_and_depth_params_use_reference_projection(self):
         """ReverseZ flips depth, but depth_params stay forward-projection based."""

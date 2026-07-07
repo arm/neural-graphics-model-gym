@@ -239,7 +239,7 @@ class AutoEncoderV0_1(nn.Module):
             • **Warped recurrent feedback features** — previous network output warped to *t*.
               Shape: **(1, 540, 960, 4)**.
 
-            • **Luma derivative** — time-integrated variance of jittered-colour luminance;
+            • **Luma derivative** — time-integrated variance of jittered-color luminance;
               helps detect thin flickering features.
               Shape: **(1, 540, 960, 1)**.
 

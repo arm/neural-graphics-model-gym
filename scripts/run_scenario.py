@@ -316,17 +316,17 @@ def write_scenario(
         x, (0, input_pad_w, 0, input_pad_h), mode="reflect"
     )
 
-    in_colour = tensors.get_slice("colour_linear")[frame_idx]
-    in_colour = apply_padding(in_colour)
+    in_color = tensors.get_slice("colour_linear")[frame_idx]
+    in_color = apply_padding(in_color)
     dds_utils.save_dds(
-        in_colour.numpy(),
+        in_color.numpy(),
         dest_scenario_path / "in_colour.dds",
         dds_utils.DXGI_FORMAT_R11G11B10_FLOAT,
     )
 
-    gt_colour = tensors.get_slice("ground_truth_linear")[frame_idx]
+    gt_color = tensors.get_slice("ground_truth_linear")[frame_idx]
     dds_utils.save_dds(
-        gt_colour.numpy(),
+        gt_color.numpy(),
         dest_scenario_path / "gt_colour.dds",
         dds_utils.DXGI_FORMAT_R11G11B10_FLOAT,
     )
@@ -495,14 +495,14 @@ def main():
             )
 
             # Remove the padding added during processing NSS to match the ground truth size.
-            out_padded_colour = dds_utils.read_dds(
+            out_padded_color = dds_utils.read_dds(
                 os.path.join(frame_scenario_path, "out_colour.dds")
             )
-            out_padded_colour = out_padded_colour[
+            out_padded_color = out_padded_color[
                 ..., :unpadded_output_height, :unpadded_output_width
             ]
             dds_utils.save_dds(
-                out_padded_colour,
+                out_padded_color,
                 frame_scenario_path / "out_colour_unpadded.dds",
                 dds_utils.DXGI_FORMAT_R11G11B10_FLOAT,
             )

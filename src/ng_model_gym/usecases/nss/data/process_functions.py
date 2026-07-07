@@ -26,7 +26,7 @@ def process_nss_data(
     Apply augmentations if required. Augmentations are applied to RGB+D+VU at the same time.
 
     Args:
-        data_frame: Dict of tensors - colour, depth, motion, truth, jitter,
+        data_frame: Dict of tensors - color, depth, motion, truth, jitter,
             seq_id, img_id, z_near, z_far, exposure etc.
         augment: Augment the data or not
         tonemapper: Which tonemapper to use.
@@ -114,16 +114,16 @@ def process_nss_data(
     # Extract ground truth
     exposure = data["exposure"]
     truth_linear = data["ground_truth_linear"]
-    colour_linear = data["colour_linear"]
+    color_linear = data["colour_linear"]
 
     # Clamp max values based on exposure
     max_val = 65_504.0 / exposure
     truth_linear = clamp_tensor(truth_linear, torch.zeros_like(max_val), max_val)
-    colour_linear = clamp_tensor(colour_linear, torch.zeros_like(max_val), max_val)
+    color_linear = clamp_tensor(color_linear, torch.zeros_like(max_val), max_val)
 
     # Apply exposure
     tru_exp = exposure * truth_linear
-    col_exp = exposure * colour_linear
+    col_exp = exposure * color_linear
 
     # Forward Tonemap w/ chosen tonemapper
     ground_truth = tonemap_forward(tru_exp, mode=tonemapper)

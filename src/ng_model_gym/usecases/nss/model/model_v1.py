@@ -220,7 +220,7 @@ class NSSV1Model(BaseNGModel):
             pad_shape if self.preprocess_half_res_input else process_shape
         )
         preprocess_kwargs = {
-            "in_colour": preprocess_input["colour_linear"],
+            "in_color": preprocess_input["colour_linear"],
             "in_history": preprocess_input["history"],
             "in_motion": preprocess_input[self.motion_key],
             "in_depth": preprocess_input["depth"],
@@ -292,7 +292,7 @@ class NSSV1Model(BaseNGModel):
             hr_shape,
         )
         output_linear, out_filtered_linear = slang.post_process(
-            in_colour=inputs["colour_linear"],
+            in_color=inputs["colour_linear"],
             in_history=inputs["history"],
             in_kpn_params=kpn_params,
             in_temporal_params=temporal_params,
@@ -304,8 +304,8 @@ class NSSV1Model(BaseNGModel):
             in_idx_modulo=idx_modulo,
             in_reset=reset_occurred,
             out_constructors={
-                "out_colour": SlangOutput(shape=hr_shape, device=device),
-                "out_colour_filtered": SlangOutput(shape=hr_shape, device=device),
+                "out_color": SlangOutput(shape=hr_shape, device=device),
+                "out_color_filtered": SlangOutput(shape=hr_shape, device=device),
             },
             dispatch_size=[hr_shape[0], hr_shape[2], hr_shape[3]],
         )
@@ -315,6 +315,10 @@ class NSSV1Model(BaseNGModel):
         )
         out_filtered_tm = tonemap_forward(
             out_filtered_linear * inputs["exposure"], mode=self.tonemapper
+        )
+        input_color = tonemap_forward(
+            inputs["colour_linear"] * inputs["exposure"],
+            mode=self.tonemapper,
         )
 
         outputs = {
@@ -328,10 +332,7 @@ class NSSV1Model(BaseNGModel):
                 inputs["ground_truth_linear"] * inputs["exposure"],
                 mode=self.tonemapper,
             ),
-            "input_color": tonemap_forward(
-                inputs["colour_linear"] * inputs["exposure"],
-                mode=self.tonemapper,
-            ),
+            "input_color": input_color,
         }
         return outputs
 
@@ -605,7 +606,7 @@ class NSSV1Model(BaseNGModel):
                 "NSS_USE_SPARSE_2X2_FILTER": int(self.use_sparse_filter_2x2),
                 "NSS_USE_HISTORY_CATMULL": int(self.use_history_catmull),
                 "NSS_PACKED_NEAREST_OFFSET_QUAD": int(self.packed_nearest_offset_quad),
-                "FILTER_COLOUR_KERNEL_SZ": int(self.filter_kernel_taps),
+                "FILTER_COLOR_KERNEL_SZ": int(self.filter_kernel_taps),
                 "NSS_V1_LUMA_DERIVATIVE": int(self.nss_v1_luma_derivative),
                 "NSS_V1_SHARP_THETA": int(self.nss_v1_sharp_theta),
             }

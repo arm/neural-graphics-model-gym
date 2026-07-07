@@ -21,10 +21,10 @@ def rgb_2_luminance(x: torch.Tensor) -> torch.Tensor:
 
 
 def KeyValueAE(
-    colour_frame_linear: torch.Tensor, key_value: float = 1.0
+    color_frame_linear: torch.Tensor, key_value: float = 1.0
 ) -> torch.Tensor:
     """Compute key-value auto exposure for NCHW torch tensors."""
-    luminance = rgb_2_luminance(colour_frame_linear)
+    luminance = rgb_2_luminance(color_frame_linear)
     mean_luminance = torch.mean(luminance, dim=(1, 2, 3), keepdim=True)
     mean_luminance = torch.clamp(mean_luminance, min=_AUTO_EXPOSURE_MIN_LUMINANCE)
     exposure = key_value / mean_luminance

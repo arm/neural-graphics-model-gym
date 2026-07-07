@@ -499,9 +499,9 @@ public float3 sample_tensor_catmull(DiffTensorView tensor, uint b, uint3 c, floa
 
     CatmullRomSamples samples = GetBicubic2DCatmullRomSamples(uv, size, rcp(size));
 
-    // assumes fp16 colour precision
+    // assumes fp16 color precision
     const float max_half = 65504.f;
-    float3 colour = float3(0.f);
+    float3 color = float3(0.f);
     float3 aabb_min = float(max_half);
     float3 aabb_max = float(-max_half);
     [ForceUnroll]
@@ -511,15 +511,15 @@ public float3 sample_tensor_catmull(DiffTensorView tensor, uint b, uint3 c, floa
         float3 sample = sample_tensor(tensor, b, c, sampleUV, clamp_to_edge);
         aabb_min = min(aabb_min, sample);
         aabb_max = max(aabb_max, sample);
-        colour += sample * samples.Weight[i];
+        color += sample * samples.Weight[i];
     }
-    colour *= samples.FinalMultiplier;
+    color *= samples.FinalMultiplier;
 
     // defend against negative values
     if (dering)
-        return any(colour < 0.f) ? clamp(colour, aabb_min, aabb_max) : colour;
+        return any(color < 0.f) ? clamp(color, aabb_min, aabb_max) : color;
     else
-        return max(float3(0.f), colour * samples.FinalMultiplier);
+        return max(float3(0.f), color * samples.FinalMultiplier);
 }
 
 [Differentiable]
@@ -529,9 +529,9 @@ public float4 sample_tensor_catmull(DiffTensorView tensor, uint b, uint4 c, floa
 
     CatmullRomSamples samples = GetBicubic2DCatmullRomSamples(uv, size, rcp(size));
 
-    // assumes fp16 colour precision
+    // assumes fp16 color precision
     const float max_half = 65504.f;
-    float4 colour = float4(0.f);
+    float4 color = float4(0.f);
     float4 aabb_min = float4(max_half);
     float4 aabb_max = float4(-max_half);
     [ForceUnroll]
@@ -541,15 +541,15 @@ public float4 sample_tensor_catmull(DiffTensorView tensor, uint b, uint4 c, floa
         float4 sample = sample_tensor(tensor, b, c, sampleUV, clamp_to_edge);
         aabb_min = min(aabb_min, sample);
         aabb_max = max(aabb_max, sample);
-        colour += sample * samples.Weight[i];
+        color += sample * samples.Weight[i];
     }
-    colour *= samples.FinalMultiplier;
+    color *= samples.FinalMultiplier;
 
     // defend against negative values
     if (dering)
-        return any(colour < 0.f) ? clamp(colour, aabb_min, aabb_max) : colour;
+        return any(color < 0.f) ? clamp(color, aabb_min, aabb_max) : color;
     else
-        return max(float4(0.f), colour * samples.FinalMultiplier);
+        return max(float4(0.f), color * samples.FinalMultiplier);
 }
 
 [NoDiffThis]

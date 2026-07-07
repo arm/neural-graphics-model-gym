@@ -37,8 +37,8 @@ struct Bindings {
     // inputs
     TensorView<float> _WarpedFlowTm1;
     TensorView<float> _WarpedMotionTp1;
-    TensorView<float> _ColourTm1;
-    TensorView<float> _ColourTp1;
+    TensorView<float> _ColorTm1;
+    TensorView<float> _ColorTp1;
     TensorView<float> _DepthTm1;
     TensorView<float> _DepthTp1;
     TensorView<float> _HolesT;
@@ -74,8 +74,8 @@ Globals makeGlobals(PREPROCESS_PARAMS(DECL), uint batch)
     // resources
     g.b._WarpedFlowTm1 = in_flow_t_f30_xx;
     g.b._WarpedMotionTp1 = in_mv_t_f30_m1;
-    g.b._ColourTm1 = in_rgb_m1;
-    g.b._ColourTp1 = in_rgb_p1;
+    g.b._ColorTm1 = in_rgb_m1;
+    g.b._ColorTp1 = in_rgb_p1;
     g.b._DepthTm1 = in_depth_m1;
     g.b._DepthTp1 = in_depth_p1;
     g.b._HolesT = in_depth_p1_warp_t;
@@ -325,18 +325,18 @@ public void preprocess(PREPROCESS_PARAMS(DECL))
 
     float dd_mask = float((hole_mask_t - hole_mask_m1) < 0.0f);
 
-    // Warp colour using gather approach with warped vectors
-    float2 external_size = float2(textureSize(g.b._ColourTm1, 0));
+    // Warp color using gather approach with warped vectors
+    float2 external_size = float2(textureSize(g.b._ColorTm1, 0));
 
     float3 rgb_m1_warp_t_mv = float3(0.0f);
     float3 rgb_p1_warp_t_mv = float3(0.0f);
     float3 rgb_m1_warp_t_flow = float3(0.0f);
     float3 rgb_p1_warp_t_flow = float3(0.0f);
 
-    if (!uv_m1_mv_oob) rgb_m1_warp_t_mv = LoadColour(batch, int32_t2(floor(uv_m1_mv * external_size)), g.b._ColourTm1);
-    if (!uv_p1_mv_oob) rgb_p1_warp_t_mv = LoadColour(batch, int32_t2(floor(uv_p1_mv * external_size)), g.b._ColourTp1);
-    if (!uv_m1_flow_oob) rgb_m1_warp_t_flow = LoadColour(batch, int32_t2(floor(uv_m1_flow * external_size)), g.b._ColourTm1);
-    if (!uv_p1_flow_oob) rgb_p1_warp_t_flow = LoadColour(batch, int32_t2(floor(uv_p1_flow * external_size)), g.b._ColourTp1);
+    if (!uv_m1_mv_oob) rgb_m1_warp_t_mv = LoadColor(batch, int32_t2(floor(uv_m1_mv * external_size)), g.b._ColorTm1);
+    if (!uv_p1_mv_oob) rgb_p1_warp_t_mv = LoadColor(batch, int32_t2(floor(uv_p1_mv * external_size)), g.b._ColorTp1);
+    if (!uv_m1_flow_oob) rgb_m1_warp_t_flow = LoadColor(batch, int32_t2(floor(uv_m1_flow * external_size)), g.b._ColorTm1);
+    if (!uv_p1_flow_oob) rgb_p1_warp_t_flow = LoadColor(batch, int32_t2(floor(uv_p1_flow * external_size)), g.b._ColorTp1);
 
     // Randomize OOB RGB values to prevent network from learning spurious correlations
     // Uses spatial hash (y*stride+z) combined with random_seed for temporal variation

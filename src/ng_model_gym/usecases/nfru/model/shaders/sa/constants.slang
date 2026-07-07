@@ -25,11 +25,11 @@
 #endif
 
 /*
-    Assume linear colour input instead of tonemapped
+    Assume linear color input instead of tonemapped
     Default: False
 */
-#ifndef LINEAR_COLOUR
-    #define LINEAR_COLOUR 0
+#ifndef LINEAR_COLOR
+    #define LINEAR_COLOR 0
 #endif
 
 /*
@@ -113,8 +113,8 @@
     #define ZERO_MOTION_EPS 1e-5
 #endif
 
-#ifndef LINEAR_COLOUR_TONEMAP_EXPOSURE
-    #define LINEAR_COLOUR_TONEMAP_EXPOSURE 2.0
+#ifndef LINEAR_COLOR_TONEMAP_EXPOSURE
+    #define LINEAR_COLOR_TONEMAP_EXPOSURE 2.0
 #endif
 
 #ifndef INVERTED_DEPTH_WIDTH

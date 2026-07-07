@@ -2,7 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
-"""Colour grading operators used by the NFRU v1 training recipe."""
+"""Color grading operators used by the NFRU v1 training recipe."""
 
 from __future__ import annotations
 
@@ -61,7 +61,7 @@ def grade_temperature_tint(
     return torch.clamp(adjusted, 0.0, 1.0)
 
 
-_COLOUR_GRADING_REGISTRY: Dict[str, Callable] = {
+_COLOR_GRADING_REGISTRY: Dict[str, Callable] = {
     "none": grade_none,
     "contrast": grade_contrast,
     "saturation": grade_saturation,
@@ -69,12 +69,12 @@ _COLOUR_GRADING_REGISTRY: Dict[str, Callable] = {
 }
 
 
-def get_colour_grading_op(name: str) -> Callable:
-    """Retrieve a registered colour grading operator."""
+def get_color_grading_op(name: str) -> Callable:
+    """Retrieve a registered color grading operator."""
     key = name.lower()
-    if key not in _COLOUR_GRADING_REGISTRY:
+    if key not in _COLOR_GRADING_REGISTRY:
         raise KeyError(
-            f"Unknown colour grading operator '{name}'. "
-            f"Available: {sorted(_COLOUR_GRADING_REGISTRY)}"
+            f"Unknown color grading operator '{name}'. "
+            f"Available: {sorted(_COLOR_GRADING_REGISTRY)}"
         )
-    return _COLOUR_GRADING_REGISTRY[key]
+    return _COLOR_GRADING_REGISTRY[key]

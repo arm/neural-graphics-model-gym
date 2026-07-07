@@ -1,5 +1,5 @@
 {
-    "config_schema_version": "7",
+    "config_schema_version": "8",
     "model": {
         "name": "NFRU",
         "model_source": "prebuilt",
@@ -17,7 +17,7 @@
             "validation": "<PATH/TO/VALIDATION_DATA_DIR>",
             "test": "<PATH/TO/TEST_DATA_DIR>"
         },
-        "colour_preprocessing": {
+        "color_preprocessing": {
             "train": {
                 "pipeline": [
                     [
