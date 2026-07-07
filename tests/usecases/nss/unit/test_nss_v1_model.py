@@ -518,7 +518,7 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
 
                 defines = load_module.call_args.kwargs["defines"]
                 self.assertEqual(defines["NSS_QUALITY_LOW"], 0)
-                self.assertEqual(defines["NSS_QUALITY_MEDIUM"], 1)
+                self.assertEqual(defines["NSS_QUALITY_MID"], 1)
                 self.assertEqual(defines["NSS_QUALITY_HIGH"], 2)
                 self.assertEqual(defines["FILTER_COLOR_KERNEL_SZ"], expected_taps)
                 self.assertEqual(defines["NSS_V1_LUMA_DERIVATIVE"], 1)
