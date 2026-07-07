@@ -35,21 +35,19 @@ class TestDenseWarp(unittest.TestCase):
             warped_frame = layer([frame, flow_vectors])
             self.assertEqual(warped_frame.shape, (batch_size, channels, height, width))
 
-    def test_bilinear_paths_do_not_use_explicit_gather_helpers(self):
-        """Bilinear DenseWarp paths should avoid explicit gather helpers."""
+    def test_bilinear_paths_use_grid_sample(self):
+        """Bilinear DenseWarp paths should use the grid_sample backend."""
         frame = torch.rand((1, 1, 4, 4))
         flow_vectors = torch.rand((1, 2, 4, 4))
 
         with patch(
-            "ng_model_gym.core.model.dense_warp_utils.interpolate_bilinear",
-            side_effect=AssertionError("old bilinear gather backend was called"),
-        ), patch(
-            "ng_model_gym.core.model.dense_warp_utils.interpolate_bilinear_w_zero_pad",
-            side_effect=AssertionError("old bilinear gather backend was called"),
-        ):
+            "ng_model_gym.core.model.dense_warp_utils.F.grid_sample",
+            wraps=torch.nn.functional.grid_sample,
+        ) as mock_grid_sample:
             for interp in ("bilinear", "bilinear_oob_zero"):
                 warped_frame = DenseWarp(interpolation=interp)([frame, flow_vectors])
                 self.assertEqual(warped_frame.shape, frame.shape)
+            self.assertEqual(mock_grid_sample.call_count, 2)
 
     def test_forward_value_oob_zero(self):
         """Test the DenseWarp 'forward' method returns correct tensor
