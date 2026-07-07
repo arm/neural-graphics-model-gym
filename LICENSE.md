@@ -234,12 +234,6 @@ license text is included in, or next to, those files.
    - `src/ng_model_gym/core/export/model_export.py`
    - `src/ng_model_gym/core/utils/patch/executorch_patch.py`
 
-- Some code replicates functionality from the [TensorFlow](https://github.com/tensorflow/tensorflow) project.
-  These portions are also licensed under the [Apache 2.0 License](./LICENSES/Apache-2.0.txt).
-  Relevant files:
-
-   - `src/ng_model_gym/core/model/dense_warp_utils.py`
-
 - Some code has been derived from the [torchlars](https://github.com/kakaobrain/torchlars) project.
   These portions are also licensed under the [Apache 2.0 License](./LICENSES/Apache-2.0.txt).
   Relevant files:

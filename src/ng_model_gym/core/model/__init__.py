@@ -8,8 +8,6 @@ from .dense_warp_utils import (
     bilinear_oob_zero,
     catmull_rom_warp,
     dense_image_warp,
-    interpolate_bilinear,
-    interpolate_bilinear_w_zero_pad,
 )
 from .graphics_utils import (
     calculate_lr_to_hr_modulo,
