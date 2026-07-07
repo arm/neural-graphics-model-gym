@@ -114,7 +114,7 @@ class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
             "low": {
                 "NSS_QUALITY": 0,
                 "NSS_QUALITY_LOW": 0,
-                "NSS_QUALITY_MEDIUM": 1,
+                "NSS_QUALITY_MID": 1,
                 "NSS_QUALITY_HIGH": 2,
                 "NSS_PREPROCESS_HALF_RES_INPUT": 1,
                 "NSS_DEPTH_SCATTER_QUARTER_RES_INPUT": 1,
@@ -129,7 +129,7 @@ class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
             "mid": {
                 "NSS_QUALITY": 1,
                 "NSS_QUALITY_LOW": 0,
-                "NSS_QUALITY_MEDIUM": 1,
+                "NSS_QUALITY_MID": 1,
                 "NSS_QUALITY_HIGH": 2,
                 "NSS_PREPROCESS_HALF_RES_INPUT": 1,
                 "NSS_DEPTH_SCATTER_QUARTER_RES_INPUT": 1,
@@ -144,7 +144,7 @@ class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
             "high": {
                 "NSS_QUALITY": 2,
                 "NSS_QUALITY_LOW": 0,
-                "NSS_QUALITY_MEDIUM": 1,
+                "NSS_QUALITY_MID": 1,
                 "NSS_QUALITY_HIGH": 2,
                 "NSS_PREPROCESS_HALF_RES_INPUT": 0,
                 "NSS_DEPTH_SCATTER_QUARTER_RES_INPUT": 0,

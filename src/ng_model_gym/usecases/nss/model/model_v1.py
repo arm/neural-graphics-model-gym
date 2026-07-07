@@ -597,7 +597,7 @@ class NSSV1Model(BaseNGModel):
             slang_defines = {
                 "NSS_QUALITY": _NSS_V1_SHADER_QUALITY_DEFINES[self.quality],
                 "NSS_QUALITY_LOW": _NSS_V1_SHADER_QUALITY_DEFINES[NSSV1Quality.LOW],
-                "NSS_QUALITY_MEDIUM": _NSS_V1_SHADER_QUALITY_DEFINES[NSSV1Quality.MID],
+                "NSS_QUALITY_MID": _NSS_V1_SHADER_QUALITY_DEFINES[NSSV1Quality.MID],
                 "NSS_QUALITY_HIGH": _NSS_V1_SHADER_QUALITY_DEFINES[NSSV1Quality.HIGH],
                 "NSS_PREPROCESS_HALF_RES_INPUT": int(self.preprocess_half_res_input),
                 "NSS_DEPTH_SCATTER_QUARTER_RES_INPUT": int(
