@@ -126,7 +126,7 @@ class NSSEXRDatasetReader(EXRDatasetReader):
             dtype=np.float16,
             channels="RG",
         )
-        colour_raw = read_exr_torch(
+        color_raw = read_exr_torch(
             self.seq_data[f"x{self.scale_str}/color"][self.count],
             dtype=np.float16,
             channels="RGB",
@@ -158,7 +158,7 @@ class NSSEXRDatasetReader(EXRDatasetReader):
 
         # Render sizes
         out_features["render_size"] = render_size = torch.tensor(
-            [colour_raw.shape[2], colour_raw.shape[3]], dtype=torch.int32
+            [color_raw.shape[2], color_raw.shape[3]], dtype=torch.int32
         ).reshape((1, 2))
         out_features["outDims"] = torch.tensor(
             [truth_raw.shape[2], truth_raw.shape[3]], dtype=torch.int32
@@ -199,8 +199,8 @@ class NSSEXRDatasetReader(EXRDatasetReader):
             # Depth is usable as-is, **should not be inverted**
             out_features["depth"] = depth_raw.to(torch.float32)
 
-        # Transform colour data
-        out_features["colour_linear"] = colour_raw
+        # Transform color data
+        out_features["colour_linear"] = color_raw
         if not self.args.linear_truth:
             truth_raw = tonemap_inverse(truth_raw, mode="karis")
         out_features["ground_truth_linear"] = truth_raw

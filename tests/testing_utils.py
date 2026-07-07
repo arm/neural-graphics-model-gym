@@ -90,7 +90,7 @@ TEST_PARAMS_PRESETS = {
             "num_workers": 0 if platform.system() == "Windows" else 4,
             "prefetch_factor": 1,
             "align_data": True,
-            "colour_preprocessing": {
+            "color_preprocessing": {
                 "train": {
                     "pipeline": [
                         ["reinhard"],

@@ -180,25 +180,25 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
         config = ConfigModel.model_validate(raw_config)
         self.assertEqual(config.model.scale_factor, 2.0)
 
-    def test_nfru_config_requires_colour_preprocessing(self):
-        """NFRU v1 configs must provide dataset.colour_preprocessing."""
+    def test_nfru_config_requires_color_preprocessing(self):
+        """NFRU v1 configs must provide dataset.color_preprocessing."""
         raw_config = json.loads(NFRU_TEMPLATE_PATH.read_text(encoding="utf-8"))
         raw_config["dataset"]["path"] = {
             "train": str(NFRU_SAMPLE_DIR),
             "validation": str(NFRU_SAMPLE_DIR),
             "test": str(NFRU_SAMPLE_DIR),
         }
-        raw_config["dataset"].pop("colour_preprocessing")
+        raw_config["dataset"].pop("color_preprocessing")
         raw_config["dataset"]["tonemapper"] = "reinhard"
         raw_config["dataset"]["exposure"] = 2.0
 
         with self.assertRaises(ValidationError) as exc:
             ConfigModel.model_validate(raw_config)
 
-        self.assertIn("colour_preprocessing", str(exc.exception))
-        self.assertIn("dataset.colour_preprocessing.train", str(exc.exception))
+        self.assertIn("color_preprocessing", str(exc.exception))
+        self.assertIn("dataset.color_preprocessing.train", str(exc.exception))
 
-    def test_nfru_config_requires_all_colour_preprocessing_splits(self):
+    def test_nfru_config_requires_all_color_preprocessing_splits(self):
         """NFRU v1 configs must define train/validation/test preprocessing."""
         raw_config = json.loads(NFRU_TEMPLATE_PATH.read_text(encoding="utf-8"))
         raw_config["dataset"]["path"] = {
@@ -206,30 +206,30 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
             "validation": str(NFRU_SAMPLE_DIR),
             "test": str(NFRU_SAMPLE_DIR),
         }
-        raw_config["dataset"]["colour_preprocessing"].pop("validation")
+        raw_config["dataset"]["color_preprocessing"].pop("validation")
 
         with self.assertRaises(ValidationError) as exc:
             ConfigModel.model_validate(raw_config)
 
-        self.assertIn("colour_preprocessing", str(exc.exception))
+        self.assertIn("color_preprocessing", str(exc.exception))
         self.assertIn("Missing or invalid splits: validation", str(exc.exception))
 
-    def test_nfru_config_defaults_missing_colour_preprocessing_exposure(self):
-        """NFRU colour-preprocessing splits may omit exposure and use the schema default."""
+    def test_nfru_config_defaults_missing_color_preprocessing_exposure(self):
+        """NFRU color-preprocessing splits may omit exposure and use the schema default."""
         raw_config = json.loads(NFRU_TEMPLATE_PATH.read_text(encoding="utf-8"))
         raw_config["dataset"]["path"] = {
             "train": str(NFRU_SAMPLE_DIR),
             "validation": str(NFRU_SAMPLE_DIR),
             "test": str(NFRU_SAMPLE_DIR),
         }
-        raw_config["dataset"]["colour_preprocessing"]["validation"].pop("exposure")
+        raw_config["dataset"]["color_preprocessing"]["validation"].pop("exposure")
 
         config = ConfigModel.model_validate(raw_config)
-        if config.dataset.colour_preprocessing is None:
-            self.fail("Expected colour_preprocessing config for NFRU")
-        validation_split = config.dataset.colour_preprocessing.validation
+        if config.dataset.color_preprocessing is None:
+            self.fail("Expected color_preprocessing config for NFRU")
+        validation_split = config.dataset.color_preprocessing.validation
         if validation_split is None:
-            self.fail("Expected validation colour-preprocessing split for NFRU")
+            self.fail("Expected validation color-preprocessing split for NFRU")
         self.assertEqual(validation_split.exposure, 2.0)
 
     def test_nfru_config_defaults_align_data_when_missing(self):

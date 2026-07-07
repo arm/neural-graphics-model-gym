@@ -57,23 +57,23 @@ float2 CalculateCameraMotion(float2 uv, float depth, float4x4 MotionMat, out flo
 
 
 [Differentiable]
-float3 LoadColour(uint b, uint2 pixel, TensorView<float> texture)
+float3 LoadColor(uint b, uint2 pixel, TensorView<float> texture)
 {
-    float3 colour = sample_tensor_nearest(texture, b, uint3(0, 1, 2), pixel);
-#if LINEAR_COLOUR
-    colour = TonemapExp(colour, LINEAR_COLOUR_TONEMAP_EXPOSURE);
+    float3 color = sample_tensor_nearest(texture, b, uint3(0, 1, 2), pixel);
+#if LINEAR_COLOR
+    color = TonemapExp(color, LINEAR_COLOR_TONEMAP_EXPOSURE);
 #endif
-    return colour;
+    return color;
 }
 
 [Differentiable]
-float3 LoadColour(uint b, float2 uv, TensorView<float> texture)
+float3 LoadColor(uint b, float2 uv, TensorView<float> texture)
 {
-    float3 colour = sample_tensor(texture, b, uint3(0, 1, 2), uv);
-#if LINEAR_COLOUR
-    colour = TonemapExp(colour, LINEAR_COLOUR_TONEMAP_EXPOSURE);
+    float3 color = sample_tensor(texture, b, uint3(0, 1, 2), uv);
+#if LINEAR_COLOR
+    color = TonemapExp(color, LINEAR_COLOR_TONEMAP_EXPOSURE);
 #endif
-    return colour;
+    return color;
 }
 
 

@@ -30,7 +30,7 @@ class TestPreProcess(BaseGPUMemoryTest):
 
         self.batch_size = batch_size = 4
 
-        colour_linear = torch.rand(batch_size, 3, 64, 64)
+        color_linear = torch.rand(batch_size, 3, 64, 64)
         history = torch.rand(batch_size, 3, 128, 128)
         motion = torch.rand(batch_size, 2, 128, 128)
         depth = torch.rand(batch_size, 1, 64, 64)
@@ -51,7 +51,7 @@ class TestPreProcess(BaseGPUMemoryTest):
         self.slang_shader_file = "nss_v0_1.slang"
 
         self.inputs = {
-            "colour_linear": colour_linear,
+            "colour_linear": color_linear,
             "history": history,
             "motion": motion,
             "motion_lr": motion,

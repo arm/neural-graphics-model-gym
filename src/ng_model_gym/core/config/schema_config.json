@@ -1,6 +1,6 @@
 {
     "config_schema_version": {
-        "default": "7",
+        "default": "8",
         "description": "Config schema version. Used to check compatibility.",
         "type": "string"
     },
@@ -226,14 +226,14 @@
                 "description": "Test dataset directory path"
             }
         },
-        "colour_preprocessing": {
+        "color_preprocessing": {
             "anyOf": [
                 {
                     "train": {
                         "anyOf": [
                             {
                                 "pipeline": {
-                                    "description": "Ordered colour stages. Nested lists indicate mutually exclusive stages to sample from during random-effects training.",
+                                    "description": "Ordered color stages. Nested lists indicate mutually exclusive stages to sample from during random-effects training.",
                                     "items": {
                                         "anyOf": [
                                             {
@@ -297,13 +297,13 @@
                             }
                         ],
                         "default": null,
-                        "description": "Colour preprocessing applied to training data."
+                        "description": "Color preprocessing applied to training data."
                     },
                     "validation": {
                         "anyOf": [
                             {
                                 "pipeline": {
-                                    "description": "Ordered colour stages. Nested lists indicate mutually exclusive stages to sample from during random-effects training.",
+                                    "description": "Ordered color stages. Nested lists indicate mutually exclusive stages to sample from during random-effects training.",
                                     "items": {
                                         "anyOf": [
                                             {
@@ -367,13 +367,13 @@
                             }
                         ],
                         "default": null,
-                        "description": "Colour preprocessing applied to validation data."
+                        "description": "Color preprocessing applied to validation data."
                     },
                     "test": {
                         "anyOf": [
                             {
                                 "pipeline": {
-                                    "description": "Ordered colour stages. Nested lists indicate mutually exclusive stages to sample from during random-effects training.",
+                                    "description": "Ordered color stages. Nested lists indicate mutually exclusive stages to sample from during random-effects training.",
                                     "items": {
                                         "anyOf": [
                                             {
@@ -437,7 +437,7 @@
                             }
                         ],
                         "default": null,
-                        "description": "Colour preprocessing applied to test data."
+                        "description": "Color preprocessing applied to test data."
                     }
                 },
                 {
@@ -445,7 +445,7 @@
                 }
             ],
             "default": null,
-            "description": "Required lowercase colour pipeline configuration for train, validation, and test."
+            "description": "Required lowercase color pipeline configuration for train, validation, and test."
         },
         "exposure": {
             "anyOf": [

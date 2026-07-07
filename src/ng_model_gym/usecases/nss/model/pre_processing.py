@@ -17,7 +17,7 @@ class PreProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
     @staticmethod
     def forward(
         ctx,
-        colour: torch.Tensor,
+        color: torch.Tensor,
         history: torch.Tensor,
         motion: torch.Tensor,
         depth: torch.Tensor,
@@ -36,7 +36,7 @@ class PreProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
         """Forward pass."""
 
         output_tensor, out_luma_derivative, out_depth_t = pre_process_v0_1_fwd(
-            colour=colour,
+            color=color,
             history=history,
             motion=motion,
             depth=depth,
@@ -54,7 +54,7 @@ class PreProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
         )
 
         ctx.save_for_backward(
-            colour,
+            color,
             history,
             motion,
             depth,
@@ -88,7 +88,7 @@ class PreProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
         """Backward pass."""
 
         (
-            colour,
+            color,
             history,
             motion,
             depth,
@@ -110,7 +110,7 @@ class PreProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
         shader_file = ctx.shader_file
 
         grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v0_1_bwd(
-            colour=colour,
+            color=color,
             history=history,
             motion=motion,
             depth=depth,
@@ -153,7 +153,7 @@ class PreProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
 
 @torch.library.custom_op("nss_v0_1::pre_process_v0_1_fwd", mutates_args=())
 def pre_process_v0_1_fwd(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
     depth: torch.Tensor,
@@ -174,8 +174,8 @@ def pre_process_v0_1_fwd(
     m = load_slang_module(shader_dir, shader_file)
 
     # Define output(s)
-    b, _, h, w = colour.shape
-    output_tensor = torch.zeros((b, 12, h, w), device=colour.device)
+    b, _, h, w = color.shape
+    output_tensor = torch.zeros((b, 12, h, w), device=color.device)
     out_luma_derivative = torch.zeros_like(derivative_tm1)
     out_depth_t = torch.zeros_like(depth)
 
@@ -187,7 +187,7 @@ def pre_process_v0_1_fwd(
         output_tensor.shape[3],
     ]
     kernel_with_args = m.pre_process_v0_1(
-        colour=colour,
+        color=color,
         history=history,
         motion=motion,
         depth=depth,
@@ -216,7 +216,7 @@ def pre_process_v0_1_fwd(
 # pylint: disable=unused-argument
 @torch.library.register_fake("nss_v0_1::pre_process_v0_1_fwd")
 def pre_process_v0_1_fwd_abstract(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
     depth: torch.Tensor,
@@ -235,8 +235,8 @@ def pre_process_v0_1_fwd_abstract(
     """Abstract forward pass."""
 
     # Define output(s)
-    b, _, h, w = colour.shape
-    output_tensor = torch.zeros((b, 12, h, w), device=colour.device)
+    b, _, h, w = color.shape
+    output_tensor = torch.zeros((b, 12, h, w), device=color.device)
     out_luma_derivative = torch.zeros_like(derivative_tm1)
     out_depth_t = torch.zeros_like(depth)
 
@@ -252,7 +252,7 @@ def pre_process_v0_1_fwd_abstract(
 
 @torch.library.custom_op("nss_v0_1::pre_process_v0_1_bwd", mutates_args=())
 def pre_process_v0_1_bwd(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
     depth: torch.Tensor,
@@ -289,7 +289,7 @@ def pre_process_v0_1_bwd(
     ]
 
     kernel_with_args = m.pre_process_v0_1.bwd(
-        colour=colour,
+        color=color,
         history=(history, grad_history),
         motion=motion,
         depth=depth,
@@ -318,7 +318,7 @@ def pre_process_v0_1_bwd(
 # pylint: disable=unused-argument
 @torch.library.register_fake("nss_v0_1::pre_process_v0_1_bwd")
 def pre_process_v0_1_bwd_abstract(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
     depth: torch.Tensor,
@@ -361,7 +361,7 @@ class PreProcessV0_1_ShaderAccurate(
     @staticmethod
     def forward(
         ctx,
-        colour: torch.Tensor,
+        color: torch.Tensor,
         history: torch.Tensor,
         motion: torch.Tensor,
         depth: torch.Tensor,
@@ -381,7 +381,7 @@ class PreProcessV0_1_ShaderAccurate(
         """Shader accurate forward pass"""
 
         output_tensor, out_luma_derivative, out_depth_t = pre_process_v0_1_sa_fwd(
-            colour=colour,
+            color=color,
             history=history,
             motion=motion,
             depth=depth,
@@ -400,7 +400,7 @@ class PreProcessV0_1_ShaderAccurate(
         )
 
         ctx.save_for_backward(
-            colour,
+            color,
             history,
             motion,
             depth,
@@ -435,7 +435,7 @@ class PreProcessV0_1_ShaderAccurate(
         """Shader accurate backward pass"""
 
         (
-            colour,
+            color,
             history,
             motion,
             depth,
@@ -458,7 +458,7 @@ class PreProcessV0_1_ShaderAccurate(
         shader_file = ctx.shader_file
 
         grad_history, grad_feedback_tm1, grad_dm_scale = pre_process_v0_1_sa_bwd(
-            colour=colour,
+            color=color,
             history=history,
             motion=motion,
             depth=depth,
@@ -503,7 +503,7 @@ class PreProcessV0_1_ShaderAccurate(
 
 @torch.library.custom_op("nss_v0_1::pre_process_v0_1_sa_fwd", mutates_args=())
 def pre_process_v0_1_sa_fwd(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
     depth: torch.Tensor,
@@ -525,8 +525,8 @@ def pre_process_v0_1_sa_fwd(
     m = load_slang_module(shader_dir, shader_file)
 
     # Define output(s)
-    b, _, h, w = colour.shape
-    output_tensor = torch.zeros((b, 12, h, w), device=colour.device)
+    b, _, h, w = color.shape
+    output_tensor = torch.zeros((b, 12, h, w), device=color.device)
     out_luma_derivative = torch.zeros_like(derivative_tm1)
     out_depth_t = torch.zeros_like(depth)
 
@@ -538,7 +538,7 @@ def pre_process_v0_1_sa_fwd(
         output_tensor.shape[3],
     ]
     kernel_with_args = m.pre_process_v0_1_shader_accurate(
-        colour=colour,
+        color=color,
         history=history,
         motion=motion,
         depth=depth,
@@ -568,7 +568,7 @@ def pre_process_v0_1_sa_fwd(
 # pylint: disable=unused-argument
 @torch.library.register_fake("nss_v0_1::pre_process_v0_1_sa_fwd")
 def pre_process_v0_1_fwd_sa_abstract(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
     depth: torch.Tensor,
@@ -588,8 +588,8 @@ def pre_process_v0_1_fwd_sa_abstract(
     """Shader accurate abstract forward pass"""
 
     # Define output(s)
-    b, _, h, w = colour.shape
-    output_tensor = torch.zeros((b, 12, h, w), device=colour.device)
+    b, _, h, w = color.shape
+    output_tensor = torch.zeros((b, 12, h, w), device=color.device)
     out_luma_derivative = torch.zeros_like(derivative_tm1)
     out_depth_t = torch.zeros_like(depth)
 
@@ -605,7 +605,7 @@ def pre_process_v0_1_fwd_sa_abstract(
 
 @torch.library.custom_op("nss_v0_1::pre_process_v0_1_sa_bwd", mutates_args=())
 def pre_process_v0_1_sa_bwd(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
     depth: torch.Tensor,
@@ -643,7 +643,7 @@ def pre_process_v0_1_sa_bwd(
     ]
 
     kernel_with_args = m.pre_process_v0_1_shader_accurate.bwd(
-        colour=colour,
+        color=color,
         history=(history, grad_history),
         motion=motion,
         depth=depth,
@@ -673,7 +673,7 @@ def pre_process_v0_1_sa_bwd(
 # pylint: disable=unused-argument
 @torch.library.register_fake("nss_v0_1::pre_process_v0_1_sa_bwd")
 def pre_process_v0_1_sa_bwd_abstract(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     motion: torch.Tensor,
     depth: torch.Tensor,

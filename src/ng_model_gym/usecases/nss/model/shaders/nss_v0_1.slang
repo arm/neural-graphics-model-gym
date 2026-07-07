@@ -152,7 +152,7 @@ int2 DecodeNearestOffset(TensorView<float> nearest_tm1_offset, int2 pixel, int b
 [CUDAKernel]
 [Differentiable]
 void pre_process_v0_1(
-    TensorView<float> colour,
+    TensorView<float> color,
     DiffTensorView history,
     TensorView<float> motion,
     TensorView<float> depth,
@@ -222,14 +222,14 @@ void pre_process_v0_1(
 
     float dis_mask_scale = length(vector) > 0.5f ? 1.0 : dm_scale.load(0);
     disocclusion_mask = disocclusion_mask * dis_mask_scale;
-    // Unjitter LR Colour
+    // Unjitter LR Color
     // ------------------------------------
-    float3 jittered_colour = float3(
-        no_diff(colour[uint4(idx.x, 0, idx.yz)]),
-        no_diff(colour[uint4(idx.x, 1, idx.yz)]),
-        no_diff(colour[uint4(idx.x, 2, idx.yz)]),
+    float3 jittered_color = float3(
+        no_diff(color[uint4(idx.x, 0, idx.yz)]),
+        no_diff(color[uint4(idx.x, 1, idx.yz)]),
+        no_diff(color[uint4(idx.x, 2, idx.yz)]),
     );
-    jittered_colour = tonemap_forward(jittered_colour * img_exposure, TonemapMode.Karis);
+    jittered_color = tonemap_forward(jittered_color * img_exposure, TonemapMode.Karis);
 
     // Warp History Buffer @ input resolution to Current Frame `t_tm1` -> `t`
     // ------------------------------------
@@ -245,8 +245,8 @@ void pre_process_v0_1(
     const float deriv_denom = rcp(pow(deriv_max, deriv_pow));
     const float d_alpha = 0.1;
 
-    // Unjittered colour in luma
-    float luma_t = luminance(jittered_colour);
+    // Unjittered color in luma
+    float luma_t = luminance(jittered_color);
 
     // Warp Previous derivative and luma
     float2 deriv_tm1 = sample_tensor(derivative_tm1, idx.x, uint2(0, 1), reproj_uv, false);
@@ -283,9 +283,9 @@ void pre_process_v0_1(
     output_tensor.storeOnce(uint4(idx.x, 0, idx.yz), lr_warped_history.r);
     output_tensor.storeOnce(uint4(idx.x, 1, idx.yz), lr_warped_history.g);
     output_tensor.storeOnce(uint4(idx.x, 2, idx.yz), lr_warped_history.b);
-    output_tensor.storeOnce(uint4(idx.x, 3, idx.yz), jittered_colour.r);
-    output_tensor.storeOnce(uint4(idx.x, 4, idx.yz), jittered_colour.g);
-    output_tensor.storeOnce(uint4(idx.x, 5, idx.yz), jittered_colour.b);
+    output_tensor.storeOnce(uint4(idx.x, 3, idx.yz), jittered_color.r);
+    output_tensor.storeOnce(uint4(idx.x, 4, idx.yz), jittered_color.g);
+    output_tensor.storeOnce(uint4(idx.x, 5, idx.yz), jittered_color.b);
     output_tensor.storeOnce(uint4(idx.x, 6, idx.yz), disocclusion_mask);
     output_tensor.storeOnce(uint4(idx.x, 7, idx.yz), feedback.r);
     output_tensor.storeOnce(uint4(idx.x, 8, idx.yz), feedback.g);
@@ -343,7 +343,7 @@ public void simulate_r11g11b10_fakeq_bwd(
 [CUDAKernel]
 [Differentiable]
 void post_process_v0_1_shader_accurate(
-    TensorView<float> colour,
+    TensorView<float> color,
     DiffTensorView history,
     DiffTensorView t_kpn_params,
     DiffTensorView temporal_params,
@@ -389,7 +389,7 @@ void post_process_v0_1_shader_accurate(
     // Thread location
     uint tId = (cudaThreadIdx() + cudaBlockIdx() * cudaBlockDim()).x;
     uint3 size = tensor_size(output).xzw;
-    uint3 lr_size = tensor_size(colour).xzw;
+    uint3 lr_size = tensor_size(color).xzw;
     uint3 idx = tensor_idx(tId, size);
     if (any(idx >= size)) return;
 
@@ -401,7 +401,7 @@ void post_process_v0_1_shader_accurate(
     int idx_mod = no_diff(idx_modulo[0]);
 
     // constants
-    uint2 colour_size = tensor_size(colour).zw;
+    uint2 color_size = tensor_size(color).zw;
     uint2 output_size = size.yz;
 
     // Indexes
@@ -450,32 +450,32 @@ void post_process_v0_1_shader_accurate(
     );
 
     float4 tap1 = float4(
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 0, tap_loc1))) * img_exposure),
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 1, tap_loc1))) * img_exposure),
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 2, tap_loc1))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 0, tap_loc1))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 1, tap_loc1))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 2, tap_loc1))) * img_exposure),
         1.0f
     );
     float4 tap2 = float4(
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 0, tap_loc2))) * img_exposure),
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 1, tap_loc2))) * img_exposure),
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 2, tap_loc2))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 0, tap_loc2))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 1, tap_loc2))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 2, tap_loc2))) * img_exposure),
         1.0f
     );
     float4 tap3 = float4(
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 0, tap_loc3))) * img_exposure),
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 1, tap_loc3))) * img_exposure),
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 2, tap_loc3))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 0, tap_loc3))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 1, tap_loc3))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 2, tap_loc3))) * img_exposure),
         1.0f
     );
     float4 tap4 = float4(
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 0, tap_loc4))) * img_exposure),
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 1, tap_loc4))) * img_exposure),
-        MaxHalf(no_diff(colour.load(uint4(idx.x, 2, tap_loc4))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 0, tap_loc4))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 1, tap_loc4))) * img_exposure),
+        MaxHalf(no_diff(color.load(uint4(idx.x, 2, tap_loc4))) * img_exposure),
         1.0f
     );
 
     float mask = float(lut.dx.x == 0) * float(lut.dy.x == 0);
-    float3 colour_to_accum = tap1.rgb * mask;
+    float3 color_to_accum = tap1.rgb * mask;
 
     float4 accum = (
         (tap1 * kpn_weights.x) +
@@ -484,7 +484,7 @@ void post_process_v0_1_shader_accurate(
         (tap4 * kpn_weights.w)
     );
 
-    float3 filtered_colour = accum.rgb * rcp(accum.w);
+    float3 filtered_color = accum.rgb * rcp(accum.w);
 
 
     // Upsample Learnt Parameters
@@ -510,15 +510,15 @@ void post_process_v0_1_shader_accurate(
     float3 warped_history = MaxHalf(sample_tensor_catmull(history, idx.x, uint3(0, 1, 2), reproj_uv, true) * img_exposure);
 
     // Rectify History
-    float3 rectified = lerp(filtered_colour, warped_history, theta * onscreen);
+    float3 rectified = lerp(filtered_color, warped_history, theta * onscreen);
 
     // Accumulate in TM domain
     float3 rectified_tm = tonemap_forward(rectified, TonemapMode.Karis);
 
     // Accumulate the low resolution sample, if valid, for the current output pixel
     float learnt_masked_alpha = alpha * mask;
-    float3 colour_to_accum_tm = tonemap_forward(colour_to_accum, TonemapMode.Karis);
-    float3 accumulated = lerp(rectified_tm, colour_to_accum_tm, learnt_masked_alpha);
+    float3 color_to_accum_tm = tonemap_forward(color_to_accum, TonemapMode.Karis);
+    float3 accumulated = lerp(rectified_tm, color_to_accum_tm, learnt_masked_alpha);
 
     // Clamp Output to range that is accepted by invertible tonemapper i.e. `max_val < 1.0`
     const float max_rgb = 1.f - EPS;
@@ -532,7 +532,7 @@ void post_process_v0_1_shader_accurate(
     output.storeOnce(uint4(idx.x, 2, idx.yz), out_linear.b);
 
     // Only used for computing loss -> in inference we don't require this output
-    float3 filtered_to_write = filtered_colour * rcp(img_exposure);
+    float3 filtered_to_write = filtered_color * rcp(img_exposure);
     out_filtered.storeOnce(uint4(idx.x, 0, idx.yz), filtered_to_write.r);
     out_filtered.storeOnce(uint4(idx.x, 1, idx.yz), filtered_to_write.g);
     out_filtered.storeOnce(uint4(idx.x, 2, idx.yz), filtered_to_write.b);
@@ -542,7 +542,7 @@ void post_process_v0_1_shader_accurate(
 [CUDAKernel]
 [Differentiable]
 void post_process_v0_1(
-    TensorView<float> colour,
+    TensorView<float> color,
     DiffTensorView history,
     DiffTensorView t_kpn_params,
     DiffTensorView temporal_params,
@@ -579,7 +579,7 @@ void post_process_v0_1(
     int idx_mod = no_diff(idx_modulo[0]);
 
     // constants
-    uint2 colour_size = tensor_size(colour).zw;
+    uint2 color_size = tensor_size(color).zw;
     uint2 output_size = size.yz;
 
     // Indexes
@@ -591,7 +591,7 @@ void post_process_v0_1(
 
     // filtering
     float weight_sum = 0.f;
-    float3 filtered_colour = float3(0.f);
+    float3 filtered_color = float3(0.f);
     [ForceUnroll]
     for (int i = 0; i < kernel_sz; i++) {
         // Tap position within the 4x4 kernel window
@@ -606,11 +606,11 @@ void post_process_v0_1(
         );
 
         // Given the jittered coordinate load the corresponding low-res input
-        int2 lr_tap = clamp(int2(floor((tap + 0.5f) * rcp(scale))) + int2(tile.xy), 0, colour_size - 1);
-        float3 colour_tap = MaxHalf(float3(
-            no_diff(colour[uint4(idx.x, 0, lr_tap)]),
-            no_diff(colour[uint4(idx.x, 1, lr_tap)]),
-            no_diff(colour[uint4(idx.x, 2, lr_tap)]),
+        int2 lr_tap = clamp(int2(floor((tap + 0.5f) * rcp(scale))) + int2(tile.xy), 0, color_size - 1);
+        float3 color_tap = MaxHalf(float3(
+            no_diff(color[uint4(idx.x, 0, lr_tap)]),
+            no_diff(color[uint4(idx.x, 1, lr_tap)]),
+            no_diff(color[uint4(idx.x, 2, lr_tap)]),
         ) * img_exposure);
 
         // Load KPN Weight
@@ -620,10 +620,10 @@ void post_process_v0_1(
         weight *= tile.z;
 
         // accumulate
-        filtered_colour += colour_tap * weight;
+        filtered_color += color_tap * weight;
         weight_sum += weight;
     }
-    filtered_colour /= max(weight_sum, EPS);
+    filtered_color /= max(weight_sum, EPS);
 
     // Upsample Learnt Parameters
     float2 params = sample_tensor(temporal_params, idx.x, uint2(0, 1), uv);
@@ -638,7 +638,7 @@ void post_process_v0_1(
     float3 warped_history = MaxHalf(sample_tensor_catmull(history, idx.x, uint3(0, 1, 2), reproj_uv) * img_exposure);
 
     // Rectify History
-    float3 rectified = lerp(filtered_colour, warped_history, theta * onscreen);
+    float3 rectified = lerp(filtered_color, warped_history, theta * onscreen);
 
     // Accumulate in TM domain
     float3 rectified_tm = tonemap_forward(rectified, TonemapMode.Karis);
@@ -650,15 +650,15 @@ void post_process_v0_1(
         no_diff(offset_lut[uint4(idx.x, 1, tiled_idx)]),
         no_diff(offset_lut[uint4(idx.x, 2, tiled_idx)])
     );
-    int2 lr_tap = clamp(lr_coord + int2(tile.xy), 0, colour_size - 1);
-    float3 colour_to_accum = MaxHalf(float3(
-        no_diff(colour[uint4(idx.x, 0, lr_tap)]),
-        no_diff(colour[uint4(idx.x, 1, lr_tap)]),
-        no_diff(colour[uint4(idx.x, 2, lr_tap)]),
+    int2 lr_tap = clamp(lr_coord + int2(tile.xy), 0, color_size - 1);
+    float3 color_to_accum = MaxHalf(float3(
+        no_diff(color[uint4(idx.x, 0, lr_tap)]),
+        no_diff(color[uint4(idx.x, 1, lr_tap)]),
+        no_diff(color[uint4(idx.x, 2, lr_tap)]),
     ) * img_exposure);
     float learnt_masked_alpha = alpha * tile.z;
-    float3 colour_to_accum_tm = tonemap_forward(colour_to_accum, TonemapMode.Karis);
-    float3 accumulated = lerp(rectified_tm, colour_to_accum_tm, learnt_masked_alpha);
+    float3 color_to_accum_tm = tonemap_forward(color_to_accum, TonemapMode.Karis);
+    float3 accumulated = lerp(rectified_tm, color_to_accum_tm, learnt_masked_alpha);
 
     // Clamp Output to range that is accepted by invertible tonemapper i.e. `max_val < 1.0`
     const float max_rgb = 1.f - EPS;
@@ -671,7 +671,7 @@ void post_process_v0_1(
     output.storeOnce(uint4(idx.x, 2, idx.yz), out_linear.b);
 
     // Only used for computing loss -> in inference we don't require this output
-    float3 filtered_to_write = filtered_colour * rcp(img_exposure);
+    float3 filtered_to_write = filtered_color * rcp(img_exposure);
     out_filtered.storeOnce(uint4(idx.x, 0, idx.yz), filtered_to_write.r);
     out_filtered.storeOnce(uint4(idx.x, 1, idx.yz), filtered_to_write.g);
     out_filtered.storeOnce(uint4(idx.x, 2, idx.yz), filtered_to_write.b);
@@ -684,7 +684,7 @@ void post_process_v0_1(
 [CUDAKernel]
 [Differentiable]
 void pre_process_v0_1_shader_accurate(
-    TensorView<float> colour,
+    TensorView<float> color,
     DiffTensorView history,
     TensorView<float> motion,
     TensorView<float> depth,
@@ -763,14 +763,14 @@ void pre_process_v0_1_shader_accurate(
     float dis_mask_scale = dot(vector_pix, vector_pix) > (0.5f * 0.5f) ? 1.0 : dm_scale[0];
     disocclusion_mask = disocclusion_mask * dis_mask_scale;
 
-    // Unjitter LR Colour
+    // Unjitter LR Color
     // ------------------------------------
-    float3 jittered_colour = float3(
-        no_diff(colour[uint4(idx.x, 0, idx.yz)]),
-        no_diff(colour[uint4(idx.x, 1, idx.yz)]),
-        no_diff(colour[uint4(idx.x, 2, idx.yz)]),
+    float3 jittered_color = float3(
+        no_diff(color[uint4(idx.x, 0, idx.yz)]),
+        no_diff(color[uint4(idx.x, 1, idx.yz)]),
+        no_diff(color[uint4(idx.x, 2, idx.yz)]),
     );
-    jittered_colour = tonemap_forward(jittered_colour * img_exposure, TonemapMode.Karis);
+    jittered_color = tonemap_forward(jittered_color * img_exposure, TonemapMode.Karis);
 
     // Warp History Buffer @ input resolution to Current Frame `t_tm1` -> `t`
     // ------------------------------------
@@ -786,8 +786,8 @@ void pre_process_v0_1_shader_accurate(
     const float deriv_denom = rcp(pow(deriv_max, deriv_pow));
     const float d_alpha = 0.1;
 
-    // Unjittered colour in luma
-    float luma_t = luminance(jittered_colour);
+    // Unjittered color in luma
+    float luma_t = luminance(jittered_color);
 
     // Warp Previous derivative and luma
     float2 deriv_tm1 = sample_tensor(derivative_tm1, idx.x, uint2(0, 1), reproj_uv, true);
@@ -826,9 +826,9 @@ void pre_process_v0_1_shader_accurate(
     output_tensor.storeOnce(uint4(idx.x, 0, idx.yz), lr_warped_history.r);
     output_tensor.storeOnce(uint4(idx.x, 1, idx.yz), lr_warped_history.g);
     output_tensor.storeOnce(uint4(idx.x, 2, idx.yz), lr_warped_history.b);
-    output_tensor.storeOnce(uint4(idx.x, 3, idx.yz), jittered_colour.r);
-    output_tensor.storeOnce(uint4(idx.x, 4, idx.yz), jittered_colour.g);
-    output_tensor.storeOnce(uint4(idx.x, 5, idx.yz), jittered_colour.b);
+    output_tensor.storeOnce(uint4(idx.x, 3, idx.yz), jittered_color.r);
+    output_tensor.storeOnce(uint4(idx.x, 4, idx.yz), jittered_color.g);
+    output_tensor.storeOnce(uint4(idx.x, 5, idx.yz), jittered_color.b);
     output_tensor.storeOnce(uint4(idx.x, 6, idx.yz), disocclusion_mask);
     output_tensor.storeOnce(uint4(idx.x, 7, idx.yz), feedback.r);
     output_tensor.storeOnce(uint4(idx.x, 8, idx.yz), feedback.g);

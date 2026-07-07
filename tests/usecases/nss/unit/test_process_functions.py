@@ -15,7 +15,7 @@ class TestProcessFunctions(unittest.TestCase):
     def test_process_nss_data_output_shape(self):
         """Test output shape of process function"""
         batch_size = 16
-        colour_linear = torch.rand(batch_size, 3, 128, 128)
+        color_linear = torch.rand(batch_size, 3, 128, 128)
         depth = torch.rand(batch_size, 1, 128, 128)
         depth_params = torch.rand(batch_size, 4)
         exposure = torch.rand(batch_size, 1)
@@ -27,7 +27,7 @@ class TestProcessFunctions(unittest.TestCase):
         z_far = torch.rand(batch_size, 1)
 
         inputs = {
-            "colour_linear": colour_linear,
+            "colour_linear": color_linear,
             "depth": depth,
             "depth_params": depth_params,
             "exposure": exposure,

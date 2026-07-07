@@ -104,7 +104,7 @@ def apply_shape_augmentation(
     max_shape_size: int,
     max_displacement: int,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Stamp temporally consistent coloured shapes into the RGB triplet."""
+    """Stamp temporally consistent colored shapes into the RGB triplet."""
     channels, height, width = rgb_m1.shape
     rgb_m1 = rgb_m1.clone()
     rgb_t = rgb_t.clone()

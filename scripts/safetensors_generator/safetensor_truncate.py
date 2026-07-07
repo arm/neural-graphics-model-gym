@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: <text>Copyright 2025 Arm Limited and/or
+# SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
@@ -31,7 +31,7 @@ def truncate_safetensor_file(
         for feature in st_file.keys():
             feature_tensor = st_file.get_tensor(feature)
             # Safetensor file stores each feature frame stacked
-            # e.g colour_linear shape is [100, #, #, #]
+            # e.g color_linear shape is [100, #, #, #]
             if feature_tensor.ndim >= 1 and feature_tensor.shape[0] == st_frame_length:
                 # Slice the tensor to get the desired frame amount
                 out_tensors[feature] = st_file.get_slice(feature)[:desired_frames]

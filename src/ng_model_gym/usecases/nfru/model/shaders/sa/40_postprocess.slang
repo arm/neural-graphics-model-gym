@@ -18,7 +18,7 @@ import "../../../../common/model/shaders/tensor";
     X(TensorView<float>, in_rgb_p1),        \
     X(DiffTensorView,    in_params),        \
     X(no_diff float,     in_timestep),      \
-    X(DiffTensorView,    out_colour)       
+    X(DiffTensorView,    out_color)
 
 #define DECL(type, name) type name
 #define NAME_ONLY(_, name) name
@@ -29,8 +29,8 @@ struct Bindings {
     // inputs
     TensorView<float> _WarpedFlowTm1;
     TensorView<float> _WarpedMotionTp1;
-    TensorView<float> _ColourTm1;
-    TensorView<float> _ColourTp1;
+    TensorView<float> _ColorTm1;
+    TensorView<float> _ColorTp1;
     DiffTensorView    _ParamsTex;
 
     // outputs
@@ -59,13 +59,13 @@ Globals makeGlobals(POSTPROCESS_PARAMS(DECL), uint batch)
     // resources
     g.b._WarpedFlowTm1 = in_flow_t_f30_xx;
     g.b._WarpedMotionTp1 = in_mv_t_f30_m1;
-    g.b._ColourTm1 = in_rgb_m1;
-    g.b._ColourTp1 = in_rgb_p1;
+    g.b._ColorTm1 = in_rgb_m1;
+    g.b._ColorTp1 = in_rgb_p1;
     g.b._ParamsTex = in_params;
-    g.b._Output = out_colour;
+    g.b._Output = out_color;
 
     // tensor sizes
-    const int2 out_dims   = int2(tensor_size(out_colour).zw);
+    const int2 out_dims   = int2(tensor_size(out_color).zw);
 
     // push constants
     g.pc._OutputDims        = out_dims;
@@ -107,7 +107,7 @@ float4 Stable_Softmax(float4 tensor)
 public void postprocess(POSTPROCESS_PARAMS(DECL))
 {
     uint tId = (cudaThreadIdx() + cudaBlockIdx() * cudaBlockDim()).x;
-    uint3 size = tensor_size(out_colour).xzw;
+    uint3 size = tensor_size(out_color).xzw;
     uint3 idx = tensor_idx(tId, size);
 
     if (any(idx >= size)) return;
@@ -137,11 +137,11 @@ public void postprocess(POSTPROCESS_PARAMS(DECL))
     float2 uv_m1_flow = uv - float2(flow_t_f30_p1 * g.pc._Timestep);
     float2 uv_p1_flow = uv + float2(flow_t_f30_p1 * (1.0f-g.pc._Timestep));
 
-    // Warp colour using gather approach with warped vectors
-    float3 rgb_m1_warp_t_mv = float3(sample_tensor(g.b._ColourTm1, idx.x, uint3(0, 1, 2), uv_m1_mv).rgb);
-    float3 rgb_p1_warp_t_mv = float3(sample_tensor(g.b._ColourTp1, idx.x, uint3(0, 1, 2), uv_p1_mv).rgb);
-    float3 rgb_m1_warp_t_flow = float3(sample_tensor(g.b._ColourTm1, idx.x, uint3(0, 1, 2), uv_m1_flow).rgb);
-    float3 rgb_p1_warp_t_flow = float3(sample_tensor(g.b._ColourTp1, idx.x, uint3(0, 1, 2), uv_p1_flow).rgb);
+    // Warp color using gather approach with warped vectors
+    float3 rgb_m1_warp_t_mv = float3(sample_tensor(g.b._ColorTm1, idx.x, uint3(0, 1, 2), uv_m1_mv).rgb);
+    float3 rgb_p1_warp_t_mv = float3(sample_tensor(g.b._ColorTp1, idx.x, uint3(0, 1, 2), uv_p1_mv).rgb);
+    float3 rgb_m1_warp_t_flow = float3(sample_tensor(g.b._ColorTm1, idx.x, uint3(0, 1, 2), uv_m1_flow).rgb);
+    float3 rgb_p1_warp_t_flow = float3(sample_tensor(g.b._ColorTp1, idx.x, uint3(0, 1, 2), uv_p1_flow).rgb);
 
     // Softmax network output to get blending coeffs
     params = Stable_Softmax(params);

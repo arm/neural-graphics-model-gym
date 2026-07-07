@@ -38,7 +38,7 @@ inline bool IsOnScreen(int2 pos, int2 size)
 // Argument plumbing
 // ─────────────────────────────────────────────────────────────────────────────
 #define PREPROCESS_PARAMS(X)                    \
-    X(TensorView<float>, in_colour),            \
+    X(TensorView<float>, in_color),            \
     X(DiffTensorView,   in_history),            \
     X(TensorView<float>, in_motion),            \
     X(TensorView<float>, in_depth),             \
@@ -61,7 +61,7 @@ inline bool IsOnScreen(int2 pos, int2 size)
 
 
 struct Bindings {
-    TensorView<float> _ColourTex;
+    TensorView<float> _ColorTex;
     TensorView<float> _DepthTex;
     TensorView<float> _MotionVectorTex;
     DiffTensorView _HistoryTex;
@@ -118,7 +118,7 @@ Globals makeGlobals(PREPROCESS_PARAMS(DECL), uint batch)
 {
     Globals g;
 
-    g.b._ColourTex = in_colour;
+    g.b._ColorTex = in_color;
     g.b._DepthTex = in_depth;
     g.b._MotionVectorTex = in_motion;
     g.b._HistoryTex = in_history;
@@ -130,7 +130,7 @@ Globals makeGlobals(PREPROCESS_PARAMS(DECL), uint batch)
     g.b._DisocclusionMask = out_disocclusion_mask;
     g.b._NearestDepthOffset = out_nearest_depth_off;
 
-    const int2 low_res_size = int2(tensor_size(in_colour).zw);
+    const int2 low_res_size = int2(tensor_size(in_color).zw);
     const int2 process_size = int2(tensor_size(out_disocclusion_mask).zw);
     const int2 pad_res_size = int2(tensor_size(out_tensor).zw);
     const int2 depth_tm1_size = int2(tensor_size(in_depth_tm1).zw);
@@ -335,21 +335,21 @@ inline float2 LoadMotionAtPixel(Globals g, uint b, int2 pixel)
 
 
 [Differentiable]
-inline float3 LoadColourUnjittered(Globals g, uint b, float2 uv)
+inline float3 LoadColorUnjittered(Globals g, uint b, float2 uv)
 {
-    float3 c = sample_tensor(g.b._ColourTex, b, uint3(0, 1, 2), uv);
+    float3 c = sample_tensor(g.b._ColorTex, b, uint3(0, 1, 2), uv);
     return tonemap_forward(c * g.pc._Exposure.x, TonemapMode.Karis);
 }
 
 
 [Differentiable]
-inline float3 LoadColourForDerivativeAtPixel(Globals g, uint b, int2 pixel)
+inline float3 LoadColorForDerivativeAtPixel(Globals g, uint b, int2 pixel)
 {
     int2 sample_coord = ReflectIndex(pixel, g.pc._InputDims);
     float3 c = float3(
-        no_diff(g.b._ColourTex[uint4(b, 0, uint2(sample_coord))]),
-        no_diff(g.b._ColourTex[uint4(b, 1, uint2(sample_coord))]),
-        no_diff(g.b._ColourTex[uint4(b, 2, uint2(sample_coord))])
+        no_diff(g.b._ColorTex[uint4(b, 0, uint2(sample_coord))]),
+        no_diff(g.b._ColorTex[uint4(b, 1, uint2(sample_coord))]),
+        no_diff(g.b._ColorTex[uint4(b, 2, uint2(sample_coord))])
     );
     c = max(c * g.pc._Exposure.x, 0.0f);
     return sqrt(c);
@@ -574,14 +574,14 @@ inline float4 CalculateLumaDerivative(
     const float spatial_support_blend = 0.30f;      // Weight of current-frame spatial support vs. center temporal delta in the blended score.
 
     // Load current-frame color for this pixel and its axial neighbors in the
-    // derivative domain. `LoadColourForDerivativeAtPixel(...)` already applies
+    // derivative domain. `LoadColorForDerivativeAtPixel(...)` already applies
     // exposure and sqrt shaping, so the detector works on a compressed version
     // of the raw linear color rather than the main Karis-tonemapped path.
-    float3 ycocg_c = no_diff(RGBToYCoCg(LoadColourForDerivativeAtPixel(g, b, ref_coord)));
-    float3 ycocg_n = no_diff(RGBToYCoCg(LoadColourForDerivativeAtPixel(g, b, ref_coord + int2(0, -1))));
-    float3 ycocg_s = no_diff(RGBToYCoCg(LoadColourForDerivativeAtPixel(g, b, ref_coord + int2(0, 1))));
-    float3 ycocg_e = no_diff(RGBToYCoCg(LoadColourForDerivativeAtPixel(g, b, ref_coord + int2(1, 0))));
-    float3 ycocg_w = no_diff(RGBToYCoCg(LoadColourForDerivativeAtPixel(g, b, ref_coord + int2(-1, 0))));
+    float3 ycocg_c = no_diff(RGBToYCoCg(LoadColorForDerivativeAtPixel(g, b, ref_coord)));
+    float3 ycocg_n = no_diff(RGBToYCoCg(LoadColorForDerivativeAtPixel(g, b, ref_coord + int2(0, -1))));
+    float3 ycocg_s = no_diff(RGBToYCoCg(LoadColorForDerivativeAtPixel(g, b, ref_coord + int2(0, 1))));
+    float3 ycocg_e = no_diff(RGBToYCoCg(LoadColorForDerivativeAtPixel(g, b, ref_coord + int2(1, 0))));
+    float3 ycocg_w = no_diff(RGBToYCoCg(LoadColorForDerivativeAtPixel(g, b, ref_coord + int2(-1, 0))));
 
     // `d_center` is the actual temporal change: current center color against the
     // reprojected previous center color stored in history.
@@ -711,7 +711,7 @@ inline float4 CalculateLumaDerivative(
 
 [Differentiable]
 inline float4 CalculateLumaDerivative(
-    float3 unjittered_colour,
+    float3 unjittered_color,
     float4 deriv_tm1,
     float disocclusion_mask,
     out float instability)
@@ -719,7 +719,7 @@ inline float4 CalculateLumaDerivative(
     float deriv_max_pow_r = rcp(DERIV_MAX * sqrt(DERIV_MAX));
     float luma_tm1 = deriv_tm1.y;
     float luma_derivative_tm1 = deriv_tm1.x;
-    float luma_t = luminance(unjittered_colour);
+    float luma_t = luminance(unjittered_color);
 
     float luma_derivative_t = abs(luma_t - luma_tm1);
     float clipped = min(luma_derivative_t, DERIV_MAX);
@@ -747,7 +747,7 @@ inline void WriteToTensor(
     uint batch,
     uint2 coord,
     float3 history,
-    float3 colour,
+    float3 color,
     float motion_detector,
     float4 feedback,
     float luma_derivative)
@@ -755,9 +755,9 @@ inline void WriteToTensor(
     g.b._InputTensor.storeOnce(uint4(batch, 0, coord), history.r);
     g.b._InputTensor.storeOnce(uint4(batch, 1, coord), history.g);
     g.b._InputTensor.storeOnce(uint4(batch, 2, coord), history.b);
-    g.b._InputTensor.storeOnce(uint4(batch, 3, coord), colour.r);
-    g.b._InputTensor.storeOnce(uint4(batch, 4, coord), colour.g);
-    g.b._InputTensor.storeOnce(uint4(batch, 5, coord), colour.b);
+    g.b._InputTensor.storeOnce(uint4(batch, 3, coord), color.r);
+    g.b._InputTensor.storeOnce(uint4(batch, 4, coord), color.g);
+    g.b._InputTensor.storeOnce(uint4(batch, 5, coord), color.b);
     g.b._InputTensor.storeOnce(uint4(batch, 6, coord), motion_detector);
     g.b._InputTensor.storeOnce(uint4(batch, 7, coord), feedback.r);
     g.b._InputTensor.storeOnce(uint4(batch, 8, coord), feedback.g);
@@ -884,7 +884,7 @@ public void pre_process(PREPROCESS_PARAMS(DECL))
 #endif // NSS_PREPROCESS_HALF_RES_INPUT
 
     float disocclusion_mask = ComputeDisocclusion(g, idx.x, reproj_270p_uv, depth_dilated, inverted_depth);
-    float3 unjittered_colour = LoadColourUnjittered(g, idx.x, unjitter_uv);
+    float3 unjittered_color = LoadColorUnjittered(g, idx.x, unjitter_uv);
     float3 lr_warped_history = WarpHistory(g, idx.x, reproj_uv);
 
 #if NSS_PREPROCESS_HALF_RES_INPUT
@@ -896,12 +896,12 @@ public void pre_process(PREPROCESS_PARAMS(DECL))
 #if NSS_V1_LUMA_DERIVATIVE
     float4 luma = CalculateLumaDerivative(g, idx.x, ref_coord, deriv_tm1, disocclusion_mask, instability);
 #else
-    float4 luma = CalculateLumaDerivative(unjittered_colour, deriv_tm1, disocclusion_mask, instability);
+    float4 luma = CalculateLumaDerivative(unjittered_color, deriv_tm1, disocclusion_mask, instability);
 #endif // NSS_V1_LUMA_DERIVATIVE
     float4 feedback = WarpFeedback(g, idx.x, reproj_pad_uv, disocclusion_mask);
     float motion_detector = CalculateMotionDetector(motion, render_size);
 
-    WriteToTensor(g, idx.x, idx.yz, lr_warped_history, unjittered_colour, motion_detector, feedback, instability);
+    WriteToTensor(g, idx.x, idx.yz, lr_warped_history, unjittered_color, motion_detector, feedback, instability);
 
     if (any(idx.yz >= process_size)) return;
     WriteLumaDerivative(g, idx.x, idx.yz, luma);

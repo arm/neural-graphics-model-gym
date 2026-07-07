@@ -1,5 +1,5 @@
 {
-    "config_schema_version": "7",
+    "config_schema_version": "8",
     "model": {
         "name": "NSS",
         "model_source": "prebuilt",

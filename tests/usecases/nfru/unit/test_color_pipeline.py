@@ -6,16 +6,16 @@ import unittest
 
 import torch
 
-from ng_model_gym.usecases.nfru.utils.colour_pipeline import build_colour_pipeline
+from ng_model_gym.usecases.nfru.utils.color_pipeline import build_color_pipeline
 from ng_model_gym.usecases.nfru.utils.constants import _REC709_LUMA_WEIGHTS
 
 
-class TestColourPipeline(unittest.TestCase):
-    """Tests for NFRU colour-pipeline exposure handling."""
+class TestColorPipeline(unittest.TestCase):
+    """Tests for NFRU color-pipeline exposure handling."""
 
     def test_auto_exposure_supports_batched_nchw_tensors(self) -> None:
         """Auto exposure should compute a per-sample scalar for batched model inputs."""
-        pipeline = build_colour_pipeline(
+        pipeline = build_color_pipeline(
             {
                 "pipeline": [],
                 "exposure": "auto",
@@ -54,7 +54,7 @@ class TestColourPipeline(unittest.TestCase):
 
     def test_auto_exposure_clamps_zero_luminance(self) -> None:
         """Auto exposure should stay finite for black frames."""
-        pipeline = build_colour_pipeline(
+        pipeline = build_color_pipeline(
             {
                 "pipeline": [],
                 "exposure": "auto",

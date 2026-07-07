@@ -2,7 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
-"""Colour-pipeline builders for NFRU preprocessing and augmentation."""
+"""Color-pipeline builders for NFRU preprocessing and augmentation."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any, Callable, Dict, List, Optional, Union
 import torch
 
 from ng_model_gym.usecases.nfru.utils.autoexposure import KeyValueAE
-from ng_model_gym.usecases.nfru.utils.colour_grading import _COLOUR_GRADING_REGISTRY
+from ng_model_gym.usecases.nfru.utils.color_grading import _COLOR_GRADING_REGISTRY
 from ng_model_gym.usecases.nfru.utils.constants import (
     _HALF_FLOAT_MAX,
     _RANDOM_CONTRAST_STRENGTH_RANGE,
@@ -24,12 +24,12 @@ from ng_model_gym.usecases.nfru.utils.tonemapping import _TONEMAP_REGISTRY
 # Stage lookup spans both tonemapping and post-tonemap grading operators.
 _COMBINED_REGISTRY: Dict[str, Callable] = {
     **_TONEMAP_REGISTRY,
-    **_COLOUR_GRADING_REGISTRY,
+    **_COLOR_GRADING_REGISTRY,
 }
 
 
-class ColourPipeline:
-    """Apply exposure and ordered colour stages to linear RGB inputs.
+class ColorPipeline:
+    """Apply exposure and ordered color stages to linear RGB inputs.
 
     Exposure can be supplied in three ways:
     - ``"auto"`` uses key-value auto-exposure.
@@ -92,7 +92,7 @@ class ColourPipeline:
         return rgb
 
 
-class RandomEffectsPipeline(ColourPipeline):
+class RandomEffectsPipeline(ColorPipeline):
     """Pipeline variant that resamples stage groups and numeric ranges per batch.
 
     Each pipeline group contributes exactly one stage when ``resample_effects`` is
@@ -232,8 +232,8 @@ def _parse_random_pipeline(
     return stage_groups
 
 
-def build_colour_pipeline(colour_config: Any) -> ColourPipeline:
-    """Build a colour pipeline from config.
+def build_color_pipeline(color_config: Any) -> ColorPipeline:
+    """Build a color pipeline from config.
 
     Expected config keys:
     - ``pipeline``: ordered stage list, where nested lists request random choice.
@@ -242,13 +242,13 @@ def build_colour_pipeline(colour_config: Any) -> ColourPipeline:
       key-value auto exposure.
 
     Returns ``RandomEffectsPipeline`` when the config contains random stage groups
-    or an exposure range; otherwise returns ``ColourPipeline``.
+    or an exposure range; otherwise returns ``ColorPipeline``.
     """
-    exposure = colour_config["exposure"]
-    auto_exposure_key_value = colour_config["auto_exposure_key_value"]
-    auto_exposure_variance = colour_config["auto_exposure_variance"]
+    exposure = color_config["exposure"]
+    auto_exposure_key_value = color_config["auto_exposure_key_value"]
+    auto_exposure_variance = color_config["auto_exposure_variance"]
 
-    pipeline_cfg = colour_config.get("pipeline", [])
+    pipeline_cfg = color_config.get("pipeline", [])
     # Nested stage groups or ranged exposure opt into per-batch resampling.
     randomisation_requested = any(isinstance(item, list) for item in pipeline_cfg) or (
         isinstance(exposure, (list, tuple)) and len(exposure) == 2
@@ -263,7 +263,7 @@ def build_colour_pipeline(colour_config: Any) -> ColourPipeline:
             auto_exposure_variance=auto_exposure_variance,
         )
 
-    return ColourPipeline(
+    return ColorPipeline(
         pipeline_stages=_parse_pipeline(pipeline_cfg),
         exposure=exposure,
         auto_exposure_key_value=auto_exposure_key_value,

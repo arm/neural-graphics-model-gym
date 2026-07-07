@@ -27,7 +27,7 @@ from ng_model_gym.core.utils.enum_definitions import (
 
 # pylint: disable=line-too-long
 
-CONFIG_SCHEMA_VERSION = "7"
+CONFIG_SCHEMA_VERSION = "8"
 
 # Pydantic models representing the configuration file structure.
 # For fields which are not core to all model types (e.g. recurrent_samples),
@@ -82,24 +82,24 @@ class Paths(PydanticConfigModel):
     )
 
 
-ColourPipelineStage = Union[str, dict[str, Any]]
-ColourPipelineGroup = list[ColourPipelineStage]
-ColourPipelineConfig = list[Union[ColourPipelineStage, ColourPipelineGroup]]
-ColourExposureRange = Annotated[list[float], Field(min_length=2, max_length=2)]
-ColourExposureConfig = Union[float, Literal["auto"], ColourExposureRange]
+ColorPipelineStage = Union[str, dict[str, Any]]
+ColorPipelineGroup = list[ColorPipelineStage]
+ColorPipelineConfig = list[Union[ColorPipelineStage, ColorPipelineGroup]]
+ColorExposureRange = Annotated[list[float], Field(min_length=2, max_length=2)]
+ColorExposureConfig = Union[float, Literal["auto"], ColorExposureRange]
 
 
-class ColourPreprocessingSplitConfig(PydanticConfigModel):
-    """Per-split colour preprocessing config using lowercase user-facing keys."""
+class ColorPreprocessingSplitConfig(PydanticConfigModel):
+    """Per-split color preprocessing config using lowercase user-facing keys."""
 
-    pipeline: ColourPipelineConfig = Field(
+    pipeline: ColorPipelineConfig = Field(
         default_factory=list,
         description=(
-            "Ordered colour stages. Nested lists indicate mutually exclusive stages "
+            "Ordered color stages. Nested lists indicate mutually exclusive stages "
             "to sample from during random-effects training."
         ),
     )
-    exposure: ColourExposureConfig = Field(
+    exposure: ColorExposureConfig = Field(
         default=2.0,
         description='Fixed exposure, "auto", or a two-item range for resampling.',
     )
@@ -113,17 +113,17 @@ class ColourPreprocessingSplitConfig(PydanticConfigModel):
     )
 
 
-class ColourPreprocessingConfig(PydanticConfigModel):
-    """Per-split colour preprocessing for NFRU datasets."""
+class ColorPreprocessingConfig(PydanticConfigModel):
+    """Per-split color preprocessing for NFRU datasets."""
 
-    train: Optional[ColourPreprocessingSplitConfig] = Field(
-        default=None, description="Colour preprocessing applied to training data."
+    train: Optional[ColorPreprocessingSplitConfig] = Field(
+        default=None, description="Color preprocessing applied to training data."
     )
-    validation: Optional[ColourPreprocessingSplitConfig] = Field(
-        default=None, description="Colour preprocessing applied to validation data."
+    validation: Optional[ColorPreprocessingSplitConfig] = Field(
+        default=None, description="Color preprocessing applied to validation data."
     )
-    test: Optional[ColourPreprocessingSplitConfig] = Field(
-        default=None, description="Colour preprocessing applied to test data."
+    test: Optional[ColorPreprocessingSplitConfig] = Field(
+        default=None, description="Color preprocessing applied to test data."
     )
 
 
@@ -297,10 +297,10 @@ class Dataset(PydanticConfigModel):
     name: str = Field(description="Dataset name")
     version: Optional[str] = Field(description="Dataset version", default=None)
     path: Paths
-    colour_preprocessing: Optional[ColourPreprocessingConfig] = Field(
+    color_preprocessing: Optional[ColorPreprocessingConfig] = Field(
         default=None,
         description=(
-            "Required lowercase colour pipeline configuration for train, "
+            "Required lowercase color pipeline configuration for train, "
             "validation, and test."
         ),
     )
@@ -574,30 +574,30 @@ class ConfigModel(PydanticConfigModel):
     )  # Hidden from user. Internal param.
 
     @model_validator(mode="after")
-    def _validate_nfru_colour_preprocessing(self):
-        """Require explicit colour-preprocessing config for NFRU v1."""
+    def _validate_nfru_color_preprocessing(self):
+        """Require explicit color-preprocessing config for NFRU v1."""
         if getattr(self.model, "name", None) != "nfru":
             return self
 
-        colour_preprocessing = self.dataset.colour_preprocessing
-        if colour_preprocessing is None:
+        color_preprocessing = self.dataset.color_preprocessing
+        if color_preprocessing is None:
             raise PydanticCustomError(
-                "NFRUColourPreprocessingRequired",
-                "NFRU requires dataset.colour_preprocessing.train, "
-                "dataset.colour_preprocessing.validation, and "
-                "dataset.colour_preprocessing.test.",
+                "NFRUColorPreprocessingRequired",
+                "NFRU requires dataset.color_preprocessing.train, "
+                "dataset.color_preprocessing.validation, and "
+                "dataset.color_preprocessing.test.",
             )
 
         required_splits = ("train", "validation", "test")
         missing_or_invalid_splits = [
             split
             for split in required_splits
-            if getattr(colour_preprocessing, split, None) is None
+            if getattr(color_preprocessing, split, None) is None
         ]
         if missing_or_invalid_splits:
             raise PydanticCustomError(
-                "NFRUColourPreprocessingMissingSplit",
-                "NFRU dataset.colour_preprocessing must define object configurations for "
+                "NFRUColorPreprocessingMissingSplit",
+                "NFRU dataset.color_preprocessing must define object configurations for "
                 "train, validation, and test. Missing or invalid splits: "
                 f"{', '.join(missing_or_invalid_splits)}.",
             )

@@ -23,7 +23,7 @@ class TestPostProcess(BaseGPUMemoryTest):
         self.batch_size = 4
         self.scale = 2.0
 
-        self.colour = torch.rand(self.batch_size, 3, 64, 64, device=self.device)
+        self.color = torch.rand(self.batch_size, 3, 64, 64, device=self.device)
         self.history = torch.rand(self.batch_size, 3, 128, 128, device=self.device)
         self.kpn_params = torch.rand(self.batch_size, 9, 128, 128, device=self.device)
         self.temporal_params = torch.rand(
@@ -50,7 +50,7 @@ class TestPostProcess(BaseGPUMemoryTest):
         """Test that the output shape matches the history shape."""
 
         output, output_filtered = PostProcessV0_1.apply(
-            self.colour,
+            self.color,
             self.history,
             self.kpn_params,
             self.temporal_params,
@@ -71,7 +71,7 @@ class TestPostProcess(BaseGPUMemoryTest):
         """Test that the output shape matches the history shape."""
 
         output, output_filtered = PostProcessV0_1_ShaderAccurate.apply(
-            self.colour,
+            self.color,
             self.history,
             self.kpn_params,
             self.temporal_params,
@@ -98,7 +98,7 @@ class TestPostProcess(BaseGPUMemoryTest):
         self.temporal_params.requires_grad_()
 
         output, _ = PostProcessV0_1.apply(
-            self.colour,
+            self.color,
             self.history,
             self.kpn_params,
             self.temporal_params,
@@ -128,7 +128,7 @@ class TestPostProcess(BaseGPUMemoryTest):
         self.temporal_params.requires_grad_()
 
         output, _ = PostProcessV0_1_ShaderAccurate.apply(
-            self.colour,
+            self.color,
             self.history,
             self.kpn_params,
             self.temporal_params,

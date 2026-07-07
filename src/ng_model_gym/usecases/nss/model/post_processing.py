@@ -18,7 +18,7 @@ class PostProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
     @staticmethod
     def forward(
         ctx,
-        colour: torch.Tensor,
+        color: torch.Tensor,
         history: torch.Tensor,
         t_kpn_params: torch.Tensor,
         temporal_params: torch.Tensor,
@@ -34,7 +34,7 @@ class PostProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
         """Forward pass"""
 
         output, out_filtered = post_process_v0_1_fwd(
-            colour,
+            color,
             history,
             t_kpn_params,
             temporal_params,
@@ -49,7 +49,7 @@ class PostProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
         )
 
         ctx.save_for_backward(
-            colour,
+            color,
             history,
             t_kpn_params,
             temporal_params,
@@ -75,7 +75,7 @@ class PostProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
         """Backward pass"""
 
         (
-            colour,
+            color,
             history,
             t_kpn_params,
             temporal_params,
@@ -97,7 +97,7 @@ class PostProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
             grad_t_kpn_params,
             grad_temporal_params,
         ) = post_process_v0_1_bwd(
-            colour,
+            color,
             history,
             t_kpn_params,
             temporal_params,
@@ -131,7 +131,7 @@ class PostProcessV0_1(torch.autograd.Function):  # pylint: disable=invalid-name
 
 @torch.library.custom_op("nss_v0_1::post_process_v0_1_fwd", mutates_args=())
 def post_process_v0_1_fwd(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
     temporal_params: torch.Tensor,
@@ -154,7 +154,7 @@ def post_process_v0_1_fwd(
     block_sz = 512
     dispatch_size = [output.shape[0], output.shape[2], output.shape[3]]
     kernel_with_args = m.post_process_v0_1(
-        colour=colour,
+        color=color,
         history=history,
         t_kpn_params=t_kpn_params,
         temporal_params=temporal_params,
@@ -179,7 +179,7 @@ def post_process_v0_1_fwd(
 # pylint: disable=unused-argument
 @torch.library.register_fake("nss_v0_1::post_process_v0_1_fwd")
 def post_process_v0_1_fwd_abstract(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
     temporal_params: torch.Tensor,
@@ -202,7 +202,7 @@ def post_process_v0_1_fwd_abstract(
 
 @torch.library.custom_op("nss_v0_1::post_process_v0_1_bwd", mutates_args=())
 def post_process_v0_1_bwd(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
     temporal_params: torch.Tensor,
@@ -229,7 +229,7 @@ def post_process_v0_1_bwd(
     dispatch_size = [output[0].shape[0], output[0].shape[2], output[0].shape[3]]
 
     kernel_with_args = m.post_process_v0_1.bwd(
-        colour=colour,
+        color=color,
         history=(history, grad_history),
         t_kpn_params=(t_kpn_params, grad_t_kpn_params),
         temporal_params=(temporal_params, grad_temporal_params),
@@ -258,7 +258,7 @@ def post_process_v0_1_bwd(
 # pylint: disable=unused-argument
 @torch.library.register_fake("nss_v0_1::post_process_v0_1_bwd")
 def post_process_v0_1_bwd_abstract(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
     temporal_params: torch.Tensor,
@@ -293,7 +293,7 @@ class PostProcessV0_1_ShaderAccurate(
     @staticmethod
     def forward(
         ctx,
-        colour: torch.Tensor,
+        color: torch.Tensor,
         history: torch.Tensor,
         t_kpn_params: torch.Tensor,
         temporal_params: torch.Tensor,
@@ -310,7 +310,7 @@ class PostProcessV0_1_ShaderAccurate(
         """Shader accurate forward pass"""
 
         output, out_filtered = post_process_v0_1_sa_fwd(
-            colour,
+            color,
             history,
             t_kpn_params,
             temporal_params,
@@ -326,7 +326,7 @@ class PostProcessV0_1_ShaderAccurate(
         )
 
         ctx.save_for_backward(
-            colour,
+            color,
             history,
             t_kpn_params,
             temporal_params,
@@ -352,7 +352,7 @@ class PostProcessV0_1_ShaderAccurate(
     ) -> List[torch.Tensor]:
         """Shader accurate backward pass"""
         (
-            colour,
+            color,
             history,
             t_kpn_params,
             temporal_params,
@@ -375,7 +375,7 @@ class PostProcessV0_1_ShaderAccurate(
             grad_t_kpn_params,
             grad_temporal_params,
         ) = post_process_v0_1_sa_bwd(
-            colour,
+            color,
             history,
             t_kpn_params,
             temporal_params,
@@ -411,7 +411,7 @@ class PostProcessV0_1_ShaderAccurate(
 
 @torch.library.custom_op("nss_v0_1::post_process_v0_1_sa_fwd", mutates_args=())
 def post_process_v0_1_sa_fwd(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
     temporal_params: torch.Tensor,
@@ -435,7 +435,7 @@ def post_process_v0_1_sa_fwd(
     block_sz = 512
     dispatch_size = [output.shape[0], output.shape[2], output.shape[3]]
     kernel_with_args = m.post_process_v0_1_shader_accurate(
-        colour=colour,
+        color=color,
         history=history,
         t_kpn_params=t_kpn_params,
         temporal_params=temporal_params,
@@ -461,7 +461,7 @@ def post_process_v0_1_sa_fwd(
 # pylint: disable=unused-argument
 @torch.library.register_fake("nss_v0_1::post_process_v0_1_sa_fwd")
 def post_process_v0_1_sa_fwd_abstract(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
     temporal_params: torch.Tensor,
@@ -485,7 +485,7 @@ def post_process_v0_1_sa_fwd_abstract(
 
 @torch.library.custom_op("nss_v0_1::post_process_v0_1_sa_bwd", mutates_args=())
 def post_process_v0_1_sa_bwd(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
     temporal_params: torch.Tensor,
@@ -513,7 +513,7 @@ def post_process_v0_1_sa_bwd(
     dispatch_size = [output[0].shape[0], output[0].shape[2], output[0].shape[3]]
 
     kernel_with_args = m.post_process_v0_1_shader_accurate.bwd(
-        colour=colour,
+        color=color,
         history=(history, grad_history),
         t_kpn_params=(t_kpn_params, grad_t_kpn_params),
         temporal_params=(temporal_params, grad_temporal_params),
@@ -543,7 +543,7 @@ def post_process_v0_1_sa_bwd(
 # pylint: disable=unused-argument
 @torch.library.register_fake("nss_v0_1::post_process_v0_1_sa_bwd")
 def post_process_v0_1_sa_bwd_abstract(
-    colour: torch.Tensor,
+    color: torch.Tensor,
     history: torch.Tensor,
     t_kpn_params: torch.Tensor,
     temporal_params: torch.Tensor,
