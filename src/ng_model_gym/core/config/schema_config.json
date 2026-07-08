@@ -73,7 +73,7 @@
                                 }
                             ],
                             "default": null,
-                            "description": "Whether NSS dataset loading normalizes low-resolution motion vectors. If omitted, NSS v0.1 keeps the legacy normalized default and NSS v1 preserves raw low-resolution motion."
+                            "description": "Whether NSS dataset loading normalizes low-resolution motion vectors. Only useful for NSS v0.1. NSS v1 requires this to be false or omitted (both mean the same)."
                         },
                         "gt_history_augmentation": {
                             "default": true,
@@ -274,11 +274,11 @@
                                         }
                                     ],
                                     "default": 2.0,
-                                    "description": "Fixed exposure, \"auto\", or a two-item range for resampling."
+                                    "description": "NFRU color-preprocessing exposure. Use a fixed log exposure, \"auto\" to compute exposure from average image brightness usingauto_exposure_key_value as the target brightness, or [min, max] torandomly resample exposure within that range."
                                 },
                                 "auto_exposure_key_value": {
                                     "default": 1.0,
-                                    "description": "Key value used when exposure is set to auto.",
+                                    "description": "Target brightness when exposure is set to \"auto\".",
                                     "type": "number"
                                 },
                                 "auto_exposure_variance": {
@@ -344,11 +344,11 @@
                                         }
                                     ],
                                     "default": 2.0,
-                                    "description": "Fixed exposure, \"auto\", or a two-item range for resampling."
+                                    "description": "NFRU color-preprocessing exposure. Use a fixed log exposure, \"auto\" to compute exposure from average image brightness usingauto_exposure_key_value as the target brightness, or [min, max] torandomly resample exposure within that range."
                                 },
                                 "auto_exposure_key_value": {
                                     "default": 1.0,
-                                    "description": "Key value used when exposure is set to auto.",
+                                    "description": "Target brightness when exposure is set to \"auto\".",
                                     "type": "number"
                                 },
                                 "auto_exposure_variance": {
@@ -414,11 +414,11 @@
                                         }
                                     ],
                                     "default": 2.0,
-                                    "description": "Fixed exposure, \"auto\", or a two-item range for resampling."
+                                    "description": "NFRU color-preprocessing exposure. Use a fixed log exposure, \"auto\" to compute exposure from average image brightness usingauto_exposure_key_value as the target brightness, or [min, max] torandomly resample exposure within that range."
                                 },
                                 "auto_exposure_key_value": {
                                     "default": 1.0,
-                                    "description": "Key value used when exposure is set to auto.",
+                                    "description": "Target brightness when exposure is set to \"auto\".",
                                     "type": "number"
                                 },
                                 "auto_exposure_variance": {
@@ -458,7 +458,7 @@
                 }
             ],
             "default": null,
-            "description": "Training dataset exposure value"
+            "description": "NSS dataset exposure override: a fixed log exposure value. Use null to read per-frame exposure from dataset metadata."
         },
         "tonemapper": {
             "anyOf": [
@@ -479,7 +479,7 @@
                 }
             ],
             "default": null,
-            "description": "Tonemapping method for dataset"
+            "description": "NSS dataset tonemapper method."
         },
         "health_check": {
             "description": "Run health check on given dataset. health_check() must be implemented in the Dataset.",
