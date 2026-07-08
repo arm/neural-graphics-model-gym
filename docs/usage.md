@@ -48,15 +48,7 @@ This command creates two files in the selected output directory (or your working
 - `schema_config.json`
   -  An accompanying file detailing all available configuration parameters
 
-Edit `<model-name>_config.json` to customize Model Gym's behavior.
-
-> *Example:*
->
-> The NSS model accepts a "quality" setting in its `nss_config.json` file. This provides different compromises between speed and output quality:
->
-> - "high": slowest but best-quality option. Checks the current frame and depth/motion detail more thoroughly, uses a larger image filter for clean-up, and samples previous frames more accurately.
-> - "low": fastest but lowest-quality option. Uses lighter current-frame and depth/motion checks, and samples previous frames less accurately. May show more flicker or motion artifacts around fine detail and moving objects.
-> - "mid": balanced option. Similar to “low” but samples previous frames more accurately, like “high”.
+Edit `<model-name>_config.json` to customize Model Gym's behavior. Typical configuration settings for NSS and NFRU are given in `docs/nfru/nfru_configuration.md` and `docs/nss/nss_configuration.md`.
 
 Use your custom configuration when invoking CLI commands by providing its path with the `--config-path` or `-c` flag, as shown below:
 
