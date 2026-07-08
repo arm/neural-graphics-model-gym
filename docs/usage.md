@@ -9,7 +9,7 @@ There are two ways to use Neural Graphics Model Gym after package installation:
 1. [Command line tool](#command-line)
 2. [Imported as a Python package](#python-package)
 
-### Command-line
+## Command-line
 
 To view all available flags and commands, run:
 
@@ -17,7 +17,7 @@ To view all available flags and commands, run:
 ng-model-gym --help
 ```
 
-#### Configuration file
+### Configuration file
 
 Neural Graphics Model Gym is configured using a JSON file containing all necessary model parameters and paths to datasets. This file is initialized from a configuration template appropriate to the model in use.
 
@@ -73,7 +73,7 @@ You can list all available configuration parameters in the CLI with the command 
 ng-model-gym config-options
 ```
 
-#### Training
+### Training
 > **The --config-path (or -c) flag is required when running this command.**
 
 To perform training and evaluation, run:
@@ -117,7 +117,7 @@ To see all available flags, run:
 ng-model-gym train --help
 ```
 
-#### Evaluation
+### Evaluation
 > **The --config-path flag is required when running this command.**
 
 To perform evaluation of a local trained model, run:
@@ -136,7 +136,7 @@ ng-model-gym -c <path/to/config/file> evaluate --model-path=@neural-super-sampli
 
 Ensure you select the correct `--model-type` to match the format of your saved model.
 
-#### Quantization aware training (QAT)
+### Quantization aware training (QAT)
 > **The --config-path flag is required when running this command.**
 
 Neural Graphics Model Gym supports quantization aware training.
@@ -182,7 +182,7 @@ To see all available flags, run:
 ng-model-gym qat --help
 ```
 
-#### Export
+### Export
 > **The --config-path flag is required when running this command.**
 
 Neural Graphics Model Gym uses ExecuTorch with the Arm backend to export models to a VGF file.
@@ -206,7 +206,7 @@ Ensure you select an export-type of `fp32`, `qat_int8`, or `ptq_int8` with `--ex
 
 The configuration file specifies the output directory for the generated VGF file.
 
-### Python package
+## Python package
 
 The second way to use Neural Graphics Model Gym is to import it as a Python package.
 
