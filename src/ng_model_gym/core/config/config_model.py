@@ -101,11 +101,16 @@ class ColorPreprocessingSplitConfig(PydanticConfigModel):
     )
     exposure: ColorExposureConfig = Field(
         default=2.0,
-        description='Fixed exposure, "auto", or a two-item range for resampling.',
+        description=(
+            'NFRU color-preprocessing exposure. Use a fixed log exposure, "auto" '
+            "to compute exposure from average image brightness using"
+            "auto_exposure_key_value as the target brightness, or [min, max] to"
+            "randomly resample exposure within that range."
+        ),
     )
     auto_exposure_key_value: float = Field(
         default=1.0,
-        description="Key value used when exposure is set to auto.",
+        description='Target brightness when exposure is set to "auto".',
     )
     auto_exposure_variance: Optional[dict[str, float]] = Field(
         default=None,
@@ -196,8 +201,8 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
         default=None,
         description=(
             "Whether NSS dataset loading normalizes low-resolution motion vectors. "
-            "If omitted, NSS v0.1 keeps the legacy normalized default and NSS v1 "
-            "preserves raw low-resolution motion."
+            "Only useful for NSS v0.1. NSS v1 requires this to be false or omitted "
+            "(both mean the same)."
         ),
     )
     gt_history_augmentation: bool = Field(
@@ -305,10 +310,16 @@ class Dataset(PydanticConfigModel):
         ),
     )
     exposure: Optional[float] = Field(
-        ge=0.0, description="Training dataset exposure value", default=None
+        ge=0.0,
+        description=(
+            "NSS dataset exposure override: a fixed log exposure value. "
+            "Use null to read per-frame exposure from dataset metadata."
+        ),
+        default=None,
     )
     tonemapper: Optional[ToneMapperMode] = Field(
-        description="Tonemapping method for dataset", default=None
+        description=("NSS dataset tonemapper method."),
+        default=None,
     )
     health_check: bool = Field(
         description="Run health check on given dataset. health_check() must be implemented in the Dataset."
