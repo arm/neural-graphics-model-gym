@@ -9,6 +9,7 @@ import torch
 from ng_model_gym.usecases.nss.model.model_v1 import NSSV1Model
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
+from tests.usecases.nss.unit.nss_v1_test_utils import create_nss_v1_test_params
 
 # pylint: disable=duplicate-code
 
@@ -83,10 +84,7 @@ class TestNSSV1PreprocessSmoke(BaseGPUMemoryTest):
 
     @staticmethod
     def _create_model(quality, device):
-        params = create_simple_params(usecase="nss_v1")
-        params.model.quality = quality
-        params.model.recurrent_samples = 2
-        params.train.batch_size = 2
+        params = create_nss_v1_test_params(quality)
         model = NSSV1Model(params).to(device)
         model.eval()
         return model
@@ -334,6 +332,7 @@ class TestNSSV1PreprocessGolden(BaseGPUMemoryTest):
     @staticmethod
     def _create_model(quality, device, scale=2.0):
         params = create_simple_params(usecase="nss_v1")
+        params.processing.shader_accurate = True
         params.model.quality = quality
         params.model.scale = scale
         params.model.recurrent_samples = 2

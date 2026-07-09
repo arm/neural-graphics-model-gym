@@ -38,6 +38,9 @@
 #ifndef NSS_V1_LUMA_DERIVATIVE
 #define NSS_V1_LUMA_DERIVATIVE 1
 #endif // !NSS_V1_LUMA_DERIVATIVE
+#ifndef NSS_V1_LOW_MID_LUMA_DERIVATIVE
+#define NSS_V1_LOW_MID_LUMA_DERIVATIVE (NSS_V1_LUMA_DERIVATIVE && (NSS_QUALITY_IS_LOW || NSS_QUALITY_IS_MID))
+#endif // !NSS_V1_LOW_MID_LUMA_DERIVATIVE
 #ifndef NSS_V1_SHARP_THETA
 #define NSS_V1_SHARP_THETA 1
 #endif // !NSS_V1_SHARP_THETA
@@ -49,5 +52,6 @@
 #endif // !SHADER_ACCURATE
 
 import "nss_v1/depth_scatter";
+import "nss_v1/disocclusion_lq";
 import "nss_v1/pre_process";
 import "nss_v1/post_process";

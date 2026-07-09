@@ -7,9 +7,14 @@ import unittest
 import torch
 
 from ng_model_gym.core.model import create_model
-from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from tests.base_gpu_test import BaseGPUMemoryTest
-from tests.testing_utils import create_simple_params
+from tests.usecases.nss.unit.nss_v1_test_utils import (
+    assert_tensors_close,
+    create_nss_v1_test_params,
+    load_nss_v1_golden,
+    NSS_V1_RECURRENT_OUTPUT_KEYS,
+    tensor_values,
+)
 
 _RTOL = 0.1
 _ATOL = 0.01
@@ -29,25 +34,16 @@ class TestNSSV1ModelGolden(BaseGPUMemoryTest):
             with self.subTest(quality=quality):
                 device = torch.device("cuda")
 
-                nss_golden_input = torch.load(
-                    "tests/usecases/nss/unit/data/nss_v1_golden_values/"
-                    + f"nss_v1_{quality}_nss_input_golden.pt",
-                    map_location=device,
-                    weights_only=True,
+                nss_golden_input = load_nss_v1_golden(
+                    f"nss_v1_{quality}_nss_input_golden.pt",
+                    device,
+                )
+                nss_golden_output = load_nss_v1_golden(
+                    f"nss_v1_{quality}_nss_output_golden.pt",
+                    device,
                 )
 
-                nss_golden_output = torch.load(
-                    "tests/usecases/nss/unit/data/nss_v1_golden_values/"
-                    + f"nss_v1_{quality}_nss_output_golden.pt",
-                    map_location=device,
-                    weights_only=True,
-                )
-
-                params = create_simple_params(usecase="nss_v1")
-                params.model_train_eval_mode = TrainEvalMode.FP32
-                params.model.quality = quality
-                params.model.recurrent_samples = 2
-                params.train.batch_size = 2
+                params = create_nss_v1_test_params(quality)
 
                 nss_model = create_model(params, device)
                 nss_model.get_neural_network().load_state_dict(
@@ -55,71 +51,14 @@ class TestNSSV1ModelGolden(BaseGPUMemoryTest):
                 )
                 nss_model.train()
 
-                model_input = {
-                    key: value
-                    for key, value in nss_golden_input.items()
-                    if isinstance(value, torch.Tensor)
-                }
+                model_input = tensor_values(nss_golden_input)
                 with torch.no_grad():
                     model_output = nss_model(model_input)
 
-                torch.testing.assert_close(
-                    model_output["output"],
-                    nss_golden_output["output"],
-                    rtol=_RTOL,
-                    atol=_ATOL,
-                )
-                torch.testing.assert_close(
-                    model_output["output_linear"],
-                    nss_golden_output["output_linear"],
-                    rtol=_RTOL,
-                    atol=_ATOL,
-                )
-                torch.testing.assert_close(
-                    model_output["out_filtered"],
-                    nss_golden_output["out_filtered"],
-                    rtol=_RTOL,
-                    atol=_ATOL,
-                )
-                torch.testing.assert_close(
-                    model_output["temporal_params"],
-                    nss_golden_output["temporal_params"],
-                    rtol=_RTOL,
-                    atol=_ATOL,
-                )
-                torch.testing.assert_close(
-                    model_output["disocclusion_mask"],
-                    nss_golden_output["disocclusion_mask"],
-                    rtol=_RTOL,
-                    atol=_ATOL,
-                )
-                torch.testing.assert_close(
-                    model_output["derivative"],
-                    nss_golden_output["derivative"],
-                    rtol=_RTOL,
-                    atol=_ATOL,
-                )
-                torch.testing.assert_close(
-                    model_output["ground_truth"],
-                    nss_golden_output["ground_truth"],
-                    rtol=_RTOL,
-                    atol=_ATOL,
-                )
-                torch.testing.assert_close(
-                    model_output["input_color"],
-                    nss_golden_output["input_color"],
-                    rtol=_RTOL,
-                    atol=_ATOL,
-                )
-                torch.testing.assert_close(
-                    model_output["reset_event"],
-                    nss_golden_output["reset_event"],
-                    rtol=_RTOL,
-                    atol=_ATOL,
-                )
-                torch.testing.assert_close(
-                    model_output["motion"],
-                    nss_golden_output["motion"],
+                assert_tensors_close(
+                    model_output,
+                    nss_golden_output,
+                    NSS_V1_RECURRENT_OUTPUT_KEYS,
                     rtol=_RTOL,
                     atol=_ATOL,
                 )

@@ -16,6 +16,9 @@ import "nss_common";
 #ifndef NSS_V1_LUMA_DERIVATIVE
 #define NSS_V1_LUMA_DERIVATIVE 1
 #endif // !NSS_V1_LUMA_DERIVATIVE
+#ifndef NSS_V1_LOW_MID_LUMA_DERIVATIVE
+#define NSS_V1_LOW_MID_LUMA_DERIVATIVE 0
+#endif // !NSS_V1_LOW_MID_LUMA_DERIVATIVE
 
 #define EPS 1e-7
 #define DEPTH_SCALE 2147483647.0
@@ -43,6 +46,7 @@ inline bool IsOnScreen(int2 pos, int2 size)
     X(TensorView<float>, in_motion),            \
     X(TensorView<float>, in_depth),             \
     X(TensorView<int>,  in_depth_tm1),          \
+    X(TensorView<float>, in_disocclusion_mask_lq),\
     X(TensorView<float>, in_jitter),            \
     X(TensorView<float>, in_jitter_tm1),        \
     X(DiffTensorView,   in_feedback_tm1),       \
@@ -67,6 +71,7 @@ struct Bindings {
     DiffTensorView _HistoryTex;
     DiffTensorView _FeedbackTensor;
     TensorView<int> _DepthTm1Tex;
+    TensorView<float> _DisocclusionMaskLQTex;
     TensorView<float> _LumaDerivTm1Tex;
 
     DiffTensorView _InputTensor;
@@ -124,6 +129,7 @@ Globals makeGlobals(PREPROCESS_PARAMS(DECL), uint batch)
     g.b._HistoryTex = in_history;
     g.b._FeedbackTensor = in_feedback_tm1;
     g.b._DepthTm1Tex = in_depth_tm1;
+    g.b._DisocclusionMaskLQTex = in_disocclusion_mask_lq;
     g.b._LumaDerivTm1Tex = in_derivative_tm1;
     g.b._InputTensor = out_tensor;
     g.b._LumaDeriv = out_luma_derivative;
@@ -198,40 +204,6 @@ int ReflectIndex(int coord, int size)
 int2 ReflectIndex(int2 coord, int2 size)
 {
     return int2(ReflectIndex(coord.x, size.x), ReflectIndex(coord.y, size.y));
-}
-
-
-[NoDiffThis]
-inline float GetViewSpaceDepth(float depth, float4 device_to_view)
-{
-    return device_to_view.y / (depth - device_to_view.x);
-}
-
-
-[NoDiffThis]
-inline float ComputeDepthClipRequiredSepScale(Globals g)
-{
-    float half_viewport = length(g.pc._RenderSize);
-    float resolution_factor = clamp(
-        half_viewport / length(float2(1080.0f, 1920.0f)),
-        0.0f,
-        1.0f
-    );
-    float3 corner_view_dir = float3(-g.pc._DeviceToViewDepth.z, g.pc._DeviceToViewDepth.w, 1.0f);
-    return 1.37e-05f * length(corner_view_dir) * half_viewport;
-}
-
-
-[NoDiffThis]
-inline float ComputeDepthClipPower(Globals g)
-{
-    float half_viewport = length(g.pc._RenderSize);
-    float resolution_factor = clamp(
-        half_viewport / length(float2(1080.0f, 1920.0f)),
-        0.0f,
-        1.0f
-    );
-    return 1.0f + 2.0f * resolution_factor;
 }
 
 
@@ -364,6 +336,65 @@ inline float3 WarpHistory(Globals g, uint b, float2 uv)
 }
 
 
+struct PreProcessLaneData
+{
+    int2 input_coord;
+    int2 nearest_offset;
+    float depth_dilated;
+    float2 motion;
+    float2 uv;
+    float2 reproj_uv;
+};
+
+
+[Differentiable]
+inline PreProcessLaneData BuildPreProcessLaneData(Globals g, uint b, int2 input_coord)
+{
+    PreProcessLaneData lane;
+    lane.input_coord = clamp(input_coord, int2(0), g.pc._InputDims - 1);
+    lane.uv = (float2(lane.input_coord) + 0.5f) * g.pc._InvInputDims;
+
+    uint2 nearest_coord = uint2(0);
+    lane.nearest_offset = int2(0);
+    lane.depth_dilated = 0.0f;
+    FindNearestDepth_4x4_FromPixel(
+        g,
+        b,
+        lane.input_coord,
+        lane.depth_dilated,
+        nearest_coord,
+        lane.nearest_offset
+    );
+
+    int2 nearest_input_coord = clamp(
+        lane.input_coord + lane.nearest_offset,
+        int2(0),
+        g.pc._InputDims - 1
+    );
+    lane.motion = LoadMotionAtPixel(g, b, nearest_input_coord);
+    lane.reproj_uv = lane.uv - (lane.motion * g.pc._InvInputDims);
+    return lane;
+}
+
+
+[Differentiable]
+inline float3 AverageWarpedHistory2x2(
+    Globals g,
+    uint b,
+    PreProcessLaneData lane_00,
+    PreProcessLaneData lane_10,
+    PreProcessLaneData lane_01,
+    PreProcessLaneData lane_11)
+{
+    return (
+        WarpHistory(g, b, lane_00.reproj_uv) +
+        WarpHistory(g, b, lane_10.reproj_uv) +
+        WarpHistory(g, b, lane_01.reproj_uv) +
+        WarpHistory(g, b, lane_11.reproj_uv)
+    ) * 0.25f;
+}
+
+
 [Differentiable]
 inline float4 WarpFeedback(Globals g, uint b, float2 uv, float disocclusion_mask)
 {
@@ -394,6 +425,13 @@ inline int2 ProcessCoordToInputCoord(Globals g, int2 process_coord)
 
 
 [NoDiffThis]
+inline int2 HalfResProcessCoordToBaseInputCoord(Globals g, int2 process_coord)
+{
+    return clamp(process_coord * 2, int2(0), g.pc._InputDims - 1);
+}
+
+
+[NoDiffThis]
 inline int2 InputCoordToDepthCoord(Globals g, int2 input_coord)
 {
     int2 depth_size = int2(round(rcp(max(g.pc._InvDepthTm1Dims, float2(EPS)))));
@@ -413,69 +451,22 @@ inline float2 MotionToPaddedUvDelta(Globals g, float2 motion)
 }
 
 
-[NoDiffThis]
-inline float2 DerivativeSampleUv(Globals g, float2 uv)
-{
-    return uv * (float2(g.pc._OutputDims) * g.pc._InvPaddedDims);
-}
-
-
 [Differentiable]
-inline float ComputeDisocclusion(Globals g, uint b, float2 reproj_270p_uv, float depth_dilated, bool inverted_depth)
+inline float ComputeDisocclusion(
+    Globals g,
+    uint b,
+    float2 disocclusion_uv,
+    float depth_dilated,
+    bool inverted_depth)
 {
 #if NSS_PREPROCESS_HALF_RES_INPUT
-    const float bilinear_weight_threshold = 0.1f;
-    int2 depth_tm1_size = int2(round(rcp(max(g.pc._InvDepthTm1Dims, float2(EPS)))));
-    float current_view_depth = no_diff(GetViewSpaceDepth(depth_dilated, g.pc._DeviceToViewDepth));
-    float2 sample_px = (reproj_270p_uv * float2(depth_tm1_size)) - 0.5f;
-    int2 sample_base = int2(floor(sample_px));
-    float2 sample_frac = frac(sample_px);
-
-    float w00 = (1.0f - sample_frac.x) * (1.0f - sample_frac.y);
-    float w10 = sample_frac.x * (1.0f - sample_frac.y);
-    float w01 = (1.0f - sample_frac.x) * sample_frac.y;
-    float w11 = sample_frac.x * sample_frac.y;
-
-    float required_sep_scale = no_diff(ComputeDepthClipRequiredSepScale(g));
-    float depth_clip_power = no_diff(ComputeDepthClipPower(g));
-
-    float fDepth = 0.0f;
-    float fWeightSum = 0.0f;
-
-    #define NSS_DEPTH_CLIP_SAMPLE_BLOCK(OFF_X, OFF_Y, WEIGHT)                                                  \
-        {                                                                                                       \
-            int2 sample_pos = sample_base + int2((OFF_X), (OFF_Y));                                            \
-            float weight = (WEIGHT);                                                                            \
-            bool onscreen = IsOnScreen(sample_pos, depth_tm1_size);                                             \
-            fWeightSum += onscreen ? 0.0f : weight;                                                             \
-            if (onscreen && weight > bilinear_weight_threshold) {                                               \
-                float prev_depth = float(no_diff(g.b._DepthTm1Tex[uint4(b, 0, uint2(sample_pos))])) * INV_DEPTH_SCALE; \
-                float prev_view_depth = no_diff(GetViewSpaceDepth(prev_depth, g.pc._DeviceToViewDepth));        \
-                float depth_diff = current_view_depth - prev_view_depth;                                        \
-                if (depth_diff > 0.0f) {                                                                        \
-                    float depth_threshold = max(current_view_depth, prev_view_depth);                           \
-                    float required_sep = required_sep_scale * depth_threshold;                                  \
-                    float sep_ratio = saturate(required_sep / max(depth_diff, EPS));                            \
-                    fDepth += pow(sep_ratio, depth_clip_power) * weight;                                        \
-                    fWeightSum += weight;                                                                       \
-                }                                                                                               \
-            }                                                                                                   \
-        }
-
-    NSS_DEPTH_CLIP_SAMPLE_BLOCK(0, 0, w00);
-    NSS_DEPTH_CLIP_SAMPLE_BLOCK(1, 0, w10);
-    NSS_DEPTH_CLIP_SAMPLE_BLOCK(0, 1, w01);
-    NSS_DEPTH_CLIP_SAMPLE_BLOCK(1, 1, w11);
-
-    #undef NSS_DEPTH_CLIP_SAMPLE_BLOCK
-
-    return fWeightSum > 0.0f ? saturate(1.0f - fDepth / fWeightSum) : 0.0f;
+    return sample_tensor(g.b._DisocclusionMaskLQTex, b, 0, disocclusion_uv);
 #else
     return no_diff(
         ComputeDepthClip(
             g.b._DepthTm1Tex,
             b,
-            reproj_270p_uv,
+            disocclusion_uv,
             float2(g.pc._RenderSize),
             inverted_depth,
             depth_dilated,
@@ -533,6 +524,8 @@ inline float4 CalculateLumaDerivative(
     Globals g,
     uint b,
     int2 ref_coord,
+    float2 derivative_uv,
+    float2 derivative_inv_dims,
     float4 deriv_tm1,
     float disocclusion_mask,
     out float instability)
@@ -572,6 +565,24 @@ inline float4 CalculateLumaDerivative(
     const float instability_fall_alpha = 0.05f;     // Slow decay alpha used when a hot pixel still has meaningful carry support.
     const float spatial_support_scale = 0.75f;      // Overall gain applied after blending temporal center delta with spatial support.
     const float spatial_support_blend = 0.30f;      // Weight of current-frame spatial support vs. center temporal delta in the blended score.
+#if NSS_V1_LOW_MID_LUMA_DERIVATIVE
+    const float moire_temporal_floor = 0.10f;       // Temporal moire max where high-range recall begins.
+    const float moire_temporal_ceil = 0.30f;        // Temporal moire max where high-range recall saturates.
+    const float moire_range_floor = 0.99f;          // Current-frame moire range where high-range recall begins.
+    const float moire_range_ceil = 0.999f;          // Current-frame moire range where high-range recall saturates.
+    const float moire_range_scale = 0.50f;          // Cap for high-range temporal moire recall.
+    const float flat_temporal_floor = 0.015f;       // Coherent flat-region temporal change where recall begins.
+    const float flat_temporal_ceil = 0.030f;        // Coherent flat-region temporal change where recall saturates.
+    const float flat_range_floor = 0.040f;          // Current-frame range where flat-region recall starts being rejected.
+    const float flat_range_ceil = 0.120f;           // Current-frame range where flat-region recall is fully rejected.
+    const float flat_blue_floor = 0.220f;           // Blue bias where flat-region recall begins.
+    const float flat_blue_ceil = 0.300f;            // Blue bias where flat-region recall saturates.
+    const float flat_luma_floor = 0.450f;           // Lower Y bound for the blue flat-region recall.
+    const float flat_luma_ceil = 1.050f;            // Upper Y bound for the blue flat-region recall.
+    const float flat_rgb_b_floor = 0.800f;          // Lower derivative-domain B bound for blue flat-region recall.
+    const float flat_rgb_b_ceil = 1.400f;           // Upper derivative-domain B bound for blue flat-region recall.
+    const float flat_flicker_scale = 0.75f;         // Cap for coherent blue flat-region flicker recall.
+#endif // NSS_V1_LOW_MID_LUMA_DERIVATIVE
 
     // Load current-frame color for this pixel and its axial neighbors in the
     // derivative domain. `LoadColorForDerivativeAtPixel(...)` already applies
@@ -598,6 +609,35 @@ inline float4 CalculateLumaDerivative(
     float spatial_delta_max = max(max(d_n, d_s), max(d_e, d_w));
     float prev_instability = deriv_tm1.w;
 
+#if NSS_V1_LOW_MID_LUMA_DERIVATIVE
+    // Some moire-sized shimmer moves across local preprocess pixels without
+    // producing enough same-pixel delta to pass the normal supported-instability
+    // entry path. Sample a wider axial cross and require both temporal change
+    // and very high current-frame moire range before igniting.
+    int2 temporal_input_step = max(int2(g.pc._InvScale + 0.5f), int2(1));
+    int2 moire_input_step = temporal_input_step;
+    float2 moire_derivative_step = derivative_inv_dims;
+    float3 ycocg_tn = no_diff(RGBToYCoCg(LoadColorForDerivativeAtPixel(g, b, ref_coord + int2(0, -moire_input_step.y))));
+    float3 ycocg_ts = no_diff(RGBToYCoCg(LoadColorForDerivativeAtPixel(g, b, ref_coord + int2(0, moire_input_step.y))));
+    float3 ycocg_te = no_diff(RGBToYCoCg(LoadColorForDerivativeAtPixel(g, b, ref_coord + int2(moire_input_step.x, 0))));
+    float3 ycocg_tw = no_diff(RGBToYCoCg(LoadColorForDerivativeAtPixel(g, b, ref_coord + int2(-moire_input_step.x, 0))));
+    float4 deriv_tm1_n = LoadDerivativeTm1(g, b, derivative_uv + float2(0.0f, -moire_derivative_step.y));
+    float4 deriv_tm1_s = LoadDerivativeTm1(g, b, derivative_uv + float2(0.0f, moire_derivative_step.y));
+    float4 deriv_tm1_e = LoadDerivativeTm1(g, b, derivative_uv + float2(moire_derivative_step.x, 0.0f));
+    float4 deriv_tm1_w = LoadDerivativeTm1(g, b, derivative_uv + float2(-moire_derivative_step.x, 0.0f));
+    float d_tn = ComputeDerivativeDelta(ycocg_tn, deriv_tm1_n.xyz, chroma_weight);
+    float d_ts = ComputeDerivativeDelta(ycocg_ts, deriv_tm1_s.xyz, chroma_weight);
+    float d_te = ComputeDerivativeDelta(ycocg_te, deriv_tm1_e.xyz, chroma_weight);
+    float d_tw = ComputeDerivativeDelta(ycocg_tw, deriv_tm1_w.xyz, chroma_weight);
+    float r_tn = ComputeDerivativeDelta(ycocg_c, ycocg_tn, chroma_weight);
+    float r_ts = ComputeDerivativeDelta(ycocg_c, ycocg_ts, chroma_weight);
+    float r_te = ComputeDerivativeDelta(ycocg_c, ycocg_te, chroma_weight);
+    float r_tw = ComputeDerivativeDelta(ycocg_c, ycocg_tw, chroma_weight);
+    float temporal_moire_max = max(max(d_center, d_tn), max(max(d_ts, d_te), d_tw));
+    float current_moire_range = max(max(r_tn, r_ts), max(r_te, r_tw));
+    float flat_temporal_min = min(min(d_center, d_tn), min(min(d_ts, d_te), d_tw));
+#endif // NSS_V1_LOW_MID_LUMA_DERIVATIVE
+
     // Build a robust spatial-support estimate from the current frame only:
     // average the 3 weakest axial deltas and throw away the single strongest.
     // This keeps one bad neighbor from dominating the support score.
@@ -611,6 +651,29 @@ inline float4 CalculateLumaDerivative(
     // only one reprojected history tap.
     float spatial_support = max(spatial_delta_sum - spatial_delta_max, 0.0f) * (1.0f / 3.0f);
     float supported_instability = lerp(d_center, spatial_support, spatial_support_blend) * spatial_support_scale;
+#if NSS_V1_LOW_MID_LUMA_DERIVATIVE
+    float moire_temporal_gate = saturate(
+        (temporal_moire_max - moire_temporal_floor) * rcp(moire_temporal_ceil - moire_temporal_floor)
+    );
+    float moire_range_entry = saturate(
+        (current_moire_range - moire_range_floor) * rcp(moire_range_ceil - moire_range_floor)
+    ) * moire_temporal_gate * moire_range_scale;
+    float flat_temporal_gate = saturate(
+        (flat_temporal_min - flat_temporal_floor) * rcp(flat_temporal_ceil - flat_temporal_floor)
+    );
+    float flat_range_gate = 1.0f - saturate(
+        (current_moire_range - flat_range_floor) * rcp(flat_range_ceil - flat_range_floor)
+    );
+    float flat_blue_bias = (-0.75f * ycocg_c.y) - (0.5f * ycocg_c.z);
+    float flat_blue_gate = saturate((flat_blue_bias - flat_blue_floor) * rcp(flat_blue_ceil - flat_blue_floor));
+    float flat_luma_gate = saturate((ycocg_c.x - flat_luma_floor) * rcp(0.10f))
+        * (1.0f - saturate((ycocg_c.x - flat_luma_ceil) * rcp(0.20f)));
+    float flat_rgb_b = ycocg_c.x - (0.5f * (ycocg_c.y + ycocg_c.z));
+    float flat_rgb_b_gate = saturate((flat_rgb_b - flat_rgb_b_floor) * rcp(0.10f))
+        * (1.0f - saturate((flat_rgb_b - flat_rgb_b_ceil) * rcp(0.20f)));
+    float flat_surface_gate = flat_range_gate * flat_blue_gate * flat_luma_gate * flat_rgb_b_gate;
+    float flat_flicker_entry = flat_temporal_gate * flat_surface_gate * flat_flicker_scale;
+#endif // NSS_V1_LOW_MID_LUMA_DERIVATIVE
 
     // Entry logic for new instability.
     //
@@ -626,6 +689,9 @@ inline float4 CalculateLumaDerivative(
     float excursion_score = saturate((recall_excursion - excursion_floor) * rcp(excursion_ceil - excursion_floor));
     float mean_gate = saturate((supported_instability - mean_gate_floor) * rcp(mean_gate_ceil - mean_gate_floor));
     float raw_entry = sqrt(recall_score) * sqrt(excursion_score) * mean_gate;
+#if NSS_V1_LOW_MID_LUMA_DERIVATIVE
+    raw_entry = max(raw_entry, max(moire_range_entry, flat_flicker_entry));
+#endif // NSS_V1_LOW_MID_LUMA_DERIVATIVE
 
     // Sustain / carry logic for pixels that were already hot.
     //
@@ -678,6 +744,9 @@ inline float4 CalculateLumaDerivative(
     float output_fall_alpha = 0.80f;
     float output_alpha = filtered_instability > prev_instability ? output_rise_alpha : output_fall_alpha;
     float visible_instability = lerp(prev_instability, filtered_instability, output_alpha);
+#if NSS_V1_LOW_MID_LUMA_DERIVATIVE
+    visible_instability = max(visible_instability, max(moire_range_entry, flat_flicker_entry));
+#endif // NSS_V1_LOW_MID_LUMA_DERIVATIVE
 
     // This is the candidate next history state for the normal valid-history
     // path: current YCoCg plus the newly filtered scalar instability.
@@ -878,23 +947,61 @@ public void pre_process(PREPROCESS_PARAMS(DECL))
     int2 depth_coord = InputCoordToDepthCoord(g, ref_coord);
     float2 reproj_270p_uv = ((float2(depth_coord) + 0.5f) * inv_depth_tm1_size) - (motion * inv_low_res_size);
     float2 reproj_pad_uv = uv_pad - no_diff(MotionToPaddedUvDelta(g, motion));
+    float2 disocclusion_uv = (float2(process_coord) + 0.5f) * g.pc._InvOutputDims;
 #else
     float2 reproj_270p_uv = ((float2(ref_coord / 2) + 0.5f) * inv_depth_tm1_size) - (motion * inv_low_res_size);
     float2 reproj_pad_uv = uv_pad - (motion * inv_size);
+    float2 disocclusion_uv = reproj_270p_uv;
 #endif // NSS_PREPROCESS_HALF_RES_INPUT
 
-    float disocclusion_mask = ComputeDisocclusion(g, idx.x, reproj_270p_uv, depth_dilated, inverted_depth);
+    float disocclusion_mask = ComputeDisocclusion(g, idx.x, disocclusion_uv, depth_dilated, inverted_depth);
     float3 unjittered_color = LoadColorUnjittered(g, idx.x, unjitter_uv);
-    float3 lr_warped_history = WarpHistory(g, idx.x, reproj_uv);
-
+    float3 lr_warped_history;
 #if NSS_PREPROCESS_HALF_RES_INPUT
-    float4 deriv_tm1 = LoadDerivativeTm1(g, idx.x, reproj_pad_uv);
+    {
+        int2 history_base_input_coord = HalfResProcessCoordToBaseInputCoord(g, process_coord);
+        int2 history_lane_input_00 = history_base_input_coord;
+        int2 history_lane_input_10 = min(history_base_input_coord + int2(1, 0), g.pc._InputDims - 1);
+        int2 history_lane_input_01 = min(history_base_input_coord + int2(0, 1), g.pc._InputDims - 1);
+        int2 history_lane_input_11 = min(history_base_input_coord + int2(1, 1), g.pc._InputDims - 1);
+
+        PreProcessLaneData history_lane_00 = BuildPreProcessLaneData(g, idx.x, history_lane_input_00);
+        PreProcessLaneData history_lane_10 = BuildPreProcessLaneData(g, idx.x, history_lane_input_10);
+        PreProcessLaneData history_lane_01 = BuildPreProcessLaneData(g, idx.x, history_lane_input_01);
+        PreProcessLaneData history_lane_11 = BuildPreProcessLaneData(g, idx.x, history_lane_input_11);
+        lr_warped_history = AverageWarpedHistory2x2(
+            g,
+            idx.x,
+            history_lane_00,
+            history_lane_10,
+            history_lane_01,
+            history_lane_11
+        );
+    }
 #else
-    float4 deriv_tm1 = LoadDerivativeTm1(g, idx.x, reproj_uv);
+    lr_warped_history = WarpHistory(g, idx.x, reproj_uv);
 #endif // NSS_PREPROCESS_HALF_RES_INPUT
+
+    float2 derivative_uv = reproj_uv;
+    float2 derivative_inv_dims = inv_low_res_size;
+#if NSS_PREPROCESS_HALF_RES_INPUT
+    derivative_uv = reproj_pad_uv;
+    derivative_inv_dims = inv_size;
+#endif // NSS_PREPROCESS_HALF_RES_INPUT
+
+    float4 deriv_tm1 = LoadDerivativeTm1(g, idx.x, derivative_uv);
     float instability = 0.0f;
 #if NSS_V1_LUMA_DERIVATIVE
-    float4 luma = CalculateLumaDerivative(g, idx.x, ref_coord, deriv_tm1, disocclusion_mask, instability);
+    float4 luma = CalculateLumaDerivative(
+        g,
+        idx.x,
+        ref_coord,
+        derivative_uv,
+        derivative_inv_dims,
+        deriv_tm1,
+        disocclusion_mask,
+        instability
+    );
 #else
     float4 luma = CalculateLumaDerivative(unjittered_color, deriv_tm1, disocclusion_mask, instability);
 #endif // NSS_V1_LUMA_DERIVATIVE

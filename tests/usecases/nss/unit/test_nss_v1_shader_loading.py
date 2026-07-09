@@ -16,15 +16,30 @@ class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
     _NSS_V1_SHADER_SOURCES = (
         _REPO_ROOT / "src/ng_model_gym/usecases/nss/model/shaders/nss_v1.slang",
         _REPO_ROOT
+        / "src/ng_model_gym/usecases/nss/model/shaders/nss_v1/disocclusion_lq.slang",
+        _REPO_ROOT
         / "src/ng_model_gym/usecases/nss/model/shaders/nss_v1/pre_process.slang",
         _REPO_ROOT
         / "src/ng_model_gym/usecases/nss/model/shaders/nss_v1/post_process.slang",
+    )
+    _NSS_V1_DEPTH_SCATTER_SOURCE = (
+        _REPO_ROOT
+        / "src/ng_model_gym/usecases/nss/model/shaders/nss_v1/depth_scatter.slang"
+    )
+    _NSS_V1_PREPROCESS_SOURCE = (
+        _REPO_ROOT
+        / "src/ng_model_gym/usecases/nss/model/shaders/nss_v1/pre_process.slang"
+    )
+    _NSS_V1_DISOCCLUSION_LQ_SOURCE = (
+        _REPO_ROOT
+        / "src/ng_model_gym/usecases/nss/model/shaders/nss_v1/disocclusion_lq.slang"
     )
 
     def assert_nss_v1_exports(self, module):
         """Check that the NSS v1 shader module exposes required entry points."""
 
         self.assertTrue(hasattr(module, "depth_scatter"))
+        self.assertTrue(hasattr(module, "lq_disocclusion_mask"))
         self.assertTrue(hasattr(module, "pre_process"))
         self.assertTrue(hasattr(module, "post_process"))
 
@@ -46,6 +61,7 @@ class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
             "nss_v1.slang",
             defines={
                 "NSS_V1_LUMA_DERIVATIVE": 1,
+                "NSS_V1_LOW_MID_LUMA_DERIVATIVE": 1,
                 "NSS_V1_SHARP_THETA": 1,
                 "SHADER_ACCURATE": True,
             },
@@ -53,11 +69,33 @@ class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
 
         self.assert_nss_v1_exports(module)
 
+    def test_nss_v1_depth_scatter_quarter_res_thresholds_unscaled_motion(self):
+        """Quarter-res depth scatter thresholds motion before scale conversion."""
+
+        source = self._NSS_V1_DEPTH_SCATTER_SOURCE.read_text()
+
+        self.assertIn("motion *= float(length(result.xy) > 0.1f);", source)
+        self.assertIn("motion *= float(length(motion) > 0.1f);", source)
+
+    def test_nss_v1_lq_disocclusion_thresholds_unscaled_motion(self):
+        """The LQ disocclusion pre-pass thresholds source-pixel motion."""
+
+        self.assertTrue(self._NSS_V1_DISOCCLUSION_LQ_SOURCE.exists())
+
+        source = self._NSS_V1_DISOCCLUSION_LQ_SOURCE.read_text()
+
+        self.assertIn("LqDisocclusionMotionToDepthPixels", source)
+        self.assertIn(
+            "length(motion_pixels) > LQ_DISOCCLUSION_MOTION_THRESHOLD",
+            source,
+        )
+
     def test_nss_v1_shader_sources_use_v1_macro_names_only(self):
         """The v1 shader port uses NSS v1 macro names only."""
 
         expected_versioned_macros = {
             "NSS_V1_LUMA_DERIVATIVE",
+            "NSS_V1_LOW_MID_LUMA_DERIVATIVE",
             "NSS_V1_SHARP_THETA",
         }
         found_versioned_macros = set()
@@ -82,16 +120,19 @@ class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
         define_cases = (
             {
                 "NSS_V1_LUMA_DERIVATIVE": 0,
+                "NSS_V1_LOW_MID_LUMA_DERIVATIVE": 0,
                 "NSS_V1_SHARP_THETA": 1,
                 "SHADER_ACCURATE": True,
             },
             {
                 "NSS_V1_LUMA_DERIVATIVE": 1,
+                "NSS_V1_LOW_MID_LUMA_DERIVATIVE": 1,
                 "NSS_V1_SHARP_THETA": 0,
                 "SHADER_ACCURATE": True,
             },
             {
                 "NSS_V1_LUMA_DERIVATIVE": 0,
+                "NSS_V1_LOW_MID_LUMA_DERIVATIVE": 0,
                 "NSS_V1_SHARP_THETA": 0,
                 "SHADER_ACCURATE": True,
             },
@@ -123,6 +164,7 @@ class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
                 "NSS_PACKED_NEAREST_OFFSET_QUAD": 1,
                 "FILTER_COLOR_KERNEL_SZ": 4,
                 "NSS_V1_LUMA_DERIVATIVE": 1,
+                "NSS_V1_LOW_MID_LUMA_DERIVATIVE": 1,
                 "NSS_V1_SHARP_THETA": 1,
                 "SHADER_ACCURATE": True,
             },
@@ -138,6 +180,7 @@ class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
                 "NSS_PACKED_NEAREST_OFFSET_QUAD": 1,
                 "FILTER_COLOR_KERNEL_SZ": 4,
                 "NSS_V1_LUMA_DERIVATIVE": 1,
+                "NSS_V1_LOW_MID_LUMA_DERIVATIVE": 1,
                 "NSS_V1_SHARP_THETA": 1,
                 "SHADER_ACCURATE": True,
             },
@@ -153,6 +196,7 @@ class TestNSSV1ShaderLoading(BaseGPUMemoryTest):
                 "NSS_PACKED_NEAREST_OFFSET_QUAD": 0,
                 "FILTER_COLOR_KERNEL_SZ": 9,
                 "NSS_V1_LUMA_DERIVATIVE": 1,
+                "NSS_V1_LOW_MID_LUMA_DERIVATIVE": 0,
                 "NSS_V1_SHARP_THETA": 1,
                 "SHADER_ACCURATE": True,
             },

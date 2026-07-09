@@ -155,7 +155,11 @@ public void depth_scatter(DEPTH_SCATTER_PARAMS(DECL))
 
     float depth_dilated = result.z;
     float2 motion = result.xy * g.pc._InvScale;
+#if NSS_DEPTH_SCATTER_QUARTER_RES_INPUT
+    motion *= float(length(result.xy) > 0.1f);
+#else
     motion *= float(length(motion) > 0.1f);
+#endif // NSS_DEPTH_SCATTER_QUARTER_RES_INPUT
     motion *= g.pc._InvOutputDims;
 
     float2 reproj_uv = uv - motion;

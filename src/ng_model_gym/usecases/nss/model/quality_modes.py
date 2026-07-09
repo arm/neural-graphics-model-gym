@@ -59,6 +59,7 @@ class NSSV1QualitySettings:
     use_sparse_filter_2x2: bool
     use_history_catmull: bool
     packed_nearest_offset_quad: bool
+    low_mid_luma_derivative: bool
     kpn_size: Tuple[int, int]
     filter_kernel_size: int
 
@@ -77,6 +78,7 @@ class NSSV1QualitySettings:
                 use_sparse_filter_2x2=True,
                 use_history_catmull=False,
                 packed_nearest_offset_quad=True,
+                low_mid_luma_derivative=True,
                 kpn_size=(4, 4),
                 filter_kernel_size=2,
             )
@@ -89,6 +91,7 @@ class NSSV1QualitySettings:
                 use_sparse_filter_2x2=True,
                 use_history_catmull=True,
                 packed_nearest_offset_quad=True,
+                low_mid_luma_derivative=True,
                 kpn_size=(4, 4),
                 filter_kernel_size=2,
             )
@@ -102,6 +105,7 @@ class NSSV1QualitySettings:
             use_sparse_filter_2x2=False,
             use_history_catmull=True,
             packed_nearest_offset_quad=False,
+            low_mid_luma_derivative=False,
             kpn_size=(6, 6),
             filter_kernel_size=3,
         )
