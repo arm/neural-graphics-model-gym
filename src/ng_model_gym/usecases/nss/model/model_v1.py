@@ -5,6 +5,7 @@
 """NSS v1 model for FP32 training and evaluation."""
 
 import logging
+import math
 from typing import Dict, Optional
 
 import torch
@@ -20,7 +21,10 @@ from ng_model_gym.core.model.graphics_utils import (
 from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.model.shaders.slang_utils import load_slang_module, SlangOutput
 from ng_model_gym.core.utils.torch_utils import clamp_tensor
-from ng_model_gym.usecases.nss.model.model_blocks_v1 import AutoEncoderV1
+from ng_model_gym.usecases.nss.model.model_blocks_v1 import (
+    AutoEncoderV1,
+    get_kpn_prune_indices,
+)
 from ng_model_gym.usecases.nss.model.quality_modes import (
     NSSV1Quality,
     NSSV1QualitySettings,
@@ -110,6 +114,11 @@ class NSSV1Model(BaseNGModel):
     def set_neural_network(self, neural_network: nn.Module) -> None:
         """Replace the trainable NSS v1 neural network."""
         self.autoencoder = neural_network
+
+    def load_state_dict(self, state_dict: Dict[str, torch.Tensor], strict: bool = True):
+        """Load model weights, pruning KPN params when needed."""
+        pruned_state_dict = self._maybe_prune_kpn_state_dict(state_dict)
+        return super().load_state_dict(pruned_state_dict, strict=strict)
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Run recurrent NSS v1 forward pass.
@@ -474,6 +483,84 @@ class NSSV1Model(BaseNGModel):
             )
 
         return inputs
+
+    @staticmethod
+    def _infer_square_kpn_size(kpn_channels: int) -> Optional[tuple[int, int]]:
+        """Infer a square KPN size (tuple) from its channel count."""
+
+        # Check for perfect square
+        side = int(math.sqrt(kpn_channels))
+
+        if side * side != kpn_channels:
+            return None
+
+        return (side, side)
+
+    def _maybe_prune_kpn_state_dict(self, state_dict: Dict[str, torch.Tensor]):
+        """Prune KPN weights when loading a larger checkpoint into a smaller model.
+        E.g. high quality checkpoint into a lower quality model."""
+
+        weight_key = "autoencoder.kpn_params.conv2d.weight"
+        bias_key = "autoencoder.kpn_params.conv2d.bias"
+
+        if weight_key not in state_dict:
+            return state_dict
+
+        # Source weight from checkpoint state dict
+        # Target weight from current model
+        source_weight = state_dict[weight_key]
+        target_weight = self.autoencoder.kpn_params.conv2d.weight
+
+        source_out_channels = source_weight.shape[0]
+        target_out_channels = target_weight.shape[0]
+
+        # Checkpoint's KPN size matches the model's KPN size - no pruning needed
+        if source_out_channels == target_out_channels:
+            return state_dict
+
+        # Checkpoint's KPN size is smaller than the model's KPN size - can't expand
+        if source_out_channels < target_out_channels:
+            raise ValueError(
+                "Cannot expand KPN weights from "
+                f"{source_out_channels} to {target_out_channels} channels."
+            )
+
+        # Get KPN grid size from channel count
+        source_size = self._infer_square_kpn_size(source_out_channels)
+        if source_size is None:
+            raise ValueError(
+                "Unable to infer source KPN size from "
+                f"{source_out_channels} channels."
+            )
+
+        target_size = self.kpn_size
+        indices = get_kpn_prune_indices(source_size, target_size)
+
+        if len(indices) != target_out_channels:
+            raise ValueError(
+                "KPN prune indices do not match target channels "
+                f"({len(indices)} != {target_out_channels})."
+            )
+
+        # Prune KPN weights and bias from checkpoint
+        pruned_state_dict = state_dict.copy()
+        index_tensor = torch.tensor(
+            indices, dtype=torch.long, device=source_weight.device
+        )
+        pruned_state_dict[weight_key] = source_weight.index_select(0, index_tensor)
+
+        if bias_key in pruned_state_dict:
+            bias = pruned_state_dict[bias_key]
+            bias_indices = index_tensor.to(device=bias.device)
+            pruned_state_dict[bias_key] = bias.index_select(0, bias_indices)
+
+        logger.info(
+            "Pruned KPN weights from %s to %s for NSS-v1 checkpoint load.",
+            source_size,
+            target_size,
+        )
+
+        return pruned_state_dict
 
     def update_buffers(
         self,
