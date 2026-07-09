@@ -197,6 +197,20 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
         default=None,
         description=("NSS v1 quality mode."),
     )
+    nss_v1_luma_derivative: bool = Field(
+        default=True,
+        description=(
+            "Enable NSS v1 luminance-derivative features in shader-accurate "
+            "preprocessing. Disable to evaluate the alternate runtime variant."
+        ),
+    )
+    nss_v1_sharp_theta: bool = Field(
+        default=True,
+        description=(
+            "Enable NSS v1 sharp-theta weighting in shader-accurate "
+            "postprocessing. Disable to evaluate the alternate runtime variant."
+        ),
+    )
     normalize_lr_motion: Optional[bool] = Field(
         default=None,
         description=(

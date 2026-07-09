@@ -72,6 +72,7 @@ TEST_PARAMS_PRESETS = {
                 "min_weight": 0.1,
             },
         },
+        "processing": {"shader_accurate": True},
     },
     "nfru": {
         "model": {
@@ -153,6 +154,9 @@ def create_simple_params(
     model = copy.deepcopy(usecase_preset["model"])
     dataset = copy.deepcopy(usecase_preset["dataset"])
     train_overrides = copy.deepcopy(usecase_preset.get("train", {}))
+    processing = copy.deepcopy(
+        usecase_preset.get("processing", {"shader_accurate": False})
+    )
 
     dataset["path"] = {
         "train": dataset_path,
@@ -166,7 +170,7 @@ def create_simple_params(
 
     default_params = {
         "model": model,
-        "processing": {"shader_accurate": False},
+        "processing": processing,
         "dataset": dataset,
         "output": {
             "dir": output_dir,

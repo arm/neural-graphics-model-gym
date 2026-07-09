@@ -85,6 +85,7 @@ class _NSSV1ModelTestMixin:
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.params = create_simple_params(usecase="nss_v1")
+        self.params.processing.shader_accurate = True
         self.params.model_train_eval_mode = TrainEvalMode.FP32
         self.params.train.batch_size = 2
         self.params.model.recurrent_samples = 4
@@ -145,6 +146,38 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         self.assertEqual(settings.scale, 2.0)
         self.assertIsInstance(settings.scale, float)
 
+    def test_config_defaults_nss_v1_runtime_shader_variants_to_enabled(self) -> None:
+        """NSS v1 config enables runtime shader variant toggles by default."""
+
+        settings = NSSModelSettings(
+            name="nss",
+            model_source="prebuilt",
+            version="1",
+            scale=2.0,
+            recurrent_samples=4,
+            quality="high",
+        )
+
+        self.assertTrue(settings.nss_v1_luma_derivative)
+        self.assertTrue(settings.nss_v1_sharp_theta)
+
+    def test_config_accepts_disabled_nss_v1_runtime_shader_variants(self) -> None:
+        """NSS v1 config accepts explicit disabled runtime shader variants."""
+
+        settings = NSSModelSettings(
+            name="nss",
+            model_source="prebuilt",
+            version="1",
+            scale=2.0,
+            recurrent_samples=4,
+            quality="high",
+            nss_v1_luma_derivative=False,
+            nss_v1_sharp_theta=False,
+        )
+
+        self.assertFalse(settings.nss_v1_luma_derivative)
+        self.assertFalse(settings.nss_v1_sharp_theta)
+
     def test_config_preserves_legacy_nss_scale_contract(self) -> None:
         """Legacy NSS configs remain restricted to the existing 2x scale."""
 
@@ -165,7 +198,18 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
 
         self.assertIsInstance(model, BaseNGModel)
         self.assertIsInstance(model.get_neural_network(), AutoEncoderV1)
-        self.assertTrue(model.shader_accurate)
+        self.assertEqual(model.motion_key, "motion_lr")
+
+    def test_shader_inaccurate_processing_is_rejected_for_nss_v1(self) -> None:
+        """NSS v1 requires shader-accurate processing config."""
+
+        self.params.processing.shader_accurate = False
+
+        with self.assertRaisesRegex(
+            ValueError,
+            "processing.shader_accurate=True",
+        ):
+            create_model(self.params, self.device)
 
     def test_normalized_lr_motion_is_rejected_for_nss_v1(self) -> None:
         """NSS v1 requires preserved low-resolution motion vectors."""
@@ -247,7 +291,27 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
     def test_low_mid_quality_non_multiple_lr_shapes_use_half_res_processing_with_padded_state(
         self,
     ) -> None:
-        """Low and mid quality process at half LR and pad recurrent temporal/derivative state."""
+        """Low/mid non-multiple LR shapes keep padded state and depth feedback."""
+
+        def process_coord_to_source_coord(
+            process_coord: int,
+            process_size: int,
+            source_size: int,
+        ) -> int:
+            return min(
+                int((process_coord + 0.5) * (source_size / process_size)),
+                source_size - 1,
+            )
+
+        def source_coord_to_depth_coord(
+            source_coord: int,
+            source_size: int,
+            depth_size: int,
+        ) -> int:
+            return min(
+                int(((source_coord + 0.5) / source_size) * depth_size),
+                depth_size - 1,
+            )
 
         for model_quality in ("low", "mid"):
             with self.subTest(model_quality=model_quality):
@@ -275,6 +339,29 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
                 self.assertEqual(hr_shape, (self.batch_size, 3, 260, 264))
                 self.assertEqual(pad_shape, (self.batch_size, 3, 72, 72))
                 self.assertEqual(depth_shape, (self.batch_size, 1, 32, 33))
+
+                spatial_axes = (
+                    ("height", input_shape[2], process_shape[2], depth_shape[2]),
+                    ("width", input_shape[3], process_shape[3], depth_shape[3]),
+                )
+                for axis_name, source_size, process_size, depth_size in spatial_axes:
+                    with self.subTest(axis=axis_name):
+                        last_source_coord = process_coord_to_source_coord(
+                            process_coord=process_size - 1,
+                            process_size=process_size,
+                            source_size=source_size,
+                        )
+                        depth_coord_for_last_source = source_coord_to_depth_coord(
+                            source_coord=last_source_coord,
+                            source_size=source_size,
+                            depth_size=depth_size,
+                        )
+
+                        self.assertEqual(last_source_coord, source_size - 1)
+                        self.assertEqual(
+                            depth_coord_for_last_source,
+                            depth_size - 1,
+                        )
                 self.assertEqual(
                     one_frame["temporal_params_tm1"].shape,
                     (self.batch_size, 4, 72, 72),
@@ -535,9 +622,13 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         Test Slang defines which should be used at all quality levels. Assume NSS v1.
         """
 
-        expected_filter_kernel_taps = {"low": 4, "mid": 4, "high": 9}
+        expected_quality_settings = {
+            "low": {"filter_kernel_taps": 4},
+            "mid": {"filter_kernel_taps": 4},
+            "high": {"filter_kernel_taps": 9},
+        }
 
-        for model_quality, expected_taps in expected_filter_kernel_taps.items():
+        for model_quality, expected_settings in expected_quality_settings.items():
             with self.subTest(model_quality=model_quality):
                 self.params.model.quality = model_quality
                 model = create_model(self.params, self.device)
@@ -551,9 +642,33 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
                 self.assertEqual(defines["NSS_QUALITY_LOW"], 0)
                 self.assertEqual(defines["NSS_QUALITY_MID"], 1)
                 self.assertEqual(defines["NSS_QUALITY_HIGH"], 2)
-                self.assertEqual(defines["FILTER_COLOR_KERNEL_SZ"], expected_taps)
+                self.assertEqual(
+                    defines["FILTER_COLOR_KERNEL_SZ"],
+                    expected_settings["filter_kernel_taps"],
+                )
                 self.assertEqual(defines["NSS_V1_LUMA_DERIVATIVE"], 1)
                 self.assertEqual(defines["NSS_V1_SHARP_THETA"], 1)
+                self.assertIs(defines["SHADER_ACCURATE"], True)
+
+    def test_slang_defines_can_disable_v1_runtime_shader_variants(self) -> None:
+        """NSS v1 config can disable both runtime shader variants."""
+
+        self.params.model.quality = "low"
+        self.params.model.nss_v1_luma_derivative = False
+        self.params.model.nss_v1_sharp_theta = False
+
+        model = create_model(self.params, self.device)
+        with patch(
+            "ng_model_gym.usecases.nss.model.model_v1.load_slang_module",
+            return_value=object(),
+        ) as load_module:
+            model._get_slang()
+
+        defines = load_module.call_args.kwargs["defines"]
+        self.assertEqual(defines["NSS_V1_LUMA_DERIVATIVE"], 0)
+        self.assertEqual(defines["NSS_V1_LOW_MID_LUMA_DERIVATIVE"], 0)
+        self.assertEqual(defines["NSS_V1_SHARP_THETA"], 0)
+        self.assertIs(defines["SHADER_ACCURATE"], True)
 
     def test_high_quality_slang_defines(self) -> None:
         """Test Slang defines which should be used for high quality."""
@@ -573,6 +688,8 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         self.assertEqual(defines["NSS_USE_SPARSE_2X2_FILTER"], False)
         self.assertEqual(defines["NSS_USE_HISTORY_CATMULL"], True)
         self.assertEqual(defines["NSS_PACKED_NEAREST_OFFSET_QUAD"], False)
+        self.assertEqual(defines["NSS_V1_LUMA_DERIVATIVE"], 1)
+        self.assertEqual(defines["NSS_V1_LOW_MID_LUMA_DERIVATIVE"], 0)
 
     def test_mid_quality_slang_defines(self) -> None:
         """Test Slang defines which should be used for mid quality."""
@@ -592,6 +709,8 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         self.assertEqual(defines["NSS_USE_SPARSE_2X2_FILTER"], True)
         self.assertEqual(defines["NSS_USE_HISTORY_CATMULL"], True)
         self.assertEqual(defines["NSS_PACKED_NEAREST_OFFSET_QUAD"], True)
+        self.assertEqual(defines["NSS_V1_LUMA_DERIVATIVE"], 1)
+        self.assertEqual(defines["NSS_V1_LOW_MID_LUMA_DERIVATIVE"], 1)
 
     def test_low_quality_slang_defines(self) -> None:
         """Test Slang defines which should be used for low quality."""
@@ -605,12 +724,14 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
             model._get_slang()
 
         defines = load_module.call_args.kwargs["defines"]
-        self.assertEqual(defines["NSS_QUALITY"], 0)  # 1 = "low"
+        self.assertEqual(defines["NSS_QUALITY"], 0)  # 0 = "low"
         self.assertEqual(defines["NSS_PREPROCESS_HALF_RES_INPUT"], True)
         self.assertEqual(defines["NSS_DEPTH_SCATTER_QUARTER_RES_INPUT"], True)
         self.assertEqual(defines["NSS_USE_SPARSE_2X2_FILTER"], True)
         self.assertEqual(defines["NSS_USE_HISTORY_CATMULL"], False)
         self.assertEqual(defines["NSS_PACKED_NEAREST_OFFSET_QUAD"], True)
+        self.assertEqual(defines["NSS_V1_LUMA_DERIVATIVE"], 1)
+        self.assertEqual(defines["NSS_V1_LOW_MID_LUMA_DERIVATIVE"], 1)
 
     def test_forward_uses_available_time_dimension(self) -> None:
         """NSS v1 does not index past the input recurrent dimension."""

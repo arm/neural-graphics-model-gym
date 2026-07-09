@@ -55,6 +55,8 @@ class NSSV1Model(BaseNGModel):
             raise TypeError(
                 "model section in parameter is not of type NSSModelSettings"
             )
+        if not self.params.processing.shader_accurate:
+            raise ValueError("NSS-v1 requires processing.shader_accurate=True.")
 
         self.quality = resolve_nss_v1_quality(self.params.model.quality)
         quality_settings = NSSV1QualitySettings.preset(self.quality)
@@ -72,7 +74,6 @@ class NSSV1Model(BaseNGModel):
 
         # NSS v1 training and evaluation configs use shader-accurate NSS with
         # low-resolution motion vectors.
-        self.shader_accurate = True
         self.slang_shader_dir = "ng_model_gym.usecases.nss.model.shaders"
         self.slang_shader_file = "nss_v1.slang"
         self.slang: Optional[object] = None
@@ -84,22 +85,21 @@ class NSSV1Model(BaseNGModel):
         self.use_sparse_filter_2x2 = quality_settings.use_sparse_filter_2x2
         self.use_history_catmull = quality_settings.use_history_catmull
         self.packed_nearest_offset_quad = quality_settings.packed_nearest_offset_quad
-        self.nss_v1_luma_derivative = True
-        self.nss_v1_sharp_theta = True
+        self.nss_v1_luma_derivative = bool(self.params.model.nss_v1_luma_derivative)
+        self.nss_v1_low_mid_luma_derivative = bool(
+            quality_settings.low_mid_luma_derivative and self.nss_v1_luma_derivative
+        )
+        self.nss_v1_sharp_theta = bool(self.params.model.nss_v1_sharp_theta)
         self.required_multiple = (8, 8)
         self.filter_kernel_size = quality_settings.filter_kernel_size
         self.filter_kernel_taps = self.filter_kernel_size * self.filter_kernel_size
-        self.effective_shader_accurate = (
-            self.shader_accurate or self.preprocess_half_res_input
-        )
-        if self.effective_shader_accurate and self.params.model.normalize_lr_motion:
+        if self.params.model.normalize_lr_motion:
             raise ValueError(
-                "NSS-v1 shader-accurate or half-resolution quality modes require "
-                "model.normalize_lr_motion=False to preserve low-resolution motion "
-                "vectors."
+                "NSS-v1 requires model.normalize_lr_motion=False to preserve "
+                "low-resolution motion vectors."
             )
 
-        self.motion_key = "motion_lr" if self.effective_shader_accurate else "motion"
+        self.motion_key = "motion_lr"
 
         self._lut_in_shape: Optional[tuple[int, int, int, int]] = None
         self._lut_out_shape: Optional[tuple[int, int, int, int]] = None
@@ -224,6 +224,25 @@ class NSSV1Model(BaseNGModel):
             dispatch_size=[depth_shape[0], depth_shape[2], depth_shape[3]],
         )
 
+        if self.preprocess_half_res_input and self.depth_scatter_quarter_res_input:
+            disocclusion_mask_lq = slang.lq_disocclusion_mask(
+                in_motion=preprocess_input[self.motion_key],
+                in_depth=preprocess_input["depth"],
+                in_depth_tm1=depth_tm1,
+                in_depth_params=preprocess_input["depth_params"],
+                in_render_size=preprocess_input["render_size"],
+                out_constructors={
+                    "out_disocclusion_mask": SlangOutput(
+                        shape=depth_shape,
+                        channel_dim=1,
+                        device=device,
+                    ),
+                },
+                dispatch_size=[depth_shape[0], depth_shape[2], depth_shape[3]],
+            )
+        else:
+            disocclusion_mask_lq = preprocess_input["depth"]
+
         derivative_shape = pad_shape if self.preprocess_half_res_input else input_shape
         nearest_offset_shape = (
             pad_shape if self.preprocess_half_res_input else process_shape
@@ -234,6 +253,7 @@ class NSSV1Model(BaseNGModel):
             "in_motion": preprocess_input[self.motion_key],
             "in_depth": preprocess_input["depth"],
             "in_depth_tm1": depth_tm1,
+            "in_disocclusion_mask_lq": disocclusion_mask_lq,
             "in_jitter": preprocess_input["jitter"],
             "in_jitter_tm1": preprocess_input["jitter_tm1"],
             "in_feedback_tm1": preprocess_input["temporal_params_tm1"],
@@ -695,10 +715,13 @@ class NSSV1Model(BaseNGModel):
                 "NSS_PACKED_NEAREST_OFFSET_QUAD": int(self.packed_nearest_offset_quad),
                 "FILTER_COLOR_KERNEL_SZ": int(self.filter_kernel_taps),
                 "NSS_V1_LUMA_DERIVATIVE": int(self.nss_v1_luma_derivative),
+                "NSS_V1_LOW_MID_LUMA_DERIVATIVE": int(
+                    self.nss_v1_low_mid_luma_derivative
+                ),
                 "NSS_V1_SHARP_THETA": int(self.nss_v1_sharp_theta),
+                # NSS v1 always uses the shader-accurate Slang variant at runtime.
+                "SHADER_ACCURATE": True,
             }
-            if self.effective_shader_accurate:
-                slang_defines["SHADER_ACCURATE"] = True
             self.slang = load_slang_module(
                 self.slang_shader_dir,
                 self.slang_shader_file,

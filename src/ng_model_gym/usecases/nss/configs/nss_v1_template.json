@@ -7,6 +7,8 @@
         "scale": 2.0,
         "recurrent_samples": 16,
         "quality": "high",
+        "nss_v1_luma_derivative": true,
+        "nss_v1_sharp_theta": true,
         "normalize_lr_motion": false,
         "gt_history_augmentation": true,
         "gt_history_augmentation_chance": 30.0

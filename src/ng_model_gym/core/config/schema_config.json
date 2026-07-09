@@ -63,6 +63,16 @@
                             "default": null,
                             "description": "NSS v1 quality mode."
                         },
+                        "nss_v1_luma_derivative": {
+                            "default": true,
+                            "description": "Enable NSS v1 luminance-derivative features in shader-accurate preprocessing. Disable to evaluate the alternate runtime variant.",
+                            "type": "boolean"
+                        },
+                        "nss_v1_sharp_theta": {
+                            "default": true,
+                            "description": "Enable NSS v1 sharp-theta weighting in shader-accurate postprocessing. Disable to evaluate the alternate runtime variant.",
+                            "type": "boolean"
+                        },
                         "normalize_lr_motion": {
                             "anyOf": [
                                 {

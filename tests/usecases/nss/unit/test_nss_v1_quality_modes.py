@@ -30,6 +30,7 @@ class TestNSSV1QualityModes(unittest.TestCase):
         self.assertFalse(settings.use_sparse_filter_2x2)
         self.assertTrue(settings.use_history_catmull)
         self.assertFalse(settings.packed_nearest_offset_quad)
+        self.assertFalse(settings.low_mid_luma_derivative)
         self.assertEqual(settings.kpn_size, (6, 6))
 
     def test_mid_quality_is_supported(self):
@@ -44,6 +45,7 @@ class TestNSSV1QualityModes(unittest.TestCase):
         self.assertTrue(settings.use_sparse_filter_2x2)
         self.assertTrue(settings.use_history_catmull)
         self.assertTrue(settings.packed_nearest_offset_quad)
+        self.assertTrue(settings.low_mid_luma_derivative)
         self.assertEqual(settings.kpn_size, (4, 4))
 
     def test_low_quality_is_supported(self):
@@ -58,6 +60,7 @@ class TestNSSV1QualityModes(unittest.TestCase):
         self.assertTrue(settings.use_sparse_filter_2x2)
         self.assertFalse(settings.use_history_catmull)
         self.assertTrue(settings.packed_nearest_offset_quad)
+        self.assertTrue(settings.low_mid_luma_derivative)
         self.assertEqual(settings.kpn_size, (4, 4))
 
     def test_unknown_quality_raises_value_error(self):

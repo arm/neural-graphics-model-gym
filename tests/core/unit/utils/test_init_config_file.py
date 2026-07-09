@@ -80,6 +80,8 @@ class TestGeneratingConfigFile(unittest.TestCase):
         self.assertEqual(config_path.name, "nss_config.json")
         self.assertEqual(config_data["model"]["version"], "1")
         self.assertEqual(config_data["model"]["quality"], "high")
+        self.assertTrue(config_data["model"]["nss_v1_luma_derivative"])
+        self.assertTrue(config_data["model"]["nss_v1_sharp_theta"])
         self.assertFalse(config_data["model"]["normalize_lr_motion"])
         self.assertTrue(config_data["model"]["gt_history_augmentation"])
         self.assertEqual(config_data["model"]["gt_history_augmentation_chance"], 30.0)
