@@ -76,6 +76,22 @@ class TinyModel(nn.Module):
         return None
 
 
+class TinyModelWithWeightsLoadHook(TinyModel):
+    """Tiny model that records weights-only checkpoint hook calls."""
+
+    def __init__(self):
+        super().__init__()
+        self.weights_seen_state_dict = None
+
+    def prepare_checkpoint_state_dict_for_weights_load(self, state_dict):
+        """Record weights-only hook input and return loadable weights."""
+        self.weights_seen_state_dict = state_dict
+        prepared = self.state_dict()
+        prepared["layer.weight"] = torch.full_like(prepared["layer.weight"], 0.7)
+        prepared["layer.bias"] = torch.full_like(prepared["layer.bias"], 0.8)
+        return prepared
+
+
 class TestTrainerMethods(unittest.TestCase):
     """Tests for Trainer class"""
 
@@ -339,6 +355,122 @@ class TestTrainerMethods(unittest.TestCase):
 
             # Check epoch after resuming from saved checkpoint is one after
             self.assertEqual(mock_resume_trainer.starting_epoch, 11)
+
+    def test_finetune_calls_weights_only_prepare_hook(self):
+        """Finetune should call optional weights-only preparation before load."""
+        model = TinyModelWithWeightsLoadHook()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir, "finetune.pt")
+            finetune_state = {
+                "layer.weight": torch.full((1, 1), -1.0),
+                "layer.bias": torch.full_like(model.state_dict()["layer.bias"], -2.0),
+            }
+            torch.save({"model_state_dict": finetune_state}, checkpoint_path)
+
+            trainer = Mock(spec=Trainer)
+            trainer.model = model
+            trainer.params = create_simple_params(usecase="nss-v1")
+            trainer.params.train.resume = None
+            trainer.params.train.finetune = checkpoint_path
+            trainer.params.model_train_eval_mode = TrainEvalMode.FP32
+            trainer.training_mode_params = trainer.params.train.fp32
+
+            Trainer._restore_model_weights(trainer)
+
+        self.assertTrue(
+            torch.equal(
+                model.weights_seen_state_dict["layer.weight"],
+                finetune_state["layer.weight"],
+            )
+        )
+        self.assertTrue(
+            torch.equal(
+                model.weights_seen_state_dict["layer.bias"],
+                finetune_state["layer.bias"],
+            )
+        )
+        self.assertTrue(
+            torch.equal(model.layer.weight.detach(), torch.full((1, 1), 0.7))
+        )
+        self.assertTrue(
+            torch.equal(
+                model.layer.bias.detach(),
+                torch.full_like(model.layer.bias.detach(), 0.8),
+            )
+        )
+
+    def test_qat_finetune_rejects_qat_checkpoint_before_prepare_hook(self):
+        """QAT finetune should reject QAT/int8 checkpoints before model hooks."""
+        marker_keys = (
+            "layer.activation_post_process_0.scale",
+            "layer.fake_quant_enabled",
+            "layer._param_constant0",
+        )
+
+        for marker_key in marker_keys:
+            with self.subTest(marker_key=marker_key):
+                model = TinyModelWithWeightsLoadHook()
+
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    checkpoint_path = Path(temp_dir, "qat-finetune.pt")
+                    qat_state = {
+                        "layer.weight": torch.full((1, 1), -1.0),
+                        "layer.bias": torch.full_like(
+                            model.state_dict()["layer.bias"],
+                            -2.0,
+                        ),
+                        marker_key: torch.ones(1),
+                    }
+                    torch.save({"model_state_dict": qat_state}, checkpoint_path)
+
+                    trainer = Mock(spec=Trainer)
+                    trainer.model = model
+                    trainer.params = create_simple_params(usecase="nss-v1")
+                    trainer.params.train.resume = None
+                    trainer.params.train.finetune = checkpoint_path
+                    trainer.params.model_train_eval_mode = TrainEvalMode.QAT_INT8
+                    trainer.training_mode_params = trainer.params.train.qat
+
+                    with self.assertRaisesRegex(
+                        ValueError,
+                        "QAT finetune only supports FP32 pretrained weights",
+                    ):
+                        Trainer._restore_model_weights(trainer)
+
+                self.assertIsNone(model.weights_seen_state_dict)
+
+    def test_qat_finetune_fp32_checkpoint_calls_weights_only_prepare_hook(self):
+        """QAT finetune should still allow FP32-shaped pretrained weights."""
+        model = TinyModelWithWeightsLoadHook()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir, "fp32-finetune.pt")
+            fp32_state = {
+                "layer.weight": torch.full((1, 1), -1.0),
+                "layer.bias": torch.full_like(model.state_dict()["layer.bias"], -2.0),
+            }
+            torch.save({"model_state_dict": fp32_state}, checkpoint_path)
+
+            trainer = Mock(spec=Trainer)
+            trainer.model = model
+            trainer.params = create_simple_params(usecase="nss-v1")
+            trainer.params.train.resume = None
+            trainer.params.train.finetune = checkpoint_path
+            trainer.params.model_train_eval_mode = TrainEvalMode.QAT_INT8
+            trainer.training_mode_params = trainer.params.train.qat
+
+            Trainer._restore_model_weights(trainer)
+
+        self.assertTrue(
+            torch.equal(
+                model.weights_seen_state_dict["layer.weight"],
+                fp32_state["layer.weight"],
+            )
+        )
+        self.assertTrue(
+            torch.equal(model.layer.weight.detach(), torch.full((1, 1), 0.7))
+        )
 
     def test_train_raises_when_forward_not_dict(self):
         """Trainer should raise TypeError if forward doesn't return a dict."""

@@ -172,13 +172,15 @@ To perform QAT without evaluation, run:
 ng-model-gym -c <path/to/config/file> qat --no-evaluate
 ```
 
-To load a local set of previously trained model weights and perform fine-tuning, run:
+To load a local set of previously trained FP32 model weights and perform QAT fine-tuning, run:
 
 ```bash
-ng-model-gym -c <path/to/config/file> qat --finetune path/to/pretrained_weights.pt
+ng-model-gym -c <path/to/config/file> qat --finetune path/to/pretrained_fp32_weights.pt
 ```
 
-To load a remote set of previously trained model weights and perform fine-tuning, run:
+`qat --finetune` does not accept QAT/int8 checkpoints as a command line arg. Only `qat --finetune` from an fp32 checkpoint is supported.
+
+To load a remote set of previously trained FP32 model weights and perform QAT fine-tuning, run:
 
 ```bash
 ng-model-gym -c <path/to/config/file> qat --finetune @<repo_name>/<filename>

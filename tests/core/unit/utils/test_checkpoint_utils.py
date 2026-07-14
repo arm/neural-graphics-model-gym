@@ -6,8 +6,45 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
-from ng_model_gym.core.model.checkpoint_loader import latest_checkpoint_in_dir
+import torch
+from torch import nn
+
+from ng_model_gym.core.model.base_ng_model import BaseNGModel
+from ng_model_gym.core.model.checkpoint_loader import (
+    latest_checkpoint_in_dir,
+    load_checkpoint,
+)
+from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
+from tests.testing_utils import create_simple_params
+
+
+class _HookedCheckpointModel(BaseNGModel):
+    """Small model that records weights-only checkpoint preparation."""
+
+    def __init__(self, params):
+        super().__init__(params)
+        self.network = nn.Linear(1, 1)
+        self.prepare_seen_state_dict = None
+
+    def get_neural_network(self) -> nn.Module:
+        return self.network
+
+    def set_neural_network(self, neural_network: nn.Module) -> None:
+        self.network = neural_network
+
+    def forward(self, x):
+        """Run a forward pass through the tiny test network."""
+        return {"output": self.network(x)}
+
+    def prepare_checkpoint_state_dict_for_weights_load(self, state_dict):
+        """Record weights-only hook input and return loadable weights."""
+        self.prepare_seen_state_dict = state_dict
+        prepared = self.state_dict()
+        prepared["network.weight"] = torch.full((1, 1), 2.0)
+        prepared["network.bias"] = torch.full((1,), 3.0)
+        return prepared
 
 
 class RestorePretrainedModelFromCheckpoints(unittest.TestCase):
@@ -77,3 +114,43 @@ class RestorePretrainedModelFromCheckpoints(unittest.TestCase):
                 latest_checkpoint_in_dir(Path(temp_dir)),
                 Path(temp_dir, "ckpt-3.pt"),
             )
+
+    def test_load_checkpoint_calls_weights_only_prepare_hook(self):
+        """Weights-only checkpoint loading should call the optional model hook."""
+        params = create_simple_params(usecase="nss-v1")
+        params.model_train_eval_mode = TrainEvalMode.FP32
+        model = _HookedCheckpointModel(params)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir, "checkpoint.pt")
+            original_state = {
+                "network.weight": torch.full((1, 1), -1.0),
+                "network.bias": torch.full((1,), -2.0),
+            }
+            torch.save({"model_state_dict": original_state}, checkpoint_path)
+
+            with patch(
+                "ng_model_gym.core.model.checkpoint_loader.create_model",
+                return_value=model,
+            ):
+                loaded_model = load_checkpoint(
+                    checkpoint_path, params, torch.device("cpu")
+                )
+
+        self.assertIs(loaded_model, model)
+        self.assertTrue(
+            torch.equal(
+                model.prepare_seen_state_dict["network.weight"],
+                original_state["network.weight"],
+            )
+        )
+        self.assertTrue(
+            torch.equal(
+                model.prepare_seen_state_dict["network.bias"],
+                original_state["network.bias"],
+            )
+        )
+        self.assertTrue(
+            torch.equal(model.network.weight.detach(), torch.full((1, 1), 2.0))
+        )
+        self.assertTrue(torch.equal(model.network.bias.detach(), torch.full((1,), 3.0)))
