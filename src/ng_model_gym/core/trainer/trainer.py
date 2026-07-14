@@ -6,7 +6,7 @@ import logging
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator, Optional
+from typing import Iterator, Mapping, Optional
 
 import torch
 from torch import nn
@@ -37,6 +37,20 @@ from ng_model_gym.core.utils.enum_definitions import (
 from ng_model_gym.core.utils.io.file_utils import create_directory
 
 logger = logging.getLogger(__name__)
+
+_QAT_STATE_DICT_MARKERS = (
+    "activation_post_process",
+    "fake_quant",
+    "_param_constant",
+)
+
+
+def _state_dict_has_qat_markers(state_dict: Mapping[str, object]) -> bool:
+    """Return whether a checkpoint state dict looks QAT/PT2E prepared."""
+
+    return any(
+        any(marker in key for marker in _QAT_STATE_DICT_MARKERS) for key in state_dict
+    )
 
 
 class Trainer:
@@ -180,7 +194,8 @@ class Trainer:
 
             # Restore model weights and optimizer state
             checkpoint = torch.load(checkpoint_path, weights_only=True)
-            self.model.load_state_dict(checkpoint["model_state_dict"])
+            model_state = checkpoint["model_state_dict"]
+            self.model.load_state_dict(model_state)
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
             self.lr_schedule.load_state_dict(checkpoint["lr_scheduler_state_dict"])
             self.starting_epoch = checkpoint["epoch"] + 1
@@ -210,7 +225,25 @@ class Trainer:
                 )
 
             finetune_weight = torch.load(finetune_path, weights_only=True)
-            self.model.load_state_dict(finetune_weight["model_state_dict"])
+            model_state = finetune_weight["model_state_dict"]
+            if (
+                self.params.model_train_eval_mode == TrainEvalMode.QAT_INT8
+                and _state_dict_has_qat_markers(model_state)
+            ):
+                raise ValueError(
+                    "QAT finetune only supports FP32 pretrained weights. "
+                    "QAT/int8 checkpoints cannot be used with `qat --finetune`; "
+                    "use `qat --resume` to continue QAT training, or use "
+                    "evaluate/export for QAT checkpoints."
+                )
+            prepare_for_weights_load = getattr(
+                self.model,
+                "prepare_checkpoint_state_dict_for_weights_load",
+                None,
+            )
+            if prepare_for_weights_load is not None:
+                model_state = prepare_for_weights_load(model_state)
+            self.model.load_state_dict(model_state)
             logger.info(f"Fine tuning using weights {finetune_path.name}")
 
         # If a path has not been defined, create a new directory to store checkpoints

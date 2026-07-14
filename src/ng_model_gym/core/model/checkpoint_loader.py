@@ -108,6 +108,14 @@ def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device 
         ng_model.quantize_modules(forward_input_data)
 
     logger.info(f"Loading model from checkpoint: {model_path}")
-    trained_model.load_state_dict(checkpoint["model_state_dict"])
+    model_state_dict = checkpoint["model_state_dict"]
+    prepare_for_weights_load = getattr(
+        trained_model,
+        "prepare_checkpoint_state_dict_for_weights_load",
+        None,
+    )
+    if prepare_for_weights_load is not None:
+        model_state_dict = prepare_for_weights_load(model_state_dict)
+    trained_model.load_state_dict(model_state_dict)
 
     return trained_model
