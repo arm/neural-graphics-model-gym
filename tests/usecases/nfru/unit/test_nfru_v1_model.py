@@ -94,7 +94,7 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
         mv_similarity_threshold: Optional[float] = None,
     ) -> None:
         """Create a fresh NFRU model instance configured for the given batch size."""
-        params = create_simple_params(usecase="nfru")
+        params = create_simple_params(usecase="nfru-v1")
         params_dict = params.model_dump(mode="json")
 
         params_dict["dataset"]["health_check"] = False
@@ -415,14 +415,14 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
 
     def test_model_requires_color_preprocessing(self) -> None:
         """NFRU v1 should reject configs without explicit color preprocessing."""
-        params = create_simple_params(usecase="nfru")
+        params = create_simple_params(usecase="nfru-v1")
         params.dataset.color_preprocessing = None
         with self.assertRaisesRegex(ValueError, "dataset.color_preprocessing"):
             create_model(params, self.device)
 
     def test_model_requires_all_color_preprocessing_splits(self) -> None:
         """NFRU v1 should reject configs missing validation/test/train splits."""
-        params = create_simple_params(usecase="nfru")
+        params = create_simple_params(usecase="nfru-v1")
         if params.dataset.color_preprocessing is None:
             self.fail("Expected color_preprocessing config in simple NFRU params")
         params.dataset.color_preprocessing.validation = None
@@ -545,7 +545,7 @@ class TestNFRUV1DynamicMaskConfig(unittest.TestCase):
 
     def test_slang_module_loading(self) -> None:
         """Test the Slang module loading configuration."""
-        params = create_simple_params(usecase="nfru")
+        params = create_simple_params(usecase="nfru-v1")
         params.model_train_eval_mode = TrainEvalMode.FP32
         network = create_model(params, torch.device("cpu")).network
 
@@ -566,7 +566,7 @@ class TestNFRUV1DynamicMaskConfig(unittest.TestCase):
         Test that the correct previous dynamic mask function is returned for
         each value of the parameters.
         """
-        params = create_simple_params(usecase="nfru")
+        params = create_simple_params(usecase="nfru-v1")
         params.model_train_eval_mode = TrainEvalMode.FP32
         network = create_model(params, torch.device("cpu")).network
         slang = Mock()

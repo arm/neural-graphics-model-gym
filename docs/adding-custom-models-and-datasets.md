@@ -17,7 +17,7 @@ There are two common ways to add models and datasets:
 If you copy a prebuilt model (such as NSS), modify the class decorator to register it under a new name (for example, `MyNSSModel`). Use the prebuilt model config, set `model.name/model.version` to your new registration, and keep `model_source: "prebuilt"`.
 
 ```bash
-ng-model-gym init nss [save_dir]
+ng-model-gym init nss-v1 [save_dir]
 ```
 
 ```json
@@ -74,7 +74,7 @@ Depending on how you interact with ng-model-gym (CLI or API), model and dataset 
 
 ##### Using the CLI
 
-Models/datasets registered under the `ng_model_gym/usecases` folder are auto-discovered. Outside of this folder, the CLI does not search for registered models/datasets. 
+Models/datasets registered under the `ng_model_gym/usecases` folder are auto-discovered. Outside of this folder, the CLI does not search for registered models/datasets.
 
 A suggested layout is:
 

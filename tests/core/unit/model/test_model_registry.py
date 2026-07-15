@@ -71,16 +71,15 @@ class TestModelRegistry(unittest.TestCase):
         """Test model key returned matches expected format."""
 
         self.assertEqual(get_model_key(name="nss"), "nss")
-        self.assertEqual(get_model_key(name="nss", version="1"), "nss-v1")
-        self.assertEqual(get_model_key(name="NSS", version="1"), "nss-v1")
+        self.assertEqual(get_model_key(name="nss-v1"), "nss-v1")
+        self.assertEqual(get_model_key(name="NSS-v1"), "nss-v1")
 
     def test_model_registry_helper_func(self):
         """Test adding a valid model using the register_model() helper function."""
 
-        model_name = "NSS"
-        model_version = "1"
+        model_name = "NSS-v1"
 
-        @register_model(model_name, model_version)
+        @register_model(model_name)
         class NSSModel(MockBaseNGModel):  # pylint: disable=unused-variable
             """NSS model"""
 
@@ -99,18 +98,17 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [get_model_key(model_name, model_version)],
+            [get_model_key(model_name)],
         )
 
     def test_model_inheritance(self):
         """Test model not inheriting from correct base class causes TypeError."""
 
-        model_name = "NSS"
-        model_version = "2"
+        model_name = "NSS-v2"
 
         with self.assertRaisesRegex(TypeError, "must inherit from BaseNGModel"):
 
-            @register_model(name=model_name, version=model_version)
+            @register_model(name=model_name)
             class NSSModel:  # pylint: disable=unused-variable
                 """NSS model"""
 
@@ -119,21 +117,20 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [get_model_key(model_name, model_version)],
+            [get_model_key(model_name)],
         )
 
     def test_model_get_neural_network_not_implemented(self):
         """Test not implementing get_neural_network() causes TypeError."""
 
-        model_name = "NSS"
-        model_version = "3"
+        model_name = "NSS-v3"
 
         with self.assertRaisesRegex(
             TypeError,
             r"Make sure all abstract methods, e.g. get_neural_network\(self\), are implemented",
         ):
 
-            @register_model(model_name, model_version)
+            @register_model(model_name)
             class NSSModel(MockBaseNGModel):  # pylint: disable=unused-variable
                 """NSS model"""
 
@@ -149,18 +146,17 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [get_model_key(model_name, model_version)],
+            [get_model_key(model_name)],
         )
 
     def test_model_forward_not_implemented(self):
         """Test not overriding forward() causes TypeError."""
 
-        model_name = "NSS"
-        model_version = "4"
+        model_name = "NSS-v4"
 
         with self.assertRaisesRegex(TypeError, r"must override forward\(\)"):
 
-            @register_model(model_name, model_version)
+            @register_model(model_name)
             class NSSModel(MockBaseNGModel):  # pylint: disable=unused-variable
                 """NSS model"""
 
@@ -176,38 +172,36 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [get_model_key(model_name, model_version)],
+            [get_model_key(model_name)],
         )
 
     def test_model_not_a_class(self):
         """Test registering an object that isn't a class raises a TypeError."""
 
-        model_name = "NSS"
-        model_version = "5"
+        model_name = "NSS-v5"
 
         with self.assertRaisesRegex(TypeError, "must be a class"):
 
-            @register_model(model_name, model_version)
+            @register_model(model_name)
             def NSSModel():
                 pass
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [get_model_key(model_name, model_version)],
+            [get_model_key(model_name)],
         )
 
     def test_model_set_neural_network_not_implemented(self):
         """Test not implementing set_neural_network() causes TypeError."""
 
-        model_name = "NSS"
-        model_version = "6"
+        model_name = "NSS-v6"
 
         with self.assertRaisesRegex(
             TypeError,
             r"Make sure all abstract methods, e.g. get_neural_network\(self\), are implemented",
         ):
 
-            @register_model(model_name, model_version)
+            @register_model(model_name)
             class NSSModel(MockBaseNGModel):  # pylint: disable=unused-variable
                 """NSS model"""
 
@@ -223,5 +217,5 @@ class TestModelRegistry(unittest.TestCase):
 
         self.assertNotEqual(
             model_registry.MODEL_REGISTRY.list_registered(),
-            [get_model_key(model_name, model_version)],
+            [get_model_key(model_name)],
         )

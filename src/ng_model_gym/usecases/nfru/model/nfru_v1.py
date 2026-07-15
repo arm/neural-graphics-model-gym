@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from torch import nn
 
-from ng_model_gym.core.config.config_model import ConfigModel, NFRUModelSettings
+from ng_model_gym.core.config.config_model import ConfigModel, NFRUV1ModelSettings
 from ng_model_gym.core.model.base_ng_model import BaseNGModel, QATQuantizationProfile
 from ng_model_gym.core.model.graphics_utils import normalize_mvs
 from ng_model_gym.core.model.model_registry import register_model
@@ -88,15 +88,15 @@ def _get_color_config(params: ConfigModel) -> dict[str, dict]:
     return {split: dict(color_preprocessing[split]) for split in _REQUIRED_COLOR_SPLITS}
 
 
-@register_model(name="NFRU", version="1")
+@register_model(name="NFRU-v1")
 class NFRUv1(BaseNGModel):
     """NFRU v1 exposed through the BaseNGModel interface."""
 
     def __init__(self, params: ConfigModel):
         super().__init__(params)
-        if not isinstance(self.params.model, NFRUModelSettings):
+        if not isinstance(self.params.model, NFRUV1ModelSettings):
             raise TypeError(
-                "model section in parameter is not of type NFRUModelSettings"
+                "model section in parameter is not of type NFRUV1ModelSettings"
             )
         self.params = params
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

@@ -275,7 +275,7 @@ class TestNSSV1PostprocessGolden(BaseGPUMemoryTest):
 
     @staticmethod
     def _create_model(quality, device):
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.model.quality = quality
         params.model.recurrent_samples = 2
         params.train.batch_size = 2

@@ -27,7 +27,7 @@ from ng_model_gym.core.utils.enum_definitions import (
 
 # pylint: disable=line-too-long
 
-CONFIG_SCHEMA_VERSION = "8"
+CONFIG_SCHEMA_VERSION = "9"
 
 # Pydantic models representing the configuration file structure.
 # For fields which are not core to all model types (e.g. recurrent_samples),
@@ -172,10 +172,10 @@ class CustomModelSettings(BaseModelSettings):
     model_config = ConfigDict(extra="allow", revalidate_instances="always")
 
 
-class NSSModelSettings(PrebuiltModelSettingsBase):
+class NSSV1ModelSettings(PrebuiltModelSettingsBase):
     """NSS model settings"""
 
-    name: Literal["nss"]
+    name: Literal["nss-v1"]
     scale: StrictFloat = Field(
         2.0,
         gt=1.0,
@@ -222,10 +222,10 @@ class NSSModelSettings(PrebuiltModelSettingsBase):
     )
 
 
-class NFRUModelSettings(PrebuiltModelSettingsBase):
+class NFRUV1ModelSettings(PrebuiltModelSettingsBase):
     """NFRU model settings"""
 
-    name: Literal["nfru"]
+    name: Literal["nfru-v1"]
     scale_factor: StrictFloat = Field(
         default=2.0,
         ge=2.0,
@@ -274,7 +274,7 @@ class NFRUModelSettings(PrebuiltModelSettingsBase):
 
 # DO NOT FORGET TO ADD NEW MODEL SETTINGS HERE
 prebuilt_models_settings = Annotated[
-    Union[NSSModelSettings, NFRUModelSettings],
+    Union[NSSV1ModelSettings, NFRUV1ModelSettings],
     Field(discriminator="name"),
 ]
 
@@ -578,7 +578,7 @@ class ConfigModel(PydanticConfigModel):
     @model_validator(mode="after")
     def _validate_nfru_color_preprocessing(self):
         """Require explicit color-preprocessing config for NFRU v1."""
-        if getattr(self.model, "name", None) != "nfru":
+        if getattr(self.model, "name", None) != "nfru-v1":
             return self
 
         color_preprocessing = self.dataset.color_preprocessing

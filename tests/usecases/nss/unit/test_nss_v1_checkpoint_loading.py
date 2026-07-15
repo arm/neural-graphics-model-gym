@@ -33,14 +33,14 @@ class TestNSSV1CheckpointLoading(unittest.TestCase):
     def _create_fake_checkpoints(self) -> tuple[Path, Path]:
         """Create fake high and mid/low checkpoints from model state dicts."""
 
-        mid_params = create_simple_params(usecase="nss_v1")
+        mid_params = create_simple_params(usecase="nss-v1")
         mid_params.model.quality = "mid"
         mid_params.model_train_eval_mode = TrainEvalMode.FP32
 
         mid_model = create_model(mid_params, self.device)
         mid_state = mid_model.state_dict()
 
-        high_params = create_simple_params(usecase="nss_v1")
+        high_params = create_simple_params(usecase="nss-v1")
         high_params.model.quality = "high"
         high_params.model_train_eval_mode = TrainEvalMode.FP32
 
@@ -58,7 +58,7 @@ class TestNSSV1CheckpointLoading(unittest.TestCase):
     def test_high_ckpt_prunes_to_mid_low(self) -> None:
         """Validate high checkpoint loads as 6x6 for high and prunes to 4x4 for mid."""
 
-        high_params = create_simple_params(usecase="nss_v1")
+        high_params = create_simple_params(usecase="nss-v1")
         high_params.model.quality = "high"
         high_params.model_train_eval_mode = TrainEvalMode.FP32
 
@@ -72,7 +72,7 @@ class TestNSSV1CheckpointLoading(unittest.TestCase):
 
         self.assertEqual(high_state["autoencoder.kpn_params.conv2d.bias"].shape[0], 36)
 
-        mid_params = create_simple_params(usecase="nss_v1")
+        mid_params = create_simple_params(usecase="nss-v1")
         mid_params.model.quality = "mid"
         mid_params.model_train_eval_mode = TrainEvalMode.FP32
 
@@ -89,7 +89,7 @@ class TestNSSV1CheckpointLoading(unittest.TestCase):
     def test_mid_low_ckpt_loads_into_mid_model(self) -> None:
         """Validate that a mid/low quality checkpoint loads into a mid quality model."""
 
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.model.quality = "mid"
         params.model_train_eval_mode = TrainEvalMode.FP32
 
@@ -101,7 +101,7 @@ class TestNSSV1CheckpointLoading(unittest.TestCase):
     def test_mid_low_ckpt_rejected_by_high_model(self) -> None:
         """Validate that loading a mid/low quality checkpoint into a high quality model fails."""
 
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.model.quality = "high"
         params.model_train_eval_mode = TrainEvalMode.FP32
 

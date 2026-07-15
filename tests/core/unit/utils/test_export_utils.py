@@ -106,7 +106,7 @@ def make_params(tmp_path):
         ),
     )
 
-    p.model = SimpleNamespace(name="NSS", version="42")
+    p.model = SimpleNamespace(name="NSS-v42")
 
     p.output = SimpleNamespace(
         export=SimpleNamespace(
@@ -169,7 +169,7 @@ class TestExportUtils(unittest.TestCase):
         # Train/eval mode set correctly.
         self.assertEqual(self.params.model_train_eval_mode, TrainEvalMode.QAT_INT8)
 
-        model_key = get_model_key(self.params.model.name, self.params.model.version)
+        model_key = get_model_key(self.params.model.name)
 
         # Metadata file should be updated with constants.
         expected_meta = Path(self.params.output.export.vgf_output_dir) / (
@@ -191,7 +191,7 @@ class TestExportUtils(unittest.TestCase):
         self.assertIsInstance(trace_input, torch.Tensor)
         self.assertEqual(etype, ExportType.QAT_INT8)
 
-        model_key = get_model_key(self.params.model.name, self.params.model.version)
+        model_key = get_model_key(self.params.model.name)
 
         # Metadata path should match the expected path.
         expected_meta = Path(self.params.output.export.vgf_output_dir) / (
@@ -221,7 +221,7 @@ class TestExportUtils(unittest.TestCase):
         # Train/eval mode set correctly.
         self.assertEqual(self.params.model_train_eval_mode, TrainEvalMode.FP32)
 
-        model_key = get_model_key(self.params.model.name, self.params.model.version)
+        model_key = get_model_key(self.params.model.name)
 
         # Metadata file should be updated with constants.
         expected_meta = Path(self.params.output.export.vgf_output_dir) / (
@@ -242,7 +242,7 @@ class TestExportUtils(unittest.TestCase):
         self.assertIsInstance(trace_input, torch.Tensor)
         self.assertEqual(etype, ExportType.FP32)
 
-        model_key = get_model_key(self.params.model.name, self.params.model.version)
+        model_key = get_model_key(self.params.model.name)
 
         # Metadata path should match the expected path.
         expected_meta = Path(self.params.output.export.vgf_output_dir) / (
@@ -265,7 +265,7 @@ class TestExportUtils(unittest.TestCase):
         # Run with FP32 branch.
         executorch_vgf_export(self.params, ExportType.FP32, Path("doesnt_matter.pt"))
 
-        model_key = get_model_key(self.params.model.name, self.params.model.version)
+        model_key = get_model_key(self.params.model.name)
 
         # Build expected path.
         meta_path = (
@@ -386,7 +386,7 @@ class TestExportUtils(unittest.TestCase):
     def test_export_module_to_vgf_rejects_odd_shapes_and_accepts_even_shapes(self):
         """Dynamic NFRU export requires even heights and widths."""
         params = make_params(self.tmp_path)
-        params.model = SimpleNamespace(name="NFRU", version="1")
+        params.model = SimpleNamespace(name="NFRU-v1")
         model = MockNFRUDynamicModel(params)
 
         accepted_input = (torch.rand(1, 16, 4, 6),)

@@ -95,7 +95,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         for model in models:
             with self.subTest(model):
                 # Load config and setup for current test
-                params = create_simple_params(usecase="nss_v1")
+                params = create_simple_params(usecase="nss-v1")
                 params.dataset.path.validation = Path("tests/usecases/nss/datasets/val")
                 params.output.export.vgf_output_dir = self.tosa_out_dir
                 params.model_train_eval_mode = TrainEvalMode.FP32
@@ -122,7 +122,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
 
         for model in models:
             # Load config and setup for current test
-            params = create_simple_params(usecase="nss_v1")
+            params = create_simple_params(usecase="nss-v1")
             params.output.export.vgf_output_dir = self.tosa_out_dir
             params.dataset.path.validation = Path("tests/usecases/nss/datasets/val")
 
@@ -166,7 +166,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         ]
 
         for model in models:
-            params = create_simple_params(usecase="nss_v1")
+            params = create_simple_params(usecase="nss-v1")
             params.output.export.vgf_output_dir = self.tosa_out_dir
             params.dataset.path.train = Path("tests/usecases/nss/datasets/train")
 
@@ -203,7 +203,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
 
     def test_export_function_raises_error_missing_dataset_path(self):
         """Test export raises error if missing dataset path"""
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.output.export.vgf_output_dir = self.tosa_out_dir
 
         # Ensure tosa output directory does not exist
@@ -237,7 +237,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
 
     def test_export_raises_no_dynamic_or_static_config(self):
         """Test export raises error if dynamic is set to false and there is no static export cfg"""
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.output.export.dynamic_shape = False
         params.output.export.vgf_static_input_shape = None
         params.output.export.vgf_output_dir = self.tosa_out_dir
@@ -258,7 +258,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
     def test_static_export(self):
         """Test export passes if dynamic is set to false and there is a static export cfg"""
 
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.output.export.dynamic_shape = False
         params.output.export.vgf_static_input_shape = [[1, 12, 256, 256]]
         params.output.export.vgf_output_dir = self.tosa_out_dir
@@ -284,7 +284,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
     def test_static_export_provided_and_dynamic_enabled(self):
         """Test warning if dynamic is set to true and there is a static export cfg"""
 
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.output.export.dynamic_shape = True
         params.output.export.vgf_static_input_shape = [[1, 12, 256, 256]]
         params.output.export.vgf_output_dir = self.tosa_out_dir

@@ -762,7 +762,7 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
     def test_raises_when_sequence_has_fewer_than_minimum_frames(self):
         """A 4-frame sequence cannot satisfy the 5-frame sliding-window minimum."""
         dataset_path = Path("tests/datasets/test_nfru_4f_short")
-        params = create_simple_params(usecase="nfru", dataset_path=str(dataset_path))
+        params = create_simple_params(usecase="nfru-v1", dataset_path=str(dataset_path))
         params.dataset.path.test = dataset_path
         params.dataset.health_check = False
 

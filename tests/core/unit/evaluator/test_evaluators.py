@@ -32,7 +32,7 @@ class TestNGModelEvaluator(unittest.TestCase):
         output_dir.mkdir()
 
         # Create config model using our own data
-        self.params = create_simple_params(usecase="nss_v1", output_dir=str(output_dir))
+        self.params = create_simple_params(usecase="nss-v1", output_dir=str(output_dir))
         self.params.dataset.path.train = train_data_dir
         self.params.dataset.path.validation = val_data_dir
         self.params.dataset.path.test = test_data_dir

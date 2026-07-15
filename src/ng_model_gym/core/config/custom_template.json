@@ -1,5 +1,5 @@
 {
-    "config_schema_version": "8",
+    "config_schema_version": "9",
     "model": {
         "name": "<NAME_OF_REGISTERED_MODEL>",
         "model_source": "custom",

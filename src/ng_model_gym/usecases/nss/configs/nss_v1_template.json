@@ -1,9 +1,8 @@
 {
-    "config_schema_version": "8",
+    "config_schema_version": "9",
     "model": {
-        "name": "NSS",
+        "name": "NSS-v1",
         "model_source": "prebuilt",
-        "version": "1",
         "scale": 2.0,
         "recurrent_samples": 16,
         "quality": "high",

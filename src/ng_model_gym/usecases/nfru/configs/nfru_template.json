@@ -1,9 +1,8 @@
 {
-    "config_schema_version": "8",
+    "config_schema_version": "9",
     "model": {
-        "name": "NFRU",
+        "name": "NFRU-v1",
         "model_source": "prebuilt",
-        "version": "1",
         "scale_factor": 2.0,
         "legacy_nfru_capture_paths": [],
         "dynamic_mask_is_runtime_accurate": false,

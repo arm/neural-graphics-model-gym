@@ -181,7 +181,7 @@ class TestMetrics(unittest.TestCase):
 
     def test_get_metrics(self):
         """Test that get_metrics returns all our expected metrics."""
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
 
         metrics = get_metrics(params, mode="train")
         self.assertEqual(len(metrics), 4)
