@@ -82,7 +82,7 @@ class TestHFModelServer(unittest.TestCase):
                 "neural-super-sampling/nss_v1_high_fp32.pt", Path(tmp_dir)
             )
             self.assertEqual(download_path.name, "nss_v1_high_fp32.pt")
-            self.assertEqual(download_path.parent.name, "v1")
+            self.assertEqual(download_path.parent, Path(tmp_dir))
 
             # Check download path is in the temp dir specified
             self.assertTrue(
@@ -99,7 +99,7 @@ class TestHFModelServer(unittest.TestCase):
                 "@neural-super-sampling/nss_v1_high_fp32.pt", Path(tmp_dir)
             )
             self.assertEqual(download_path.name, "nss_v1_high_fp32.pt")
-            self.assertEqual(download_path.parent.name, "v1")
+            self.assertEqual(download_path.parent, Path(tmp_dir))
 
             # Check download path is in the temp dir specified
             self.assertTrue(

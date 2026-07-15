@@ -40,7 +40,7 @@ class ApiIntegrationTest(NSSV1BaseIntegrationTest):
         """do_evaluate should not modify the config."""
         # Load model from .pt file first
         self.config.model_train_eval_mode = TrainEvalMode.FP32
-        model_file = Path("tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt")
+        model_file = Path("tests/usecases/nss/weights/nss_v1_high_fp32.pt")
 
         before = self.config.model_dump()
         do_evaluate(self.config, model_file, TrainEvalMode.FP32, ProfilerType.DISABLED)
@@ -55,7 +55,7 @@ class ApiIntegrationTest(NSSV1BaseIntegrationTest):
 
         with tempfile.TemporaryDirectory() as tmp_dir:
             export_dir = Path(tmp_dir) / "export" / "vgf"
-            model_file = Path("tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt")
+            model_file = Path("tests/usecases/nss/weights/nss_v1_high_fp32.pt")
             self.config.output.export.vgf_output_dir = export_dir
 
             before = self.config.model_dump()
