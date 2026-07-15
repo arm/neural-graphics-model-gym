@@ -12,11 +12,10 @@ from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.utils.io.file_utils import create_directory
 
 TEST_PARAMS_PRESETS = {
-    "nss_v1": {
+    "nss-v1": {
         "model": {
-            "name": "NSS",
+            "name": "NSS-v1",
             "model_source": "prebuilt",
-            "version": "1",
             "scale": 2.0,
             "recurrent_samples": 16,
             "quality": "high",
@@ -56,11 +55,10 @@ TEST_PARAMS_PRESETS = {
         },
         "metrics": ["PSNR", "tPSNR", "RecPSNR", "SSIM"],
     },
-    "nfru": {
+    "nfru-v1": {
         "model": {
-            "name": "NFRU",
+            "name": "NFRU-v1",
             "model_source": "prebuilt",
-            "version": "1",
             "scale_factor": 2.0,
             "legacy_nfru_capture_paths": [],
             "dynamic_mask_is_runtime_accurate": False,
@@ -148,7 +146,7 @@ def create_simple_params(
     """
     Returns configuration created with test parameters dependent on use-case.
 
-    E.g. create_simple_params(usecase="nss_v1",
+    E.g. create_simple_params(usecase="nss-v1",
                             output_dir="./output",
                             dataset_path="path/to/dataset")
     """

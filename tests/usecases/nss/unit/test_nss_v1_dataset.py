@@ -26,7 +26,7 @@ class TestNSSV1Dataset(unittest.TestCase):
     def setUp(self):
         """Set up a default NSS v1 training config."""
         self.params = create_simple_params(
-            usecase="nss_v1", dataset_path=Path("tests/usecases/nss/datasets/train")
+            usecase="nss-v1", dataset_path=Path("tests/usecases/nss/datasets/train")
         )
         self.params.model.recurrent_samples = 4
         self.params.dataset.gt_augmentation = False
@@ -73,7 +73,7 @@ class TestNSSV1Dataset(unittest.TestCase):
         save_file(tensors, new_safetensor_path, metadata=original_metadata)
 
         params = create_simple_params(
-            usecase="nss_v1",
+            usecase="nss-v1",
             dataset_path=new_safetensor_dir,
         )
         params.dataset.exposure = None
@@ -130,7 +130,7 @@ class TestNSSV1Dataset(unittest.TestCase):
             save_file(tensors, new_safetensor_path, metadata=original_metadata)
 
             params_json = create_simple_params(
-                usecase="nss_v1", dataset_path=dataset_dir
+                usecase="nss-v1", dataset_path=dataset_dir
             ).model_dump(mode="json")
             params = validate_params(params_json)
             params.model.recurrent_samples = 4
@@ -155,7 +155,7 @@ class TestNSSV1Dataset(unittest.TestCase):
 
     def test_windows_skip_mid_sequence_cuts(self):
         """Sliding windows stop before mid-span cuts but still start on the cut."""
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.model.recurrent_samples = 4
 
         flags = [False, False, False, False, True, False, False, False, False, False]
@@ -173,7 +173,7 @@ class TestNSSV1Dataset(unittest.TestCase):
 
     def test_seq_id_changes_per_segment_in_test_mode(self):
         """Sequence hashes change at each cut when iterating in TEST mode."""
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.model.recurrent_samples = 4
 
         flags = [False, False, False, False, True, False, False, False]
@@ -199,7 +199,7 @@ class TestNSSV1Dataset(unittest.TestCase):
 
     def test_seq_tensor_resets_when_camera_cut_true(self):
         """`seq` should flip only when the camera_cut flag is set."""
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.model.recurrent_samples = 4
 
         flags = [False, False, True, False, False]
@@ -220,7 +220,7 @@ class TestNSSV1Dataset(unittest.TestCase):
 
     def test_short_camera_cut_segments_are_dropped(self):
         """Segments shorter than recurrent_samples should not emit windows."""
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.model.recurrent_samples = 4
 
         flags = [
@@ -249,7 +249,7 @@ class TestNSSV1Dataset(unittest.TestCase):
 
     def test_legacy_file_without_camera_cut(self):
         """Legacy files without camera_cut should be treated as a single sequence."""
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.model.recurrent_samples = 4
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -266,7 +266,7 @@ class TestNSSV1Dataset(unittest.TestCase):
 
     def test_short_capture_logs_warning_and_is_skipped(self):
         """Captures shorter than recurrent_samples emit a warning and are ignored."""
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
         params.model.recurrent_samples = 4
 
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -300,7 +300,7 @@ class TestNSSV1Dataset(unittest.TestCase):
         """Test recurrent_samples validation and mode-specific behavior."""
         with self.subTest("train_mode_two_recurrent_samples"):
             params = create_simple_params(
-                usecase="nss_v1",
+                usecase="nss-v1",
                 dataset_path=Path("tests/usecases/nss/datasets/train"),
             )
             params.model.recurrent_samples = 2
@@ -313,13 +313,12 @@ class TestNSSV1Dataset(unittest.TestCase):
 
         with self.subTest("train_mode_missing_recurrent_samples"):
             config_json = create_simple_params(
-                usecase="nss_v1",
+                usecase="nss-v1",
                 dataset_path=Path("tests/usecases/nss/datasets/train"),
             ).model_dump(mode="json")
             config_json["model"] = {
                 "name": "my_custom_model",
                 "model_source": "custom",
-                "version": "1",
                 "quality": "high",
             }
             params = validate_params(config_json)
@@ -335,7 +334,7 @@ class TestNSSV1Dataset(unittest.TestCase):
 
         with self.subTest("train_mode_raise_recurrent_samples_less_than_two"):
             params = create_simple_params(
-                usecase="nss_v1",
+                usecase="nss-v1",
                 dataset_path=Path("tests/usecases/nss/datasets/train"),
             )
             params.model.recurrent_samples = 1
@@ -349,7 +348,7 @@ class TestNSSV1Dataset(unittest.TestCase):
 
         with self.subTest("test_mode_sets_single_sample"):
             params = create_simple_params(
-                usecase="nss_v1",
+                usecase="nss-v1",
                 dataset_path=Path("tests/usecases/nss/datasets/train"),
             )
             params.model.recurrent_samples = 10
@@ -374,7 +373,7 @@ class TestNSSV1DatasetGolden(unittest.TestCase):
         )
 
         params = create_simple_params(
-            usecase="nss_v1", dataset_path=Path("tests/usecases/nss/datasets/train")
+            usecase="nss-v1", dataset_path=Path("tests/usecases/nss/datasets/train")
         )
         params.model.quality = "high"
         params.model.recurrent_samples = 2

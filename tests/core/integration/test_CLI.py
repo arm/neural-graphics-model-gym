@@ -27,7 +27,7 @@ class CLIIntegrationTest(BaseGPUMemoryTest):
 
         # Create a valid config to use
         self.config = create_simple_params(
-            usecase="nss_v1",
+            usecase="nss-v1",
             output_dir=self.test_dir / "output",
             dataset_path="tests/usecases/nss/mini_datasets/train",
             checkpoints=self.test_dir / "checkpoints",
@@ -136,8 +136,8 @@ class CLIIntegrationTest(BaseGPUMemoryTest):
         """Testing creating config files from CLI"""
         cases = [
             ("custom", "custom_config"),
-            ("nss", "nss_config"),
-            ("nfru", "nfru_config"),
+            ("nss-v1", "nss-v1_config"),
+            ("nfru-v1", "nfru-v1_config"),
         ]
 
         env = os.environ.copy()

@@ -33,7 +33,7 @@ class TestGeneratingConfigFile(unittest.TestCase):
 
     def test_config_files_created(self):
         """Test the files created exist"""
-        for template in ["NSS", "NFRU"]:
+        for template in ["NSS-v1", "NFRU-v1"]:
             with self.subTest(template=template):
                 config_path, schema_path = generate_config_file(
                     template, self.output_path
@@ -58,9 +58,9 @@ class TestGeneratingConfigFile(unittest.TestCase):
 
     def test_incrementing_config_name_if_already_exists(self):
         """Test if existing configs exists, it increments the file name"""
-        config_path, _ = generate_config_file("nss", self.output_path)
-        config_path1, _ = generate_config_file("nss", self.output_path)
-        config_path2, _ = generate_config_file("nss", self.output_path)
+        config_path, _ = generate_config_file("nss-v1", self.output_path)
+        config_path1, _ = generate_config_file("nss-v1", self.output_path)
+        config_path2, _ = generate_config_file("nss-v1", self.output_path)
 
         config_template_name = config_path.stem
         self.assertEqual(config_path1.stem, f"{config_template_name}_1")
@@ -68,19 +68,20 @@ class TestGeneratingConfigFile(unittest.TestCase):
 
     def test_case_insensitive_generate_config(self):
         """Test case/whitespace insensitive generate_config template name"""
-        config_path, _ = generate_config_file("  nSs  ", self.output_path)
+        config_path, _ = generate_config_file("  nSs-v1  ", self.output_path)
 
-        self.assertEqual(config_path.name, "nss_config.json")
+        self.assertEqual(config_path.name, "nss-v1_config.json")
 
     def test_generate_nss_config_file_uses_v1_template(self):
         """Test generating the default NSS config uses the v1 template."""
-        config_path, _ = generate_config_file("NSS", self.output_path)
+        config_path, _ = generate_config_file("NSS-v1", self.output_path)
 
         with open(config_path, "r", encoding="utf-8") as f:
             config_data = json.load(f)
 
-        self.assertEqual(config_path.name, "nss_config.json")
-        self.assertEqual(config_data["model"]["version"], "1")
+        self.assertEqual(config_path.name, "nss-v1_config.json")
+        self.assertEqual(config_data["model"]["name"], "NSS-v1")
+        self.assertNotIn("version", config_data["model"])
         self.assertEqual(config_data["model"]["quality"], "high")
         self.assertTrue(config_data["model"]["nss_v1_luma_derivative"])
         self.assertTrue(config_data["model"]["nss_v1_sharp_theta"])
@@ -99,32 +100,26 @@ class TestGeneratingConfigFile(unittest.TestCase):
 
     def test_generate_nss_config_file_is_v1_by_default(self):
         """Test generating NSS keeps the v1 template as the default."""
-        config_path, _ = generate_config_file("NSS", self.output_path)
+        config_path, _ = generate_config_file("NSS-v1", self.output_path)
 
         with open(config_path, "r", encoding="utf-8") as f:
             config_data = json.load(f)
 
-        self.assertEqual(config_path.name, "nss_config.json")
-        self.assertEqual(config_data["model"]["version"], "1")
+        self.assertEqual(config_path.name, "nss-v1_config.json")
+        self.assertEqual(config_data["model"]["name"], "NSS-v1")
+        self.assertNotIn("version", config_data["model"])
 
     def test_nss_in_template_list(self):
         """Test list config templates includes nss"""
         templates = list_config_templates()
 
-        self.assertIn("NSS", templates)
-
-    def test_nss_v1_template_uses_default_name_in_template_list(self):
-        """Test list config templates exposes the v1 template through the NSS alias."""
-        templates = list_config_templates()
-
-        self.assertIn("NSS", templates)
-        self.assertNotIn("NSS_v1", templates)
+        self.assertIn("NSS-v1", templates)
 
     def test_nfru_in_template_list(self):
         """Test list config templates includes nfru"""
         templates = list_config_templates()
 
-        self.assertIn("NFRU", templates)
+        self.assertIn("NFRU-v1", templates)
 
     def test_custom_in_template_list(self):
         """Test list config templates includes custom"""
@@ -152,21 +147,21 @@ class TestGeneratingConfigFile(unittest.TestCase):
     def test_colliding_template_names(self, mock_discover):
         """Test multiple templates with the same name raises"""
         mock_discover.return_value = {
-            "nss": [
-                TemplateInfo(model_name="nss", json_data={}, source=Path("a.json")),
-                TemplateInfo(model_name="nss", json_data={}, source=Path("b.json")),
+            "nss-v1": [
+                TemplateInfo(model_name="nss-v1", json_data={}, source=Path("a.json")),
+                TemplateInfo(model_name="nss-v1", json_data={}, source=Path("b.json")),
             ]
         }
 
         with self.assertRaises(ValueError) as raised:
-            generate_config_file("nss", self.output_path)
+            generate_config_file("nss-v1", self.output_path)
 
         self.assertIn("Multiple config templates found", str(raised.exception))
 
     def test_invalid_save_dir_raises(self):
         """Test the function raises if invalid dir is passed"""
         with self.assertRaises(FileNotFoundError):
-            generate_config_file("nss", "/invalid_dir")
+            generate_config_file("nss-v1", "/invalid_dir")
 
     def test_all_templates_match_config_schema_version(self):
         """Test all discovered config templates have the current schema version."""

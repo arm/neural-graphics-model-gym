@@ -133,7 +133,7 @@ def generate_config_file(
         Tuple[Path, Path]: Paths to the generated configuration JSON and schema JSON files.
 
     Example:
-        >>> config_output_path, schema_path = generate_config_file("nss", Path("./output"))
+        >>> config_output_path, schema_path = generate_config_file("nss-v1", Path("./output"))
     """
 
     if save_dir:

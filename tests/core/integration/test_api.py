@@ -22,7 +22,7 @@ class ApiCoreIntegrationTest(BaseGPUMemoryTest):
 
         # Create a valid config to use
         self.config = create_simple_params(
-            usecase="nss_v1",
+            usecase="nss-v1",
             output_dir=self.tmp_dir / "output",
             dataset_path="",
             checkpoints=self.tmp_dir / "checkpoints",

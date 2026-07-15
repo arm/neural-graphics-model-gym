@@ -367,7 +367,9 @@ def executorch_vgf_export(
     model_forward_input = tree_map(to_cpu, model_forward_input)
     model_forward_input = tree_map(to_channels_last, model_forward_input)
 
-    model_key = get_model_key(params.model.name, params.model.version)
+    model_version = getattr(model, "version", None)
+
+    model_key = get_model_key(params.model.name, model_version)
 
     metadata_path = (
         Path(params.output.export.vgf_output_dir)

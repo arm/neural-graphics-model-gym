@@ -59,7 +59,7 @@ def register_model(name: str, version: Optional[str] = None):
 
     Example::
 
-        @register_model(name="NSS", version="0.1")
+        @register_model(name="NSS-v1")
         class NSS_Model(BaseNGModel)
             pass
     """

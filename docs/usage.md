@@ -27,7 +27,7 @@ ng-model-gym init --list
 # Or simply: ng-model-gym init
 ```
 
-Standard templates include `nss` and `nfru`; these relate to Model Gym's NSS and NFRU models.
+Standard templates include `nss-v1` and `nfru-v1`; these relate to Model Gym's NSS v1 and NFRU v1 models.
 
 To generate a configuration file from a template, use a command of this form:
 ```bash
@@ -35,9 +35,9 @@ ng-model-gym init <configuration-template> [save_dir]
 
 # e.g.
 # - Generate an NSS configuration file in the current directory:
-ng-model-gym init nss
+ng-model-gym init nss-v1
 # - Generate an NFRU configuration file in an existing directory:
-ng-model-gym init nfru config-dir
+ng-model-gym init nfru-v1 config-dir
 ```
 
 This command creates two files in the selected output directory (or your working directory if `save_dir` is omitted):
@@ -229,7 +229,7 @@ import ng_model_gym as ngmg
 
 # Generate a config file in an existing directory using the API or CLI
 # Note: The config file must be filled in before use.
-ngmg.generate_config_file("nss", "/save/dir")
+ngmg.generate_config_file("nss-v1", "/save/dir")
 ```
 
 ```python

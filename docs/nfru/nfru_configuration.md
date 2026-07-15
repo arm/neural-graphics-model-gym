@@ -11,7 +11,7 @@ Before reading further, please read `docs/usage.md`. That file explains how to c
 
 Model Gym's NFRU model requires a configuration file, typically named `nfru_config.json`. This file is initially generated using the following command:
 
-    ng-model-gym init nfru
+    ng-model-gym init nfru-v1
 
 This document is a guide to the most common changes you will need to make to `nfru_config.json`. For more details, refer to `schema_config.json`, which contains a detailed description of every configuration setting.
 

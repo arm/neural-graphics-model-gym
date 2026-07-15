@@ -99,11 +99,11 @@ Most commands use a configuration file and require the following steps:
    ng-model-gym init <model-template> [save_dir]
    ```
 
-   Example: NSS and NFRU configuration files are created from the `nss` and `nfru` templates. The following commands will create NSS and NFRU configuration files in the current directory:
+   Example: NSS v1 and NFRU v1 configuration files are created from the `nss-v1` and `nfru-v1` templates. The following commands will create NSS and NFRU configuration files in the current directory:
 
    ```bash
-   ng-model-gym init nss
-   ng-model-gym init nfru
+   ng-model-gym init nss-v1
+   ng-model-gym init nfru-v1
    ```
 
 3. **Edit your model configuration file:** Configuration files contain paths to local datasets and options for the different usage modes (training, evaluation, and exporting). Some entries initially contain placeholder values (e.g. `<...>`); make sure to replace those with your own settings.
@@ -151,7 +151,7 @@ import ng_model_gym as ngmg
 
 # Generate a config file in an existing directory using the API or CLI
 # Note: The config file must be filled in before use.
-ngmg.generate_config_file("nss", "/save/dir")
+ngmg.generate_config_file("nss-v1", "/save/dir")
 ```
 
 ```python

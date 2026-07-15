@@ -57,7 +57,7 @@ class TestBaseNGModelQAT(unittest.TestCase):
         self.device = torch.device("cpu")
         self.mock_forward_input = torch.randn((4, 4), device=self.device)
         self.mock_forward_input_trace = (self.mock_forward_input,)
-        self.params = create_simple_params(usecase="nss_v1")
+        self.params = create_simple_params(usecase="nss-v1")
 
     def test_qat_train_raises_if_not_quantized(self):
         """Test model raises error if not prepared with fake quant observers before QAT training"""
@@ -79,8 +79,8 @@ class TestBaseNGModelQAT(unittest.TestCase):
     def test_qparam_policy_selects_fake_quantizer(self):
         """Test NSS uses the fake quantizer fix whilst NFRU uses standard torchAO fake quantizer"""
         for model_type, usecase, channels, expected_fake_quantizer_type in (
-            (NSSV1Model, "nss_v1", 12, FusedMovingAvgObsFakeQuantizeFix),
-            (NFRUv1, "nfru", 16, FusedMovingAvgObsFakeQuantize),
+            (NSSV1Model, "nss-v1", 12, FusedMovingAvgObsFakeQuantizeFix),
+            (NFRUv1, "nfru-v1", 16, FusedMovingAvgObsFakeQuantize),
         ):
             with self.subTest(usecase=usecase):
                 model = model_type(create_simple_params(usecase=usecase))
@@ -98,7 +98,7 @@ class TestBaseNGModelQAT(unittest.TestCase):
                     for module in model.get_neural_network().modules()
                     if isinstance(module, FixedQParamsFakeQuantize)
                 ]
-                if usecase == "nss_v1":
+                if usecase == "nss-v1":
                     self.assertTrue(
                         any(
                             isinstance(module, FixedQParamsFakeQuantizeFix)

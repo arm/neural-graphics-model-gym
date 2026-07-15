@@ -37,7 +37,7 @@ def load_nss_v1_golden(filename: str, device: torch.device) -> dict:
 def create_nss_v1_test_params(quality: str):
     """Create shared NSS v1 params used by unit tests."""
 
-    params = create_simple_params(usecase="nss_v1")
+    params = create_simple_params(usecase="nss-v1")
     params.model_train_eval_mode = TrainEvalMode.FP32
     params.model.quality = quality
     params.model.recurrent_samples = 2

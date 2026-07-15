@@ -11,7 +11,7 @@ from typing import Dict, Optional
 import torch
 from torch import nn
 
-from ng_model_gym.core.config.config_model import ConfigModel, NSSModelSettings
+from ng_model_gym.core.config.config_model import ConfigModel, NSSV1ModelSettings
 from ng_model_gym.core.data.data_utils import HDR_MAX, tonemap_forward
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.graphics_utils import (
@@ -43,7 +43,7 @@ _NSS_V1_SHADER_QUALITY_DEFINES = {
 }
 
 
-@register_model(name="NSS", version="1")
+@register_model(name="NSS-v1")
 class NSSV1Model(BaseNGModel):
     """NSS v1 model for training and evaluation flows."""
 
@@ -51,7 +51,7 @@ class NSSV1Model(BaseNGModel):
         """Set up the NSS v1 model."""
         super().__init__(params)
 
-        if not isinstance(self.params.model, NSSModelSettings):
+        if not isinstance(self.params.model, NSSV1ModelSettings):
             raise TypeError(
                 "model section in parameter is not of type NSSModelSettings"
             )

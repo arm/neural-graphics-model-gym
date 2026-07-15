@@ -51,7 +51,7 @@ class TestModelFactory(unittest.TestCase):
     """Test Model Factory."""
 
     def setUp(self):
-        self.params = create_simple_params(usecase="nss_v1")
+        self.params = create_simple_params(usecase="nss-v1")
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def tearDown(self):
@@ -60,7 +60,7 @@ class TestModelFactory(unittest.TestCase):
     def test_get_model_from_config(self):
         """Test getting the model class, based on the config file parameters."""
 
-        for model_name in ("NSS", "nss", "Nss"):
+        for model_name in ("NSS-v1", "nss-v1", "Nss-v1"):
             with self.subTest(model_name=model_name):
                 self.params.model.name = model_name
 
@@ -72,7 +72,7 @@ class TestModelFactory(unittest.TestCase):
     def test_get_nss_v1_model_from_config(self):
         """Test getting NSS v1 from the model registry."""
 
-        params = create_simple_params(usecase="nss_v1")
+        params = create_simple_params(usecase="nss-v1")
 
         model_cls = get_model_from_config(params)
 
@@ -104,9 +104,8 @@ class TestModelFactory(unittest.TestCase):
 
         # pylint: enable=duplicate-code
 
-        # Override model name and version from params
+        # Override model name from params
         self.params.model.name = "MockNSSNoVersion"
-        self.params.model.version = None
 
         model_cls = get_model_from_config(self.params)
 
@@ -118,7 +117,7 @@ class TestModelFactory(unittest.TestCase):
         # Override model name from params
         self.params.model.name = "unregistered_model"
 
-        model_key = get_model_key(self.params.model.name, self.params.model.version)
+        model_key = get_model_key(self.params.model.name)
 
         with self.assertRaisesRegex(
             KeyError,
@@ -186,9 +185,8 @@ class TestModelFactory(unittest.TestCase):
 
         # pylint: enable=duplicate-code
 
-        # Override model name and version from params
+        # Override model name from params
         self.params.model.name = "MockNSSNoParamsArg"
-        self.params.model.version = None
 
         with self.assertRaisesRegex(
             TypeError,

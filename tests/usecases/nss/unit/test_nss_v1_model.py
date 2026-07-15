@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from pydantic import ValidationError
 
-from ng_model_gym.core.config.config_model import NSSModelSettings
+from ng_model_gym.core.config.config_model import NSSV1ModelSettings
 from ng_model_gym.core.data.data_utils import tonemap_forward
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
@@ -84,7 +84,7 @@ class _NSSV1ModelTestMixin:
         """Set up shared NSS v1 model test state."""
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.params = create_simple_params(usecase="nss_v1")
+        self.params = create_simple_params(usecase="nss-v1")
         self.params.model_train_eval_mode = TrainEvalMode.FP32
         self.params.train.batch_size = 2
         self.params.model.recurrent_samples = 4
@@ -102,12 +102,11 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         self._init_nss_v1_model_test_state()
 
     def test_config_accepts_non_integer_nss_v1_scale(self) -> None:
-        """NSS config accepts numeric scales greater than 1.0."""
+        """NSS v1 config accepts numeric scales greater than 1.0."""
 
-        settings = NSSModelSettings(
-            name="nss",
+        settings = NSSV1ModelSettings(
+            name="nss-v1",
             model_source="prebuilt",
-            version="1",
             scale=1.5,
             recurrent_samples=4,
             quality="high",
@@ -121,7 +120,7 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         for scale in (1.0, 0.75):
             with self.subTest(scale=scale):
                 with self.assertRaisesRegex(ValidationError, "greater than 1"):
-                    NSSModelSettings(
+                    NSSV1ModelSettings(
                         name="nss",
                         model_source="prebuilt",
                         version="1",
@@ -131,12 +130,11 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
                     )
 
     def test_config_coerces_integer_nss_v1_scale(self) -> None:
-        """NSS config accepts integer scales and stores them as floats."""
+        """NSS v1 config accepts integer scales and stores them as floats."""
 
-        settings = NSSModelSettings(
-            name="nss",
+        settings = NSSV1ModelSettings(
+            name="nss-v1",
             model_source="prebuilt",
-            version="1",
             scale=2,
             recurrent_samples=4,
             quality="high",
@@ -148,10 +146,9 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
     def test_config_defaults_nss_v1_runtime_shader_variants_to_enabled(self) -> None:
         """NSS v1 config enables runtime shader variant toggles by default."""
 
-        settings = NSSModelSettings(
-            name="nss",
+        settings = NSSV1ModelSettings(
+            name="nss-v1",
             model_source="prebuilt",
-            version="1",
             scale=2.0,
             recurrent_samples=4,
             quality="high",
@@ -163,10 +160,9 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
     def test_config_accepts_disabled_nss_v1_runtime_shader_variants(self) -> None:
         """NSS v1 config accepts explicit disabled runtime shader variants."""
 
-        settings = NSSModelSettings(
-            name="nss",
+        settings = NSSV1ModelSettings(
+            name="nss-v1",
             model_source="prebuilt",
-            version="1",
             scale=2.0,
             recurrent_samples=4,
             quality="high",

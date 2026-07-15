@@ -34,7 +34,7 @@ class TestPreProcess(BaseGPUMemoryTest):
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
 
-        self.params = create_simple_params(usecase="nfru")
+        self.params = create_simple_params(usecase="nfru-v1")
         self.params.model_train_eval_mode = TrainEvalMode.FP32
 
         self.model = create_model(self.params, self.device)
@@ -132,7 +132,7 @@ class TestNFRUPreprocessGolden(BaseGPUMemoryTest):
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
 
-        self.params = create_simple_params(usecase="nfru")
+        self.params = create_simple_params(usecase="nfru-v1")
         self.params.model_train_eval_mode = TrainEvalMode.FP32
 
         self.model = create_model(self.params, self.device)
