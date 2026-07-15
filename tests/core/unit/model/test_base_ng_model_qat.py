@@ -5,8 +5,12 @@ import unittest
 
 import torch
 from torch import nn
+from torchao.quantization.pt2e import FusedMovingAvgObsFakeQuantize
 
 from ng_model_gym.core.model import BaseNGModel
+from ng_model_gym.core.quantization.observers import FusedMovingAvgObsFakeQuantizeFix
+from ng_model_gym.usecases.nfru.model.nfru_v1 import NFRUv1
+from ng_model_gym.usecases.nss.model.model_v1 import NSSV1Model
 from tests.testing_utils import create_simple_params
 
 # pylint: disable=missing-function-docstring
@@ -67,6 +71,24 @@ class TestBaseNGModelQAT(unittest.TestCase):
         self.assertTrue(isinstance(model.get_neural_network(), torch.fx.GraphModule))
         out = model(self.mock_forward_input)
         self.assertEqual(out.shape, (4, 4))
+
+    def test_qparam_policy_selects_fake_quantizer(self):
+        """Test NSS uses the fake quantizer fix whilst NFRU uses standard torchAO fake quantizer"""
+        for model_type, usecase, channels, expected_fake_quantizer_type in (
+            (NSSV1Model, "nss_v1", 12, FusedMovingAvgObsFakeQuantizeFix),
+            (NFRUv1, "nfru", 16, FusedMovingAvgObsFakeQuantize),
+        ):
+            with self.subTest(usecase=usecase):
+                model = model_type(create_simple_params(usecase=usecase))
+                model.quantize_modules((torch.randn(2, channels, 16, 16),))
+                self.assertEqual(
+                    {
+                        type(module)
+                        for module in model.get_neural_network().modules()
+                        if isinstance(module, FusedMovingAvgObsFakeQuantize)
+                    },
+                    {expected_fake_quantizer_type},
+                )
 
     def test_double_quantize_raises(self):
         """Test if attempting to quantize modules twice raises"""
