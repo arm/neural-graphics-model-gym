@@ -32,7 +32,7 @@ def download_pretrained_nss_weights():
         repo_id="Arm/neural-super-sampling",
         allow_patterns=["*.pt", "config.json"],
         local_dir=weights_dir,
-        revision="ad93d335e1faf49bc852294ac8780c4f518a8d79",
+        revision="3feb49cb7ee5aa295914a17c5878ffea693da8a8",
     )
     print(f"Downloaded pretrained NSS weights to {weights_dir}")
 
@@ -57,12 +57,11 @@ def validate_nss_downloads(datasets_dir):
         # Validate pretrained weights
         weights_dir = Path("tests/usecases/nss/weights")
         expected_weights = [
-            Path("nss_v0.1.0_fp32.pt"),
-            Path("nss_v0.1.1_int8.pt"),
-            Path("v1/nss_v1_high_fp32.pt"),
-            Path("v1/nss_v1_high_int8.pt"),
-            Path("v1/nss_v1_mid_low_fp32.pt"),
-            Path("v1/nss_v1_mid_low_int8.pt"),
+            Path("v0_1/nss_v0.1.0_fp32.pt"),
+            Path("v0_1/nss_v0.1.1_int8.pt"),
+            Path("nss_v1_high_fp32.pt"),
+            Path("nss_v1_high_int8.pt"),
+            Path("nss_v1_mid_low_int8.pt"),
         ]
         for file_path in expected_weights:
             weights_path = weights_dir / file_path

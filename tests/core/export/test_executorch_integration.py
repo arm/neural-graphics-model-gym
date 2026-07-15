@@ -88,7 +88,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         """Load an NSS model and export it to a TOSA file via ExecuTorch."""
 
         models = [
-            "./tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt",
+            "./tests/usecases/nss/weights/nss_v1_high_fp32.pt",
             "@neural-super-sampling/nss_v1_high_fp32.pt",
         ]
 
@@ -116,7 +116,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         """Load an NSS model and export it to an int8 TOSA file via ExecuTorch."""
 
         models = [
-            "./tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt",
+            "./tests/usecases/nss/weights/nss_v1_high_fp32.pt",
             "@neural-super-sampling/nss_v1_high_fp32.pt",
         ]
 
@@ -161,7 +161,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         """Load checkpoint produced from QAT training"""
 
         models = [
-            "./tests/usecases/nss/weights/v1/nss_v1_high_int8.pt",
+            "./tests/usecases/nss/weights/nss_v1_high_int8.pt",
             "@neural-super-sampling/nss_v1_high_int8.pt",
         ]
 
@@ -216,9 +216,9 @@ class TestExecuTorchIntegration(unittest.TestCase):
         params.dataset.path.test = None
 
         # Point to pretrained weights to load
-        qat_model_path = "tests/usecases/nss/weights/v1/nss_v1_high_int8.pt"
+        qat_model_path = "tests/usecases/nss/weights/nss_v1_high_int8.pt"
 
-        fp32_model_path = "tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt"
+        fp32_model_path = "tests/usecases/nss/weights/nss_v1_high_fp32.pt"
 
         with self.assertRaises(ValueError) as exc:
             do_export(params, qat_model_path, ExportType.QAT_INT8)
@@ -248,7 +248,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         self.assertFalse(tosa_out_dir.exists())
 
         # Point to pretrained weights to load
-        qat_model_path = "tests/usecases/nss/weights/v1/nss_v1_high_int8.pt"
+        qat_model_path = "tests/usecases/nss/weights/nss_v1_high_int8.pt"
 
         with self.assertRaises(ValueError) as exc:
             do_export(params, qat_model_path, ExportType.QAT_INT8)
@@ -269,7 +269,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         self.assertFalse(tosa_out_dir.exists())
 
         # Point to pretrained weights to load
-        qat_model_path = "tests/usecases/nss/weights/v1/nss_v1_high_int8.pt"
+        qat_model_path = "tests/usecases/nss/weights/nss_v1_high_int8.pt"
 
         with self.assertLogs("ng_model_gym", level="INFO") as log_capture:
             do_export(params, qat_model_path, ExportType.QAT_INT8)
@@ -295,7 +295,7 @@ class TestExecuTorchIntegration(unittest.TestCase):
         self.assertFalse(tosa_out_dir.exists())
 
         # Point to pretrained weights to load
-        qat_model_path = "tests/usecases/nss/weights/v1/nss_v1_high_int8.pt"
+        qat_model_path = "tests/usecases/nss/weights/nss_v1_high_int8.pt"
 
         with self.assertLogs("ng_model_gym", level="WARN") as log_capture:
             do_export(params, qat_model_path, ExportType.QAT_INT8)

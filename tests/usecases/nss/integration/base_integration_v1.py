@@ -40,7 +40,7 @@ class NSSV1BaseIntegrationTest(BaseGPUMemoryTest):
             self.train_data_dir = "tests/usecases/nss/datasets/train"
             self.test_data_dir = "tests/usecases/nss/datasets/test"
 
-        self.finetune_weights = "tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt"
+        self.finetune_weights = "tests/usecases/nss/weights/nss_v1_high_fp32.pt"
         self.tensorboard_dir = Path(self.test_dir, "tensorboard-logs")
         create_directory(self.tensorboard_dir)
         config_path = (
@@ -157,7 +157,7 @@ class NSSV1BaseIntegrationTest(BaseGPUMemoryTest):
                     f"--config-path={self.test_cfg_path}",
                     "--profiler=trace",
                     "evaluate",
-                    "--model-path=tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt",
+                    "--model-path=tests/usecases/nss/weights/nss_v1_high_fp32.pt",
                     "--model-type=fp32",
                 ]
             )
@@ -216,7 +216,7 @@ class NSSV1BaseIntegrationTest(BaseGPUMemoryTest):
                     f"--config-path={self.test_cfg_path}",
                     "--profiler=gpu_memory",
                     "evaluate",
-                    "--model-path=tests/usecases/nss/weights/v1/nss_v1_high_fp32.pt",
+                    "--model-path=tests/usecases/nss/weights/nss_v1_high_fp32.pt",
                     "--model-type=fp32",
                 ]
             )

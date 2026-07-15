@@ -49,4 +49,4 @@ class CLIIntegrationTest(NSSV0_1BaseIntegrationTest):
                 sub_process.stdout,
             )
 
-            self.assertTrue((tmpdir / Path("v1/nss_v1_high_fp32.pt")).exists())
+            self.assertTrue((tmpdir / Path("nss_v1_high_fp32.pt")).exists())
