@@ -16,6 +16,7 @@ from torch import nn
 from torch.fx import GraphModule
 from torch.nn.modules.module import T
 from torchao.quantization.pt2e import (
+    FusedMovingAvgObsFakeQuantize,
     move_exported_model_to_eval,
     move_exported_model_to_train,
     MovingAverageMinMaxObserver,
@@ -48,6 +49,7 @@ class QATQuantizationProfile:
     use_fixed_sigmoid_output_qparams: bool = True
     activation_fake_quant_eps: float = 2e-12
     weight_fake_quant_eps: float = 2e-12
+    preserve_qat_qparams: bool = True
 
 
 class BaseNGModel(nn.Module, ABC):
@@ -205,7 +207,11 @@ class BaseNGModel(nn.Module, ABC):
         # Configure TOSA Quantizer
         quantizer = TOSAQuantizer(TosaSpecification.create_from_string(tosa_spec))
         qprofile = self.get_qat_quantization_profile()
-        fake_quant_ctor = FusedMovingAvgObsFakeQuantizeFix
+        fake_quant_ctor = (
+            FusedMovingAvgObsFakeQuantizeFix
+            if qprofile.preserve_qat_qparams
+            else FusedMovingAvgObsFakeQuantize
+        )
 
         # Activations get asymmetric per-tensor with moving average of min/max
         extra_args: Dict[str, Any] = {"eps": qprofile.activation_fake_quant_eps}

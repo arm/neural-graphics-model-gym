@@ -137,6 +137,7 @@ class NFRUv1(BaseNGModel):
             use_fixed_sigmoid_output_qparams=False,
             activation_fake_quant_eps=_QAT_FAKE_QUANT_EPS,
             weight_fake_quant_eps=_QAT_FAKE_QUANT_EPS,
+            preserve_qat_qparams=False,
         )
 
     def on_after_batch_transfer(
