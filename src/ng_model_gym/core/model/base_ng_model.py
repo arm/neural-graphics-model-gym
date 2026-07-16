@@ -33,6 +33,7 @@ from ng_model_gym.core.quantization.observers import (
     enable_all_observers,
     freeze_all_observers,
     FusedMovingAvgObsFakeQuantizeFix,
+    replace_fixed_qparams_fake_quant,
 )
 from ng_model_gym.core.utils.enum_definitions import ExportSpec
 from ng_model_gym.core.utils.torch_utils import TensorData
@@ -318,7 +319,9 @@ class BaseNGModel(nn.Module, ABC):
                 check_guards=False
             )
             # Insert FakeQuantizer nodes
-            return prepare_qat_pt2e(aten_dialect, quantizer)
+            qat_module = prepare_qat_pt2e(aten_dialect, quantizer)
+            replace_fixed_qparams_fake_quant(qat_module)
+            return qat_module
 
         # Grab the relevant layer to quantize
         quantized_network = trace_and_quantize_module(current_network, input_data)
