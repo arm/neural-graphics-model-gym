@@ -7,7 +7,7 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 from typing import Dict, Optional
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import torch
 from torch import nn
@@ -15,7 +15,7 @@ from torch import nn
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
-from ng_model_gym.usecases.nfru.model.nfru_v1 import m, NFRUv1Core
+from ng_model_gym.usecases.nfru.model.nfru_v1 import NFRUv1Core
 from ng_model_gym.usecases.nfru.model.nfru_v1_nn import NFRUAutoEncoder
 from tests.base_gpu_test import BaseGPUMemoryTest
 from tests.testing_utils import create_simple_params
@@ -38,8 +38,7 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
     Regression tests for the NFRU v1 model using recorded golden data.
 
     The model is implemented in classes NFRUv1 and NFRUv1Core and uses Slang
-    shaders from src/ng_model_gym/usecases/nfru/model/shaders/nfru_v1_sa.slang
-    ("m", below).
+    shaders from src/ng_model_gym/usecases/nfru/model/shaders/nfru_v1_sa.slang.
     """
 
     def setUp(self) -> None:
@@ -544,21 +543,45 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
 class TestNFRUV1DynamicMaskConfig(unittest.TestCase):
     """Tests for NFRU dynamic mask configuration."""
 
+    def test_slang_module_loading(self) -> None:
+        """Test the Slang module loading configuration."""
+        params = create_simple_params(usecase="nfru")
+        params.model_train_eval_mode = TrainEvalMode.FP32
+        network = create_model(params, torch.device("cpu")).network
+
+        with patch(
+            "ng_model_gym.usecases.nfru.model.nfru_v1.load_slang_module",
+            return_value=object(),
+        ) as load_module:
+            network._get_slang()
+
+        load_module.assert_called_once_with(
+            "ng_model_gym.usecases.nfru.model.shaders",
+            "nfru_v1_sa.slang",
+            autograd=True,
+        )
+
     def test_get_previous_dynamic_mask_fn(self) -> None:
         """
         Test that the correct previous dynamic mask function is returned for
         each value of the parameters.
         """
+        params = create_simple_params(usecase="nfru")
+        params.model_train_eval_mode = TrainEvalMode.FP32
+        network = create_model(params, torch.device("cpu")).network
+        slang = Mock()
+        network._get_slang = Mock(return_value=slang)
+
         for runtime_accurate, expected_function in [
-            (False, m.calculate_previous_dynamic_mask),
-            (True, m.calculate_previous_dynamic_mask_runtime_accurate),
+            (False, slang.calculate_previous_dynamic_mask),
+            (True, slang.calculate_previous_dynamic_mask_runtime_accurate),
         ]:
             with self.subTest(
                 runtime_accurate=runtime_accurate,
                 expected_function=expected_function,
             ):
                 self.assertIs(
-                    NFRUv1Core._get_previous_dynamic_mask_fn(runtime_accurate),
+                    network._get_previous_dynamic_mask_fn(runtime_accurate),
                     expected_function,
                 )
 
