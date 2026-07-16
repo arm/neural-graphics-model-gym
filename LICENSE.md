@@ -232,7 +232,6 @@ license text is included in, or next to, those files.
   Relevant files:
 
    - `src/ng_model_gym/core/export/model_export.py`
-   - `src/ng_model_gym/core/utils/patch/executorch_patch.py`
 
 - Some code has been derived from the [torchlars](https://github.com/kakaobrain/torchlars) project.
   These portions are also licensed under the [Apache 2.0 License](./LICENSES/Apache-2.0.txt).
