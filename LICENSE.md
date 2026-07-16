@@ -247,7 +247,8 @@ license text is included in, or next to, those files.
   These files are:
 
    -  `scripts/safetensors_generator/fsr2_methods.py`
-   -  `src/ng_model_gym/usecases/nss/model/shaders/depth_clip.slang`
+   -  `src/ng_model_gym/usecases/common/model/shaders/depth_clip.slang`
+   -  `src/ng_model_gym/usecases/nss/model/shaders/nss_v1/nss_common.slang`
 
 - The [Amazon Lumberyard Bistro](https://developer.nvidia.com/orca/amazon-lumberyard-bistro) project.
   This is licensed under the Creative Commons CC-BY 4.0 license.
