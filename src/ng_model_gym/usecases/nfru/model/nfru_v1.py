@@ -52,8 +52,6 @@ _MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK_RUNTIME_ACCURATE = 0.3
 _MV_SIMILARITY_NOISE_THRESHOLD_DYNAMIC_MASK = 0.001
 _MV_SIMILARITY_NOISE_THRESHOLD_DYNAMIC_MASK_RUNTIME_ACCURATE = 1.0
 
-m = load_slang_module(_SHADER_DIR, _SHADER_FILE, autograd=True)
-
 
 def _get_color_config(params: ConfigModel) -> dict[str, dict]:
     color_preprocessing = getattr(params.dataset, "color_preprocessing", None)
@@ -207,6 +205,7 @@ class NFRUv1Core(nn.Module):
         """If mv_similarity_threshold isn't supplied, a default will be used."""
         super().__init__()
         self.device = device
+        self.slang: Optional[object] = None
         self.flow_method = _FLOW_METHOD
         self.dynamic_flow = True
         self.of_540 = False
@@ -238,6 +237,16 @@ class NFRUv1Core(nn.Module):
             size=_FLOW_RESIZE_FACTOR, interpolation=_NEAREST_INTERPOLATION
         )
         self.coeff_softmax = nn.Softmax(dim=1)
+
+    def _get_slang(self):
+        """Lazily load the NFRU v1 Slang module."""
+        if self.slang is None:
+            self.slang = load_slang_module(
+                _SHADER_DIR,
+                _SHADER_FILE,
+                autograd=True,
+            )
+        return self.slang
 
     def set_color_pipeline(self, split: str) -> None:
         """Select the configured color pipeline for the requested split."""
@@ -306,7 +315,8 @@ class NFRUv1Core(nn.Module):
         out_dims: list[int],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Warp motion vectors and return the filled flow plus hole masks."""
-        out_packed_mv, out_dynamic_mask, out_holes_t, out_holes_tm1 = m.warp_mv(
+        slang = self._get_slang()
+        out_packed_mv, out_dynamic_mask, out_holes_t, out_holes_tm1 = slang.warp_mv(
             in_depth=depth_p1,
             in_depth_m1=depth_m1,
             in_motion=mv_p1_f30_m1,
@@ -335,7 +345,7 @@ class NFRUv1Core(nn.Module):
             },
             dispatch_size=[batch, *out_dims],
         )
-        out_motion = m.fill_mv(
+        out_motion = slang.fill_mv(
             in_packed_mv=out_packed_mv,
             out_constructors={
                 "out_motion": SlangOutput(
@@ -355,7 +365,8 @@ class NFRUv1Core(nn.Module):
         out_dims: list[int],
     ) -> torch.Tensor:
         """Warp the dense flow field to the requested intermediate timestep."""
-        out_packed_mv = m.warp_flow(
+        slang = self._get_slang()
+        out_packed_mv = slang.warp_flow(
             in_depth=depth,
             in_motion=mv,
             in_timestep=scale,
@@ -368,7 +379,7 @@ class NFRUv1Core(nn.Module):
             },
             dispatch_size=[batch, *out_dims],
         )
-        return m.fill_mv(
+        return slang.fill_mv(
             in_packed_mv=out_packed_mv,
             out_constructors={
                 "out_motion": SlangOutput(
@@ -394,6 +405,7 @@ class NFRUv1Core(nn.Module):
         timestep: float,
         random_seed: Optional[int] = None,
     ) -> torch.Tensor:
+        slang = self._get_slang()
         batch = mv_t_f30_m1.shape[0]
         out_dims = [flow_t_f30_xx.shape[2], flow_t_f30_xx.shape[3]]
 
@@ -402,7 +414,7 @@ class NFRUv1Core(nn.Module):
                 0, _RANDOM_SEED_MAX, (1,), device=rgb_m1.device
             ).item()
 
-        return m.preprocess(
+        return slang.preprocess(
             in_flow_t_f30_xx=flow_t_f30_xx,
             in_mv_t_f30_m1=mv_t_f30_m1,
             in_rgb_m1=rgb_m1,
@@ -433,7 +445,8 @@ class NFRUv1Core(nn.Module):
         learnt_params: torch.Tensor,
         timestep: float,
     ) -> torch.Tensor:
-        output = m.postprocess(
+        slang = self._get_slang()
+        output = slang.postprocess(
             in_flow_t_f30_xx=flow_t_f30_xx,
             in_mv_t_f30_m1=mv_t_f30_m1,
             in_rgb_m1=rgb_m1,
@@ -554,12 +567,12 @@ class NFRUv1Core(nn.Module):
             "output_mfg": output_mfg,
         }
 
-    @staticmethod
-    def _get_previous_dynamic_mask_fn(dynamic_mask_is_runtime_accurate: bool):
+    def _get_previous_dynamic_mask_fn(self, dynamic_mask_is_runtime_accurate: bool):
+        slang = self._get_slang()
         return (
-            m.calculate_previous_dynamic_mask_runtime_accurate
+            slang.calculate_previous_dynamic_mask_runtime_accurate
             if dynamic_mask_is_runtime_accurate
-            else m.calculate_previous_dynamic_mask
+            else slang.calculate_previous_dynamic_mask
         )
 
     @staticmethod
