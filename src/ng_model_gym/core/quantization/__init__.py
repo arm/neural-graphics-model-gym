@@ -4,6 +4,8 @@
 
 from .observers import (
     enable_all_observers,
+    FixedQParamsFakeQuantizeFix,
     freeze_all_observers,
     FusedMovingAvgObsFakeQuantizeFix,
+    replace_fixed_qparams_fake_quant,
 )

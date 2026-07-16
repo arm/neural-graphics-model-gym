@@ -6,9 +6,13 @@ import unittest
 import torch
 from torch import nn
 from torchao.quantization.pt2e import FusedMovingAvgObsFakeQuantize
+from torchao.quantization.pt2e.fake_quantize import FixedQParamsFakeQuantize
 
 from ng_model_gym.core.model import BaseNGModel
-from ng_model_gym.core.quantization.observers import FusedMovingAvgObsFakeQuantizeFix
+from ng_model_gym.core.quantization.observers import (
+    FixedQParamsFakeQuantizeFix,
+    FusedMovingAvgObsFakeQuantizeFix,
+)
 from ng_model_gym.usecases.nfru.model.nfru_v1 import NFRUv1
 from ng_model_gym.usecases.nss.model.model_v1 import NSSV1Model
 from tests.testing_utils import create_simple_params
@@ -89,6 +93,27 @@ class TestBaseNGModelQAT(unittest.TestCase):
                     },
                     {expected_fake_quantizer_type},
                 )
+                fixed_qparams = [
+                    module
+                    for module in model.get_neural_network().modules()
+                    if isinstance(module, FixedQParamsFakeQuantize)
+                ]
+                if usecase == "nss_v1":
+                    self.assertTrue(
+                        any(
+                            isinstance(module, FixedQParamsFakeQuantizeFix)
+                            for module in fixed_qparams
+                        )
+                    )
+                    self.assertFalse(
+                        any(
+                            isinstance(module, FixedQParamsFakeQuantize)
+                            and not isinstance(module, FixedQParamsFakeQuantizeFix)
+                            for module in fixed_qparams
+                        )
+                    )
+                else:
+                    self.assertEqual(fixed_qparams, [])
 
     def test_double_quantize_raises(self):
         """Test if attempting to quantize modules twice raises"""
