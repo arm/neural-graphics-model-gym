@@ -10,7 +10,6 @@ import torch
 from torch.profiler import schedule
 
 import ng_model_gym.core.utils.patch.torchao_patch  # pylint: disable=unused-import # isort: split
-import ng_model_gym.core.utils.patch.executorch_patch  # pylint: disable=unused-import # isort: split
 from ng_model_gym import download_pretrained_model
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.evaluator import NGModelEvaluator
