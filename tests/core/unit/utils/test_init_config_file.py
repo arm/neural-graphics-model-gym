@@ -8,7 +8,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from ng_model_gym.core.config.config_model import CONFIG_SCHEMA_VERSION
 from ng_model_gym.core.config.config_utils import (
+    _discover_config_templates,
     generate_config_file,
     list_config_templates,
     TemplateInfo,
@@ -165,3 +167,30 @@ class TestGeneratingConfigFile(unittest.TestCase):
         """Test the function raises if invalid dir is passed"""
         with self.assertRaises(FileNotFoundError):
             generate_config_file("nss", "/invalid_dir")
+
+    def test_all_templates_match_config_schema_version(self):
+        """Test all discovered config templates have the current schema version."""
+        templates = _discover_config_templates()
+
+        mismatches = []
+        for infos in templates.values():
+            for info in infos:
+                template_version = info.json_data.get("config_schema_version")
+                if template_version != CONFIG_SCHEMA_VERSION:
+                    mismatches.append(
+                        (
+                            str(info.source),
+                            template_version,
+                            CONFIG_SCHEMA_VERSION,
+                        )
+                    )
+
+        self.assertEqual(
+            len(mismatches),
+            0,
+            "Template config_schema_version mismatch(es): "
+            + "; ".join(
+                f"{path}: found {found!r}, expected {expected!r}"
+                for path, found, expected in mismatches
+            ),
+        )
