@@ -165,7 +165,7 @@ Metadata is split into two parts:
 |`CameraForward` | `dict` | Camera forward normalized vector in world space. For example: `{"X": -0.027740359306335449, "Y": 0.98435652256011963, "Z": -0.17399066686630249}`. | Mandatory |
 |`View` | `list` | View matrix raw data (`float`, 16 values). | Optional |
 |`Projection` | `list` | Projection matrix raw data (`float`, 16 values). | Optional |
-|`ViewProjection` | `list` | View projection matrix's raw data (`float`, row-major, 16 values). | Mandatory |
+|`ViewProjection` | `list` | View projection matrix's raw data (`float`, column-major, assuming Row Vector math in engine, 16 values). | Mandatory |
 |`Jitter` | `dict` | Raw jitter offset in pixels. For example: `{"X": 0.25, "Y": 0.67}`. | Mandatory |
 |`NormalizedPerRatioJitter` | `list` | Single-element list containing normalized jitter offsets. Can be calculated as `Jitter` divided by the source resolution (960 x 540). For example, the `Jitter` value above produces a `NormalizedPerRatioJitter` value of `{"X": 0.00026041666666667, "Y": 0.00069791666666667}`. | Mandatory |
 |`Exposure` | `float` | Final exposure value used for color correction. | Mandatory |
