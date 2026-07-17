@@ -8,7 +8,7 @@ import unittest
 from datetime import datetime
 from pathlib import Path
 from types import MethodType
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import torch
 from torch import nn, optim
@@ -166,6 +166,54 @@ class TestTrainerMethods(unittest.TestCase):
 
         called_epochs = [c.args[0] for c in self.mock_trainer.validate.call_args_list]
         self.assertEqual(called_epochs, [3, 6, 9])
+
+    def test_compile_setup_configures_required_context_before_compile(self):
+        """Compile setup fixes the model output contract from the active loss."""
+
+        trainer = Mock(spec=Trainer)
+        trainer.params = create_simple_params(usecase="nss-v1")
+        trainer.params.train.compile = False
+        trainer.model = TinyModel()
+        trainer.model.required_context_keys = None
+        trainer.criterion = Mock()
+        trainer.criterion.required_context_keys = (
+            "output",
+            "out_filtered",
+        )
+        model_context_at_compile = []
+
+        def compile_module(module, **_kwargs):
+            if module is trainer.model:
+                model_context_at_compile.append(trainer.model.required_context_keys)
+            return module
+
+        with patch("torch.compile", side_effect=compile_module) as compile_:
+            Trainer._set_up_torch_compile(trainer)
+
+            self.assertEqual(
+                model_context_at_compile,
+                [("output", "out_filtered")],
+            )
+            self.assertIs(compile_.call_args_list[0].args[0], trainer.model)
+            self.assertEqual(
+                trainer.model.required_context_keys,
+                trainer.criterion.required_context_keys,
+            )
+            self.assertIsInstance(trainer.model.required_context_keys, tuple)
+            self.assertIs(
+                trainer.model.required_context_keys, model_context_at_compile[0]
+            )
+            self.assertIs(trainer._training_model, trainer.model)
+            self.assertIs(trainer._training_loss, trainer.criterion)
+
+            trainer.criterion = nn.L1Loss()
+            Trainer._set_up_torch_compile(trainer)
+
+        self.assertEqual(model_context_at_compile, [("output", "out_filtered"), None])
+        self.assertIsNone(trainer.model.required_context_keys)
+        self.assertIs(trainer._training_model, trainer.model)
+        self.assertIs(trainer._training_loss, trainer.criterion)
+        self.assertEqual(compile_.call_count, 4)
 
     def test_train_calls_validate_on_specific_epochs(self):
         """Ensure Trainer.train() only triggers validate() on configured epochs"""

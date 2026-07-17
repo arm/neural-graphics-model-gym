@@ -11,6 +11,7 @@ from pydantic import ValidationError
 
 from ng_model_gym.core.config.config_model import NSSV1ModelSettings
 from ng_model_gym.core.data.data_utils import tonemap_forward
+from ng_model_gym.core.loss import LossV1
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from ng_model_gym.usecases.nss.model.model_blocks_v1 import AutoEncoderV1
@@ -801,6 +802,60 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
             torch.ones_like(model_out["reset_event"][:, 1, ...]),
             rtol=0,
             atol=0,
+        )
+
+    def test_loss_aware_forward_stacks_only_required_context(self) -> None:
+        """NSS v1 only stacks recurrent outputs required by its active loss."""
+
+        model = create_model(self.params, self.device)
+
+        def core_forward(inputs):
+            output_value = 1.0
+            output_linear = torch.full_like(inputs["history"], output_value)
+            return {
+                "output": output_linear,
+                "output_linear": output_linear,
+                "out_filtered": output_linear,
+                "temporal_params": torch.full_like(
+                    inputs["temporal_params_tm1"], output_value
+                ),
+                "disocclusion_mask": torch.full_like(inputs["depth"], output_value),
+                "derivative": torch.full_like(inputs["derivative_tm1"], output_value),
+                "ground_truth": torch.full_like(
+                    inputs["ground_truth_linear"], output_value
+                ),
+                "input_color": torch.full_like(inputs["colour_linear"], output_value),
+            }
+
+        model.core_forward = core_forward
+        model.required_context_keys = LossV1.required_context_keys
+        inputs = self._data_creator_helper(8, 8, 16, 16, recurrence=2)
+
+        with patch(
+            "ng_model_gym.usecases.nss.model.model_v1.torch.stack",
+            wraps=torch.stack,
+        ) as stack:
+            model_out = model(inputs)
+
+        self.assertEqual(stack.call_count, 5)
+        self.assertEqual(set(model_out), set(LossV1.required_context_keys) | {"motion"})
+        for key in (
+            "output_linear",
+            "derivative",
+            "ground_truth",
+            "input_color",
+        ):
+            self.assertNotIn(key, model_out)
+        for key in LossV1.required_context_keys:
+            self.assertEqual(model_out[key].shape[1], 2)
+        self.assertIs(model_out["motion"], inputs["motion"])
+        torch.testing.assert_close(
+            model_out["reset_event"][:, 0, ...],
+            torch.zeros_like(model_out["reset_event"][:, 0, ...]),
+        )
+        torch.testing.assert_close(
+            model_out["reset_event"][:, 1, ...],
+            torch.ones_like(model_out["reset_event"][:, 1, ...]),
         )
 
     def test_forward_overwrites_loss_context_keys(self) -> None:
