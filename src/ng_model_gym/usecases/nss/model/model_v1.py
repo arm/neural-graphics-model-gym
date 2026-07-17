@@ -65,6 +65,7 @@ class NSSV1Model(BaseNGModel):
 
         self.scale = self.params.model.scale
         self.recurrent_samples = self.params.model.recurrent_samples
+        self.required_context_keys: Optional[tuple[str, ...]] = None
         self.gt_history_augmentation = bool(self.params.model.gt_history_augmentation)
         self.gt_history_augmentation_chance = float(
             self.params.model.gt_history_augmentation_chance
@@ -142,7 +143,13 @@ class NSSV1Model(BaseNGModel):
             self.update_buffers(inputs, y_pred)
 
             for key, value in y_pred.items():
-                outputs.setdefault(key, []).append(value)
+                should_stack = (
+                    self.required_context_keys is None
+                    or key == "output"
+                    or key in self.required_context_keys
+                )
+                if should_stack:
+                    outputs.setdefault(key, []).append(value)
 
         stacked_outputs = {
             key: torch.stack(value, dim=1) for key, value in outputs.items()

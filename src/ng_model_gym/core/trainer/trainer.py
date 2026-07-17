@@ -135,6 +135,17 @@ class Trainer:
     def _set_up_torch_compile(self) -> None:
         """Set up optional torch.compile for training"""
 
+        # Only keep model outputs required by the training loss
+        if hasattr(self.model, "required_context_keys"):
+            required_context_keys = getattr(
+                self.criterion, "required_context_keys", None
+            )
+            setattr(
+                self.model,
+                "required_context_keys",
+                None if required_context_keys is None else tuple(required_context_keys),
+            )
+
         compile_enabled = self.params.train.compile
         if compile_enabled:
             torch._dynamo.config.cache_size_limit = max(

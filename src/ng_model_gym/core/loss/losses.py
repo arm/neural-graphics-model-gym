@@ -23,6 +23,14 @@ TensorData = Union[torch.Tensor, Dict[str, torch.Tensor], List[torch.Tensor]]
 class LossV1(torch.nn.Module):
     """NSS v1 recurrent loss."""
 
+    required_context_keys = (
+        "output",
+        "out_filtered",
+        "temporal_params",
+        "disocclusion_mask",
+        "reset_event",
+    )
+
     def __init__(
         self,
         recurrent_samples: int,
