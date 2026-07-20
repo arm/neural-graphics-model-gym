@@ -25,7 +25,7 @@ It's essential to provide the following information:
 - `dataset` → `path` → `test`: path to a directory containing test data.
 
 
-## Other settings you may to wish to change
+## Other settings you may wish to change
 
 ### Dynamic mask
 

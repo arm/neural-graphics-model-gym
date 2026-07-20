@@ -327,7 +327,10 @@ class Dataset(PydanticConfigModel):
         description="Whether to align loaded dataset features to the model input set.",
     )
     extension: Optional[str] = Field(
-        description="File extension for dataset files to be found (grep) and loaded, e.g. '.safetensors', '.jpg'. Defaults to .safetensors.",
+        description=(
+            "File extension passed to the selected dataset loader. "
+            "Defaults to '.safetensors'."
+        ),
         default=".safetensors",
     )
 

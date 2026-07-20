@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
 <a href="https://pypi.org/project/ng-model-gym"><img alt="PyPI" src="https://img.shields.io/pypi/v/ng-model-gym?label=PyPI&color=teal&logo=pypi"></a>
 <a href="https://github.com/arm/neural-graphics-model-gym/blob/main/LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-Apache%20License%202.0-green"></a>
 <img alt="Python versions" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-slategray?logo=python">
-<img alt="Neural Graphics Model Gym CLI help output" src="docs/ng-model-gym-cli-hero-img.png" width="665" height="284">
+<img alt="Neural Graphics Model Gym CLI help output" src="docs/ng-model-gym-cli-hero-img.png" width="665" height="395">
 </p>
 
 > [!NOTE]
@@ -44,9 +44,9 @@ With **Neural Graphics Model Gym** you can train, finetune and evaluate your Neu
 
 Currently, we include the following Neural Graphics use cases:
 
-* Neural Super Sampling (NSS)
+* [Neural Super Sampling](https://huggingface.co/Arm/neural-super-sampling) (NSS)
   * NSS allows for high-fidelity, real-time graphics in game engines. By feeding low-resolution frames, along with spatial and motion information, into a neural network we are able to construct high-resolution frames that suffer no loss in quality.
-* Neural Frame Rate Upscaling (NFRU)
+* [Neural Frame Rate Upscaling ](https://huggingface.co/Arm/neural-frame-rate-upscaling)(NFRU)
   * NFRU allows for higher frame-rate real-time graphics in game engines. By feeding low-frame-rate frames, along with spatial and motion information, into a neural network we are able to construct intermediate frames that increase the output frame rate.
 
 
@@ -93,7 +93,7 @@ Most commands use a configuration file and require the following steps:
    ng-model-gym init --list
    ```
 
-2. **Generate a model configuration file from a template:** Use a command of the following form. If no directory path is provided, the configuration file will be saved to the current directory.
+2. **Generate a model configuration file from a template:** Use a command of the following form. The optional `save_dir` must already exist. If it is omitted, the configuration file will be saved to the current directory.
 
    ```bash
    ng-model-gym init <model-template> [save_dir]
@@ -149,8 +149,8 @@ The following snippet shows how to use the package to generate a config, perform
 ```python
 import ng_model_gym as ngmg
 
-# Generate config file in specified directory using the API or CLI
-# Note: The config file must be filled in before use
+# Generate a config file in an existing directory using the API or CLI
+# Note: The config file must be filled in before use.
 ngmg.generate_config_file("nss", "/save/dir")
 ```
 
@@ -243,7 +243,6 @@ Neural Graphics Model Gym supports adding custom models and datasets, enabling t
 
 We also support defining custom use cases to group together related models, datasets, configurations, and any additional required code. See [adding custom usecases](./docs/adding-custom-models-and-datasets.md#adding-custom-use-cases) to see the implementation guide.
 
-
 ## Generating new training data
 
 To train the Neural Super Sampling model, you will first need to capture training data from your game engine in the format expected by the model. A [data capture guide for NSS](./docs/nss/nss_data_capture_guide.md) explaining the steps required to capture datasets is available and the expected layout of the dataset can been seen at [nss_dataset_specification.md](./docs/nss/nss_dataset_specification.md). A plugin for Unreal® Engine is also available [here](https://github.com/arm/neural-graphics-data-capture-for-unreal) that can capture datasets for NSS from a game.
@@ -253,7 +252,7 @@ For information regarding the types of data to capture for Neural Frame Rate Ups
 
 ## Troubleshooting
 
-A list of common known issues and their workarounds can be found at [troubleshooting.md](./docs/troubleshooting.md )
+A list of common known issues and their workarounds can be found at [troubleshooting.md](./docs/troubleshooting.md).
 
 
 ## Code contributions

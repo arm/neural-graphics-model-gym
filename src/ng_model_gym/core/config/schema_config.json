@@ -512,7 +512,7 @@
                 }
             ],
             "default": ".safetensors",
-            "description": "File extension for dataset files to be found (grep) and loaded, e.g. '.safetensors', '.jpg'. Defaults to .safetensors."
+            "description": "File extension passed to the selected dataset loader. Defaults to '.safetensors'."
         }
     },
     "output": {
