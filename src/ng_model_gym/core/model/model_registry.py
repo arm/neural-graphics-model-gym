@@ -2,7 +2,7 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import inspect
-from typing import Optional, Type
+from typing import Type
 
 from torch import nn
 
@@ -45,17 +45,17 @@ MODEL_REGISTRY: Registry[BaseNGModel] = Registry(
 )
 
 
-def get_model_key(name: str, version: Optional[str] = None) -> str:
-    """Return the model key based on the name and optional version."""
-    key = f"{name}-v{version}" if version is not None else name
+def get_model_key(name: str) -> str:
+    """Return the model key based on the name."""
+    key = name.lower()
 
-    return key.lower()
+    return key
 
 
-def register_model(name: str, version: Optional[str] = None):
+def register_model(name: str):
     """
     Helper function to add a new model to the model registry,
-    using a new unique identifier as the key, with optional version.
+    using a new unique identifier as the key.
 
     Example::
 
@@ -63,6 +63,6 @@ def register_model(name: str, version: Optional[str] = None):
         class NSS_Model(BaseNGModel)
             pass
     """
-    key = get_model_key(name, version)
+    key = get_model_key(name)
 
     return MODEL_REGISTRY.register(key)

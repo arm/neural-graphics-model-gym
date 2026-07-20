@@ -43,18 +43,12 @@ class TemplateInfo:
 def _get_template_key_and_name(data: dict) -> Tuple[str, str]:
     """Return the normalized lookup key and display name for a config template."""
     model = data.get("model", {})
-    model_name = str(model.get("name")).strip()
+    model_name = str(model.get("name", "")).strip()
 
     if model.get("model_source") == "custom":
         return "custom", "custom"
 
-    model_key = model_name.lower()
-    model_version = str(model.get("version", "")).strip()
-    if model_version and model_version != "1":
-        version_suffix = f"_v{model_version}"
-        return f"{model_key}{version_suffix}", f"{model_name}{version_suffix}"
-
-    return model_key, model_name
+    return model_name.lower(), model_name
 
 
 def _discover_config_templates() -> Dict[str, List[TemplateInfo]]:

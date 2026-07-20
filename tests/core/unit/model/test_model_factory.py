@@ -125,20 +125,6 @@ class TestModelFactory(unittest.TestCase):
         ):
             get_model_from_config(self.params)
 
-    def test_error_on_unregistered_model_version(self):
-        """Test loading a model class with a version that isn't registered."""
-
-        # Override model version from params
-        self.params.model.version = "unregistered_version"
-
-        model_key = get_model_key(self.params.model.name, self.params.model.version)
-
-        with self.assertRaisesRegex(
-            KeyError,
-            rf"Model {model_key} is not registered",
-        ):
-            get_model_from_config(self.params)
-
     def test_create_model(self):
         """Test initialising the model from the registered class."""
 
