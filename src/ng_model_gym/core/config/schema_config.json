@@ -19,18 +19,6 @@
                             "const": "nss-v1",
                             "type": "string"
                         },
-                        "version": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "default": null,
-                            "description": "Model version"
-                        },
                         "model_source": {
                             "const": "prebuilt",
                             "type": "string"
@@ -91,18 +79,6 @@
                             "const": "nfru-v1",
                             "type": "string"
                         },
-                        "version": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "default": null,
-                            "description": "Model version"
-                        },
                         "model_source": {
                             "const": "prebuilt",
                             "type": "string"
@@ -146,18 +122,6 @@
                 "name": {
                     "description": "Model name",
                     "type": "string"
-                },
-                "version": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ],
-                    "default": null,
-                    "description": "Model version"
                 },
                 "model_source": {
                     "const": "custom",

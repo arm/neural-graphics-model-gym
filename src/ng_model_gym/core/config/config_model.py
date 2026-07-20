@@ -2,8 +2,10 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import pathlib
+import re
+import warnings
 from numbers import Real
-from typing import Annotated, Any, List, Literal, Optional, Union
+from typing import Annotated, Any, ClassVar, List, Literal, Optional, Union
 
 from pydantic import (
     BaseModel,
@@ -150,7 +152,6 @@ class BaseModelSettings(PydanticConfigModel):
     """Model configuration"""
 
     name: str = Field(description="Model name")
-    version: Optional[str] = Field(description="Model version", default=None)
 
 
 class PrebuiltModelSettingsBase(BaseModelSettings):
@@ -539,19 +540,60 @@ class Train(PydanticConfigModel):
 class ConfigModel(PydanticConfigModel):
     """Pydantic model representing configuration file"""
 
+    _MODEL_VERSION_PATTERN: ClassVar[re.Pattern[str]] = re.compile(
+        r"^(?P<base>.+)-v(?P<version>[^-]+)$"
+    )
+
+    @classmethod
+    def _canonicalise_model_identifier(
+        cls, name: str, version: Any, model_source: str
+    ) -> str:
+        """Return the model name after folding deprecated model.version input."""
+        canonical_name = name.strip()
+        if model_source == "prebuilt":
+            canonical_name = canonical_name.lower()
+
+        legacy_version = "" if version is None else str(version).strip()
+        if not legacy_version:
+            return canonical_name
+
+        warnings.warn(
+            "model.version is deprecated; encode the version in model.name instead.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+
+        match = cls._MODEL_VERSION_PATTERN.fullmatch(canonical_name)
+        if match:
+            encoded_version = match.group("version")
+            if encoded_version.lower() != legacy_version.lower():
+                raise PydanticCustomError(
+                    "ModelVersionConflict",
+                    "model.version conflicts with the version encoded in model.name. "
+                    f"Received model.name={name!r} and model.version={legacy_version!r}.",
+                )
+            return canonical_name
+
+        return f"{canonical_name}-v{legacy_version}"
+
     @model_validator(mode="before")
     @classmethod
     def _normalise_model_name(cls, values: dict):
-        """Normalise pre-built model names to lowercase."""
+        """Normalise model names and fold deprecated model.version input."""
 
         if isinstance(values, dict):
             model = values.get("model")
 
-            if isinstance(model, dict) and model.get("model_source") == "prebuilt":
+            if isinstance(model, dict):
                 name = model.get("name")
+                model_source = model.get("model_source")
 
-                if isinstance(name, str):
-                    model["name"] = name.lower()
+                if isinstance(name, str) and model_source in {"prebuilt", "custom"}:
+                    model["name"] = cls._canonicalise_model_identifier(
+                        name=name,
+                        version=model.pop("version", None),
+                        model_source=model_source,
+                    )
 
         return values
 

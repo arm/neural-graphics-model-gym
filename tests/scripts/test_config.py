@@ -221,11 +221,41 @@ class TestConfig(unittest.TestCase):
                 json.dump(user_config, temp_file)
                 temp_path = Path(temp_file.name)
 
-            loaded = load_config_file(temp_path)
+            with self.assertWarnsRegex(DeprecationWarning, "model.version"):
+                loaded = load_config_file(temp_path)
 
-            self.assertEqual(loaded.model.name, "my_model")
+            self.assertEqual(loaded.model.name, "my_model-v1")
             self.assertEqual(loaded.model.model_source, "custom")
             self.assertEqual(loaded.model.custom_field, 0.1)
+
+    def test_legacy_prebuilt_model_version_is_folded_into_name(self):
+        """Test legacy model.version is folded into model.name for prebuilt models."""
+
+        user_config = create_simple_params(usecase="nss-v1").model_dump(mode="json")
+        user_config["model"]["name"] = "NSS"
+        user_config["model"]["version"] = "1"
+
+        with self.assertWarnsRegex(DeprecationWarning, "model.version"):
+            loaded_config = config_model.ConfigModel.model_validate(user_config)
+
+        self.assertEqual(loaded_config.model.name, "nss-v1")
+        self.assertNotIn("version", loaded_config.model.model_dump(mode="json"))
+
+    def test_legacy_model_version_conflict_is_rejected(self):
+        """Test conflicting legacy model.version and versioned model.name is rejected."""
+
+        user_config = create_simple_params(usecase="nss-v1").model_dump(mode="json")
+        user_config["model"]["name"] = "NSS-v1"
+        user_config["model"]["version"] = "2"
+
+        with self.assertWarnsRegex(DeprecationWarning, "model.version"):
+            with self.assertRaises(ValidationError) as exc:
+                config_model.ConfigModel.model_validate(user_config)
+
+        self.assertIn(
+            "model.version conflicts with the version encoded in model.name",
+            str(exc.exception),
+        )
 
     def test_model_specific_config_classes_in_union_type(self):
         """

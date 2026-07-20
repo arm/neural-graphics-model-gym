@@ -14,7 +14,7 @@ There are two common ways to add models and datasets:
 
 #### Modifying a prebuilt model
 
-If you copy a prebuilt model (such as NSS), modify the class decorator to register it under a new name (for example, `MyNSSModel`). Use the prebuilt model config, set `model.name/model.version` to your new registration, and keep `model_source: "prebuilt"`.
+If you copy a prebuilt model (such as NSS), modify the class decorator to register it under a new name (for example, `MyNSSModel`). Use the prebuilt model config, set `model.name` to your new registration, and keep `model_source: "prebuilt"`.
 
 ```bash
 ng-model-gym init nss-v1 [save_dir]
@@ -23,9 +23,8 @@ ng-model-gym init nss-v1 [save_dir]
 ```json
 {
   "model": {
-    "name": "nss",
+    "name": "my-nss-model-v1",
     "model_source": "prebuilt",
-    "version": "1",
     "scale": 2.0,
     "recurrent_samples": 16
   },
@@ -40,7 +39,7 @@ If you are adding a new model or dataset from scratch, use the custom template a
 
 #### Registering a new model
 
-To add a new model, mark the model class with the `@register_model()` decorator, giving the name and optional version to register it under. Models must inherit from the [`BaseNGModel`](../src/ng_model_gym/core/model/base_ng_model.py) class, implement any required methods, and their constructors must accept `params` as an argument.
+To add a new model, mark the model class with the `@register_model()` decorator, giving the name to register it under. Models must inherit from the [`BaseNGModel`](../src/ng_model_gym/core/model/base_ng_model.py) class, implement any required methods, and their constructors must accept `params` as an argument.
 
 ```python
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
@@ -48,7 +47,7 @@ from ng_model_gym.core.model.model_registry import register_model
 from ng_model_gym.core.config.config_model import ConfigModel
 
 
-@register_model(name="name", version="version")
+@register_model(name="name")
 class NewModel(BaseNGModel):
     def __init__(self, params: ConfigModel):
         super().__init__(params)
@@ -111,9 +110,8 @@ Custom model configs must set `"model_source": "custom"`. This allows for extra 
 ```json
 {
   "model": {
-    "name": "registered_model_name",
+    "name": "registered-model-name-v1",
     "model_source": "custom",
-    "version": "1",
     "my_field": "value",
     "my_field2": "value"
   },

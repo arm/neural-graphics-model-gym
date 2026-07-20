@@ -16,12 +16,11 @@ logger = logging.getLogger(__name__)
 
 def get_model_from_config(params: ConfigModel) -> Type[BaseNGModel]:
     """Return the registered model class from the model registry,
-    using the name (and optionally version) supplied in the config file."""
+    using the name supplied in the config file."""
 
     model_name = params.model.name
-    model_version = params.model.version if params.model.version else None
 
-    model_key = get_model_key(model_name, model_version)
+    model_key = get_model_key(model_name)
 
     model = MODEL_REGISTRY.get(model_key)
 

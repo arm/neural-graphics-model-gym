@@ -3,7 +3,6 @@
     "model": {
         "name": "<NAME_OF_REGISTERED_MODEL>",
         "model_source": "custom",
-        "version": "<>",
         "custom_param": ""
     },
     "dataset": {
