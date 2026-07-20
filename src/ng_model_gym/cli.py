@@ -56,7 +56,9 @@ def generate_config(
     save_dir: Annotated[
         Optional[Path],
         typer.Argument(
-            help="Output directory to place json config file template & schema",
+            help=(
+                "Existing directory in which to save the JSON config template & schema"
+            ),
             file_okay=False,
             dir_okay=True,
             resolve_path=True,
@@ -82,7 +84,7 @@ def generate_config(
         for info in available_model_settings:
             console.print(f"  - {info}")
         console.print(
-            "\nRun [bold]ng-model-gym init <model-template> [out_dir][/bold] to "
+            "\nRun [bold]ng-model-gym init <model-template> \\[save_dir][/bold] to "
             "generate a json config template."
         )
         return

@@ -218,7 +218,7 @@ This project contains code and binaries from other projects as listed below. The
 license text is included in, or next to, those files.
 
 - Some source files originating from the [TorchAO](https://github.com/pytorch/ao) project.
-  These files are licensed under the [BSD-3-Clause License](./LICENSES/BSD-3-TorchAO.txt), which is a
+  These files are licensed under the [BSD-3-Clause License](./LICENSES/LicenseRef-BSD-3-TorchAO.txt), which is a
   permissive license compatible with the Apache License, Version 2.0. Any contributions to this
   code must also be made under the terms of [Apache License 2.0](./LICENSES/Apache-2.0.txt).
   These files are:
@@ -226,7 +226,7 @@ license text is included in, or next to, those files.
    -  `src/ng_model_gym/core/utils/patch/torchao_patch.py`
 
 - There are snippets which come from the [ExecuTorch](https://github.com/pytorch/executorch) project.
-  The snippets are licensed under the [BSD-3-Clause License](./LICENSES/BSD-ExecuTorch.txt), which is a
+  The snippets are licensed under the [BSD-3-Clause License](./LICENSES/LicenseRef-BSD-ExecuTorch.txt), which is a
   permissive license compatible with the Apache License, Version 2.0. Any contributions to this
   code must also be made under the terms of [Apache License 2.0](./LICENSES/Apache-2.0.txt).
   Relevant files:

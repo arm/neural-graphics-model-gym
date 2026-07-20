@@ -36,11 +36,11 @@ ng-model-gym init <configuration-template> [save_dir]
 # e.g.
 # - Generate an NSS configuration file in the current directory:
 ng-model-gym init nss
-# - Generate an NFRU configuration file in a "config-dir" subdirectory:
+# - Generate an NFRU configuration file in an existing directory:
 ng-model-gym init nfru config-dir
 ```
 
-This command creates two files in the selected output directory (or your working directory if path is omitted):
+This command creates two files in the selected output directory (or your working directory if `save_dir` is omitted):
 
 - `<model-name>_config.json`
   - Template populated with default values. Some entries have placeholder values (e.g. "<...>"). Make sure to replace those with your own settings. Dataset paths are expected to be folders containing datasets, not individual files.
@@ -63,6 +63,25 @@ You can list all available configuration parameters in the CLI with the command 
 
 ```bash
 ng-model-gym config-options
+```
+
+### Listing pretrained models
+
+To list the pretrained models available from the configured repositories, run:
+
+```bash
+ng-model-gym list-models
+```
+
+### Downloading a pretrained model
+
+To download a listed model to a destination directory, run:
+
+```bash
+ng-model-gym download @<repo_name>/<file_name> <destination>
+
+# e.g.
+ng-model-gym download @neural-super-sampling/nss_v1_high_fp32.pt ./myfolder
 ```
 
 ### Training
@@ -160,13 +179,14 @@ ng-model-gym -c <path/to/config/file> qat --finetune @<repo_name>/<filename>
 ng-model-gym -c <path/to/config/file> qat --finetune @neural-super-sampling/nss_v1_high_fp32.pt
 ```
 
-To resume QAT from the latest saved checkpoint specified in your configuration file, run:
+To resume QAT from an existing checkpoint file or a directory containing checkpoints, run:
 
 ```bash
-ng-model-gym -c <path/to/config/file> qat --resume
+ng-model-gym -c <path/to/config/file> qat --resume path/to/checkpoint.pt
+ng-model-gym -c <path/to/config/file> qat --resume path/to/checkpoint_dir/
 ```
 
-Other actions can be specified using additional flags.
+`--finetune` and `--resume` are mutually exclusive and should not be set at the same time. Other actions can be specified using additional flags.
 
 To see all available flags, run:
 
@@ -207,8 +227,8 @@ The following snippet shows how to use the package to generate a config, perform
 ```python
 import ng_model_gym as ngmg
 
-# Generate config file in specified directory using the API or CLI
-# Note: The config file must be filled in before use
+# Generate a config file in an existing directory using the API or CLI
+# Note: The config file must be filled in before use.
 ngmg.generate_config_file("nss", "/save/dir")
 ```
 

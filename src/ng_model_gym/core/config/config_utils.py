@@ -126,8 +126,8 @@ def generate_config_file(
 
     Args:
         selected_config_template (str): Name of the selected config template to generate.
-        save_dir (Union[str, Path, None]): Directory to save config and schema. If None,
-         uses current directory.
+        save_dir (Union[str, Path, None]): Existing directory in which to save the config
+         and schema. If None, uses the current directory.
 
     Returns:
         Tuple[Path, Path]: Paths to the generated configuration JSON and schema JSON files.
