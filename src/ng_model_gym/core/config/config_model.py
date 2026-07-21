@@ -103,8 +103,8 @@ class ColorPreprocessingSplitConfig(PydanticConfigModel):
         default=2.0,
         description=(
             'NFRU color-preprocessing exposure. Use a fixed log exposure, "auto" '
-            "to compute exposure from average image brightness using"
-            "auto_exposure_key_value as the target brightness, or [min, max] to"
+            "to compute exposure from average image brightness using "
+            "auto_exposure_key_value as the target brightness, or [min, max] to "
             "randomly resample exposure within that range."
         ),
     )
