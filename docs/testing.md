@@ -53,6 +53,15 @@ hatch run test:integration-core
 # Run usecase integration tests only
 hatch run test:integration-usecase-all
 
+# Run fast integration tests for one use case (NSS by default)
+hatch run test:integration-usecase-fast
+
+# Run fast integration tests for all discovered use cases
+hatch run test:integration-usecase-all-fast
+
+# Run core integration tests followed by fast use-case integration tests
+hatch run test:integration-fast
+
 # Run export tests
 hatch run test:export
 ```
@@ -77,6 +86,9 @@ export USECASE=nfru && hatch run test:unit-usecase
 
 export USECASE=nss && hatch run test:integration-usecase
 export USECASE=nfru && hatch run test:integration-usecase
+
+export USECASE=nss && hatch run test:integration-usecase-fast
+export USECASE=nfru && hatch run test:integration-usecase-fast
 ```
 
 Windows (cmd):
@@ -86,7 +98,12 @@ set USECASE=nfru && hatch run test:unit-usecase
 
 set USECASE=nss && hatch run test:integration-usecase
 set USECASE=nfru && hatch run test:integration-usecase
+
+set USECASE=nss && hatch run test:integration-usecase-fast
+set USECASE=nfru && hatch run test:integration-usecase-fast
 ```
+
+Fast integration testing currently uses a reduced dataset.
 
 **To run unit tests from one specific file with tests:**
 

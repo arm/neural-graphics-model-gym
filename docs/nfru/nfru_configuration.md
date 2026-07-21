@@ -4,32 +4,44 @@ SPDX-License-Identifier: Apache-2.0
 --->
 # How to configure NFRU models
 
-Before reading further, please read `docs/usage.md`. That file explains how to configure and use Model Gym.
+Before reading further, see the [usage guide](../usage.md). It explains how to
+configure and run Model Gym.
 
 
 ## Introduction
 
-Model Gym's NFRU model requires a configuration file, typically named `nfru_config.json`. This file is initially generated using the following command:
+Model Gym's NFRU model requires a JSON configuration file. Generate one with the
+following command:
 
     ng-model-gym init nfru-v1
 
-This document is a guide to the most common changes you will need to make to `nfru_config.json`. For more details, refer to `schema_config.json`, which contains a detailed description of every configuration setting.
+This document is a guide to the most common configuration changes. For every
+available setting, refer to the generated
+`schema_config.json` file or run `ng-model-gym config-options`.
 
 
-## Data you must provide
+## Dataset paths
 
-It's essential to provide the following information:
+Provide dataset paths for your required workflow:
 
-- `dataset` → `path` → `train`: path to a directory containing training data in the form of a collection of `.safetensors` files.
-- `dataset` → `path` → `validation`: path to a directory containing validation data.
-- `dataset` → `path` → `test`: path to a directory containing test data.
+- `dataset` → `path` → `train`: path to the training data.
+- `dataset` → `path` → `validation`: path to the validation data, if validation is enabled.
+- `dataset` → `path` → `test`: path to the test data, if evaluation is enabled.
 
 
 ## Other settings you may wish to change
 
+### Training loss
+
+For NFRU v1, set `train` → `loss_fn` to `lpips_spatial_loss_v1`.
+
+`train` → `loss_args` must include `alpha`. The generated NFRU configuration
+uses the recommended value of `0.1`. Lower values prioritize pixel
+accuracy, while higher values prioritize perceptual similarity.
+
 ### Dynamic mask
 
-The “dynamic mask” marks pixels whose motion appear to come from scene/object movement rather than camera movement. The key settings controlling this functionality are:
+The “dynamic mask” marks pixels whose motion appears to come from scene/object movement rather than camera movement. The key settings controlling this functionality are:
 
 - `model` → `dynamic_mask_is_runtime_accurate`: If `true`, the dynamic mask implementation used in training/evaluation will better resemble the deployed runtime implementation. This might make preprocessing/motion-vector handling slightly slower.
 

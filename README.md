@@ -46,7 +46,7 @@ Currently, we include the following Neural Graphics use cases:
 
 * [Neural Super Sampling](https://huggingface.co/Arm/neural-super-sampling) (NSS)
   * NSS allows for high-fidelity, real-time graphics in game engines. By feeding low-resolution frames, along with spatial and motion information, into a neural network we are able to construct high-resolution frames that suffer no loss in quality.
-* [Neural Frame Rate Upscaling ](https://huggingface.co/Arm/neural-frame-rate-upscaling)(NFRU)
+* [Neural Frame Rate Upscaling](https://huggingface.co/Arm/neural-frame-rate-upscaling) (NFRU)
   * NFRU allows for higher frame-rate real-time graphics in game engines. By feeding low-frame-rate frames, along with spatial and motion information, into a neural network we are able to construct intermediate frames that increase the output frame rate.
 
 
@@ -241,7 +241,7 @@ Testing can be run using Hatch commands. First [install Hatch and create a dev e
 
 Neural Graphics Model Gym supports adding custom models and datasets, enabling their use across all workflows. Detailed documentation on how to implement this can be found in [custom-models-and-datasets.md](./docs/adding-custom-models-and-datasets.md#adding-custom-models-and-datasets).
 
-We also support defining custom use cases to group together related models, datasets, configurations, and any additional required code. See [adding custom usecases](./docs/adding-custom-models-and-datasets.md#adding-custom-use-cases) to see the implementation guide.
+We also support defining custom use cases to group together related models, datasets, configurations, and any additional required code. See [model and dataset discovery](./docs/adding-custom-models-and-datasets.md#model-and-dataset-discovery) for the required layout and registration behavior.
 
 ## Generating new training data
 

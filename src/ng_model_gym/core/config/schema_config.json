@@ -272,7 +272,7 @@
                                         }
                                     ],
                                     "default": 2.0,
-                                    "description": "NFRU color-preprocessing exposure. Use a fixed log exposure, \"auto\" to compute exposure from average image brightness usingauto_exposure_key_value as the target brightness, or [min, max] torandomly resample exposure within that range."
+                                    "description": "NFRU color-preprocessing exposure. Use a fixed log exposure, \"auto\" to compute exposure from average image brightness using auto_exposure_key_value as the target brightness, or [min, max] to randomly resample exposure within that range."
                                 },
                                 "auto_exposure_key_value": {
                                     "default": 1.0,
@@ -342,7 +342,7 @@
                                         }
                                     ],
                                     "default": 2.0,
-                                    "description": "NFRU color-preprocessing exposure. Use a fixed log exposure, \"auto\" to compute exposure from average image brightness usingauto_exposure_key_value as the target brightness, or [min, max] torandomly resample exposure within that range."
+                                    "description": "NFRU color-preprocessing exposure. Use a fixed log exposure, \"auto\" to compute exposure from average image brightness using auto_exposure_key_value as the target brightness, or [min, max] to randomly resample exposure within that range."
                                 },
                                 "auto_exposure_key_value": {
                                     "default": 1.0,
@@ -412,7 +412,7 @@
                                         }
                                     ],
                                     "default": 2.0,
-                                    "description": "NFRU color-preprocessing exposure. Use a fixed log exposure, \"auto\" to compute exposure from average image brightness usingauto_exposure_key_value as the target brightness, or [min, max] torandomly resample exposure within that range."
+                                    "description": "NFRU color-preprocessing exposure. Use a fixed log exposure, \"auto\" to compute exposure from average image brightness using auto_exposure_key_value as the target brightness, or [min, max] to randomly resample exposure within that range."
                                 },
                                 "auto_exposure_key_value": {
                                     "default": 1.0,

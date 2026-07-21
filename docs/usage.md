@@ -48,7 +48,10 @@ This command creates two files in the selected output directory (or your working
 - `schema_config.json`
   -  An accompanying file detailing all available configuration parameters
 
-Edit `<model-name>_config.json` to customize Model Gym's behavior. Typical configuration settings for NSS and NFRU are given in `docs/nfru/nfru_configuration.md` and `docs/nss/nss_configuration.md`.
+Edit `<model-name>_config.json` to customize Model Gym's behavior. Typical
+settings are described in the
+[NFRU configuration guide](./nfru/nfru_configuration.md) and
+[NSS configuration guide](./nss/nss_configuration.md).
 
 Use your custom configuration when invoking CLI commands by providing its path with the `--config-path` or `-c` flag, as shown below:
 
@@ -98,6 +101,11 @@ To perform training without evaluation, run:
 ```bash
 ng-model-gym -c <path/to/config/file> train --no-evaluate
 ```
+
+> [!TIP]
+> For a full training or QAT run, set `train.compile` to `true` in the
+> configuration file to speed up training and reduce GPU memory usage.
+> Compilation and warmup takes time, so it is most useful for longer runs.
 
 To fine-tune from an existing local checkpoint, pass the weights path directly:
 
