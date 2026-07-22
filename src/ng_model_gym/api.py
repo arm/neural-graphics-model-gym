@@ -28,6 +28,7 @@ from ng_model_gym.core.utils.system_usage_decorators import (
     memory_log_decorator,
     time_decorator,
 )
+from ng_model_gym.core.utils.torch_utils import fix_randomness
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,8 @@ def do_training(
 
     log_gpu_torch()
 
+    fix_randomness(params.train.seed)
+
     trainer = Trainer(params)
 
     # Train the model (with optional profiling)
@@ -237,6 +240,7 @@ def do_evaluate(
 
     # Load user's specified model
     params_for_eval.model_train_eval_mode = model_type
+    fix_randomness(params_for_eval.train.seed)
     model = load_checkpoint(model_path, params_for_eval)
 
     # Create Evaluator object
@@ -302,6 +306,7 @@ def do_export(
         raise ValueError(f"Expected a .pt file, got {model_path.name}")
 
     if export_type in ExportType:
+        fix_randomness(params.train.seed)
         executorch_vgf_export(params, export_type, model_path)
     else:
         raise ValueError(f"Unsupported export type: {export_type}.")
