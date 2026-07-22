@@ -112,6 +112,10 @@ class NFRUDataset(torch.utils.data.Dataset):
         # Find all the files inside the dataset
         sequence_paths = set(self.dset_path.rglob(f"*{self.extension.value}"))
         self.sequences = self.all_sequences = sorted(sequence_paths)
+        if not self.sequences:
+            raise ValueError(
+                f"No {self.extension.value} files found at {self.dset_path}"
+            )
 
         # Filter features to read to only those specified by the model inputs
         data_frame = generic_safetensors_reader(self.sequences[0], 0)
