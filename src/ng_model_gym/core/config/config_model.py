@@ -319,7 +319,7 @@ class Dataset(PydanticConfigModel):
     )
     num_workers: int = Field(ge=0, description="Number of dataloader workers to use")
     prefetch_factor: int = Field(
-        ge=0,
+        gt=0,
         description="Number of batches loaded in advance by each dataloader worker. "
         "Used only if num_workers > 0",
     )
