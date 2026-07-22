@@ -64,7 +64,8 @@ class HuggingfaceModelServer(BaseModelServer):
             except RepositoryNotFoundError as exc:
                 raise RepositoryNotFoundError(
                     f"{HuggingfaceModelServer.server_display_name} "
-                    f"Unable to find repository ({repo.name}@{repo.revision}): {exc}"
+                    f"Unable to find repository ({repo.name}@{repo.revision}): {exc}",
+                    response=exc.response,
                 ) from exc
 
             models: List[ModelMetadata] = []
