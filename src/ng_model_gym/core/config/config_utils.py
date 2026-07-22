@@ -7,7 +7,6 @@ import json
 import logging
 import re
 import shutil
-import sys
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
@@ -196,7 +195,7 @@ def load_config_file(user_config_path: Path) -> ConfigModel:
     Load and validate a JSON configuration file. The created config object is used as an argument
     to other API functions.
 
-    Note: SystemExit - if validation fails, after printing errors, exits with status code 1
+    Raises ValueError if configuration validation fails.
 
     Args:
         user_config_path (Path): Path to a user-provided JSON config file
@@ -300,7 +299,7 @@ def load_config_file(user_config_path: Path) -> ConfigModel:
         error_str = re.sub(r"\[/?[^\]]+\]", "", error_str).lstrip("\n")
         config_logger.error(error_str)
 
-        sys.exit(1)
+        raise
 
 
 def validate_schema_version(user_config: dict) -> None:
@@ -321,7 +320,7 @@ def validate_schema_version(user_config: dict) -> None:
             f"[bold red]→[/bold red] Provided config_schema_version: [bold bright_cyan]{provided_version}[/bold bright_cyan]\n"
             f"\nCreate an updated config with [bold]ng-model-gym init[/bold] or update it to the latest template.\n"
         )
-        sys.exit(1)
+        raise ValueError(f"Unsupported config_schema_version: {provided_version}")
 
 
 def print_config_options() -> None:

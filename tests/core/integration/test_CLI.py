@@ -199,7 +199,7 @@ class CLIIntegrationTest(BaseGPUMemoryTest):
                         )
 
                         output_buffer = io.StringIO()
-                        with self.assertRaises(SystemExit):
+                        with self.assertRaises(ValueError):
                             with contextlib.redirect_stdout(output_buffer):
                                 load_config_file(config1)
 

@@ -51,6 +51,7 @@ class TestConfigSchemaIntegration(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Configuration file version mismatch", output)
         self.assertIn("missing", output)
+        self.assertNotIn("Traceback", output)
 
     def test_cli_rejects_outdated_schema_version(self):
         """Test configs with outdated config_schema_version are rejected"""
