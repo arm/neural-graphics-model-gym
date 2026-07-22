@@ -7,8 +7,6 @@ import time
 import unittest
 from pathlib import Path
 
-from huggingface_hub.errors import RepositoryNotFoundError
-
 from ng_model_gym.core.repos.remote_model_manager import (
     download_pretrained_model,
     list_pretrained_models,
@@ -112,7 +110,7 @@ class TestHFModelServer(unittest.TestCase):
     def test_hf_model_download_raise(self):
         """Test raise when giving random repo"""
         with tempfile.TemporaryDirectory() as tmp_dir:
-            with self.assertRaises(RepositoryNotFoundError):
+            with self.assertRaises(ValueError):
                 _ = download_pretrained_model(
                     "random-repo/nss_v1_high_fp32.pt", Path(tmp_dir)
                 )

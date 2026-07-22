@@ -4,8 +4,6 @@
 from pathlib import Path
 from typing import Dict, List
 
-from huggingface_hub.errors import RepositoryNotFoundError
-
 from ng_model_gym.core.repos.base_model_server import ModelRepository
 from ng_model_gym.core.repos.huggingface_model_server import HuggingfaceModelServer
 
@@ -109,7 +107,7 @@ def download_pretrained_model(model_name: str, destination: Path | None = None) 
 
     if not found_repo:
         available = ", ".join(sorted(available_repos)) or "(none)"
-        raise RepositoryNotFoundError(
+        raise ValueError(
             f"Unknown repository '{user_repo_name}'. Available repositories: {available}"
         )
 
