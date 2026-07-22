@@ -67,7 +67,7 @@ def pytest_sessionstart(session) -> None:  # pylint: disable=unused-argument
     dataset_path = Path("tests/usecases/nss/datasets")
     validate_nss_downloads(dataset_path)
     if nfru_test_assets_enabled():
-        nfru_dataset_path = Path("tests/usecases/nfru/data/nfru_sample")
+        nfru_dataset_path = Path("tests/usecases/nfru/datasets")
         validate_nfru_datasets(nfru_dataset_path)
 
 

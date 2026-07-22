@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+import shutil
 import sys
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from scripts.safetensors_generator.safetensor_truncate import truncate_safetenso
 
 MINI_DATASET_DESIRED_FRAMES = 20
 DATASET_SPLITS = ("train", "test", "val")
+NFRU_DATASET_PREFIX = "nfru"
 
 
 def nfru_test_assets_enabled() -> bool:
@@ -92,32 +94,78 @@ def validate_nss_downloads(datasets_dir):
         ) from e
 
 
+def download_nfru_datasets(datasets_dir):
+    """Download NFRU test datasets .safetensors files."""
+
+    if _nfru_flattened_dataset_exists(datasets_dir):
+        print(f"NFRU v1 datasets already exist at {datasets_dir}, skipping download")
+        return
+
+    hf.snapshot_download(
+        repo_id="Arm/neural-graphics-dataset",
+        allow_patterns=[
+            f"{NFRU_DATASET_PREFIX}/{split}/*.safetensors" for split in DATASET_SPLITS
+        ],
+        repo_type="dataset",
+        local_dir=datasets_dir,
+        revision="927bc07a1ad28f2a59c3d957d6b2f9e0f036fadb",
+    )
+    _flatten_nfru_dataset_download(datasets_dir)
+    print(f"Downloaded NFRU v1 datasets to {datasets_dir}")
+
+
+def _nfru_flattened_dataset_exists(datasets_dir: Path) -> bool:
+    """Return True when flattened NFRU split directories already contain safetensors."""
+    return all(
+        (datasets_dir / split).is_dir()
+        and any((datasets_dir / split).glob("*.safetensors"))
+        for split in DATASET_SPLITS
+    )
+
+
+def _flatten_nfru_dataset_download(datasets_dir: Path):
+    """
+    Move downloaded nfru v1 dataset files into datasets_dir/{split}.
+
+    E.g.    tests/usecases/nfru/datasets/nfru/train/0000.safetensors becomes
+            tests/usecases/nfru/datasets/test/0000.safetensors
+    """
+    nfru_root = datasets_dir / NFRU_DATASET_PREFIX
+    for split in DATASET_SPLITS:
+        source_split_dir = nfru_root / split
+        if not source_split_dir.is_dir():
+            continue
+
+        target_split_dir = datasets_dir / split
+        target_split_dir.mkdir(parents=True, exist_ok=True)
+        for source_file in source_split_dir.glob("*.safetensors"):
+            source_file.replace(target_split_dir / source_file.name)
+
+    if nfru_root.exists():
+        shutil.rmtree(nfru_root)
+
+
 def validate_nfru_datasets(dataset_dir: Path):
-    """Validate local NFRU safetensor datasets provisioned via git-lfs."""
-    # TODO: modify once NFRU datasets are available on HuggingFace
-    # and switch to HF API for validation instead of local file checks.
-
+    """Validate local NFRU safetensor datasets provisioned via Hugging Face."""
     try:
-        assert (
-            dataset_dir.exists() and dataset_dir.is_dir()
-        ), f"Missing NFRU dataset directory: {dataset_dir}"
-        safetensors_files = sorted(dataset_dir.glob("*.safetensors"))
-        assert safetensors_files, "No .safetensors files found for NFRU tests"
-
-        expected_file = dataset_dir / "0000.safetensors"
-        assert (
-            expected_file.exists()
-        ), "Missing expected NFRU sample file: 0000.safetensors"
-        size = expected_file.stat().st_size
-        assert (
-            size > 512
-        ), "NFRU sample file appears to be a git-lfs pointer. Run 'git lfs pull'"
+        # Validate datasets
+        folders = ["train", "test", "val"]
+        for folder in folders:
+            dataset_path = dataset_dir / folder
+            assert (
+                dataset_path.exists() and dataset_path.is_dir()
+            ), f"Missing dataset directory: {folder}"
+            safetensors = list(dataset_path.glob("*.safetensors"))
+            assert safetensors, f"No .safetensors files found in {folder}"
+            for safetensor in safetensors:
+                size = safetensor.stat().st_size
+                assert (
+                    size > 25 * 1024 * 1024
+                ), f"Dataset file {safetensor.name} in {folder} is less than 100KB ({size:.1f} KB)"
 
     except AssertionError as e:
         raise type(e)(
-            f"{e}\n\nNFRU test asset validation is disabled by default. "
-            "Provision the NFRU test assets locally and rerun with "
-            "NGMG_ENABLE_NFRU_TEST_ASSETS=1 to re-enable this validation path."
+            f"{e}\n\nRun 'hatch run test:download' to fetch test assets."
         ) from e
 
 
@@ -173,9 +221,7 @@ if __name__ == "__main__":
 
     if nfru_test_assets_enabled():
         nfru_datasets_path = Path("tests/usecases/nfru/datasets")
-        # TODO: download NFRU datasets once available on HuggingFace
+        download_nfru_datasets(nfru_datasets_path)
         validate_nfru_datasets(nfru_datasets_path)
-        create_mini_safetensor_dataset(
-            nfru_datasets_path,
-            usecase_name="NFRU",
-        )
+        # TODO: validate downloaded NFRU weights
+        create_mini_safetensor_dataset(nfru_datasets_path, usecase_name="NFRU")
