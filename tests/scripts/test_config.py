@@ -84,10 +84,8 @@ class TestConfig(unittest.TestCase):
 
             # load user config
             with redirect_stdout(StringIO()):
-                with self.assertRaises(SystemExit) as e:
+                with self.assertRaises(ValueError):
                     load_config_file(temp_path)
-
-            self.assertEqual(e.exception.code, 1)
 
             temp_path.unlink(missing_ok=True)
 
@@ -109,10 +107,8 @@ class TestConfig(unittest.TestCase):
 
             # load user config
             with redirect_stdout(StringIO()):
-                with self.assertRaises(SystemExit) as e:
+                with self.assertRaises(ValidationError):
                     load_config_file(temp_path)
-
-            self.assertEqual(e.exception.code, 1)
 
             temp_path.unlink(missing_ok=True)
 
@@ -156,10 +152,8 @@ class TestConfig(unittest.TestCase):
 
             # load user config
             with redirect_stdout(StringIO()):
-                with self.assertRaises(SystemExit) as e:
+                with self.assertRaises(ValidationError):
                     load_config_file(temp_path)
-
-            self.assertEqual(e.exception.code, 1)
 
             temp_path.unlink(missing_ok=True)
 
@@ -326,7 +320,7 @@ class TestConfigLogging(unittest.TestCase):
             temp_file.flush()
             temp_path = Path(temp_file.name)
 
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(ValidationError):
             load_config_file(temp_path)
 
         for handler in config_validation_logger.handlers:

@@ -458,7 +458,10 @@ def cli_root(
     ctx.ensure_object(dict)
     ctx.obj["ng-model-gym-cli-active"] = True
 
-    params = load_config_file(config_path)
+    try:
+        params = load_config_file(config_path)
+    except ValueError as exc:
+        raise typer.Exit(code=1) from exc
     cli_state["params"] = params
     cli_state["config_path"] = config_path
     cli_state["profiler"] = profiler
