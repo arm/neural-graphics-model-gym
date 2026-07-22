@@ -348,11 +348,11 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
         with self.assertRaises(ValueError):
             NFRUDataset(config, loader_mode=DataLoaderMode.TRAIN, extension=".xyz")
 
-    def test_empty_dataset_directory_current_behavior(self):
-        """Current empty-dir behavior raises IndexError during first sequence read."""
+    def test_empty_dataset_directory_raises_value_error(self):
+        """Empty dataset directories should raise ValueError."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             config = _build_nfru_config(Path(tmp_dir))
-            with self.assertRaises(IndexError):
+            with self.assertRaises(ValueError):
                 NFRUDataset(config, loader_mode=DataLoaderMode.TRAIN)
 
     def test_generate_frame_indexes_train_default_step_is_two_for_non_legacy(self):
