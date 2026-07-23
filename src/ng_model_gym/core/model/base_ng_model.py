@@ -147,25 +147,26 @@ class BaseNGModel(nn.Module, ABC):
 
         raise NotImplementedError
 
-    def train(self: T, mode: bool = True):  # pylint: disable=unused-argument
+    def train(self: T, mode: bool = True):
         """Overrides PyTorch mode hint, model.train()"""
 
         # Call through PyTorch's default .train() method if doing FP32 training
         if not self.is_qat_model:
-            super().train(mode=mode)
-            return
+            return super().train(mode=mode)
 
         if not self.is_network_quantized:
             raise RuntimeError(
                 "Internal quantize_modules method not called on model marked "
                 "with is_qat_model=True before model training"
             )
+        self.training = mode
         if mode:
             current_network = self.get_neural_network()
             move_exported_model_to_train(current_network)
             enable_all_observers(current_network)
         else:
             self._eval()
+        return self
 
     def _eval(self: T):
         """Quant specific model.eval(), we freeze observers and move to eval mode."""
