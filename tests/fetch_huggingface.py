@@ -94,6 +94,19 @@ def validate_nss_downloads(datasets_dir):
         ) from e
 
 
+def download_pretrained_nfru_weights():
+    """Download pretrained NFRU v1 weights files."""
+    weights_dir = Path("tests/usecases/nfru/weights")
+
+    hf.snapshot_download(
+        repo_id="Arm/neural-frame-rate-upscaling",
+        allow_patterns=["*.pt", "config.json"],
+        local_dir=weights_dir,
+        revision="57eb1caaa98338b25d23450802f4adaac63010ce",
+    )
+    print(f"Downloaded pretrained NFRU v1 weights to {weights_dir}")
+
+
 def download_nfru_datasets(datasets_dir):
     """Download NFRU test datasets .safetensors files."""
 
@@ -145,9 +158,23 @@ def _flatten_nfru_dataset_download(datasets_dir: Path):
         shutil.rmtree(nfru_root)
 
 
-def validate_nfru_datasets(dataset_dir: Path):
+def validate_nfru_downloads(dataset_dir: Path):
     """Validate local NFRU safetensor datasets provisioned via Hugging Face."""
     try:
+        # Validate pretrained weights
+        weights_dir = Path("tests/usecases/nfru/weights")
+        expected_weights = [
+            Path("nfru_v1_fp32.pt"),
+            Path("nfru_v1_int8.pt"),
+        ]
+        for file_path in expected_weights:
+            weights_path = weights_dir / file_path
+            assert weights_path.exists(), f"Missing weight file: {file_path}"
+            size = weights_path.stat().st_size
+            assert (
+                size > 100 * 1024
+            ), f"Weight file {file_path} is less than 100KB ({size:.1f} bytes)"
+
         # Validate datasets
         folders = ["train", "test", "val"]
         for folder in folders:
@@ -220,8 +247,9 @@ if __name__ == "__main__":
     create_mini_safetensor_dataset(nss_datasets_path, usecase_name="NSS")
 
     if nfru_test_assets_enabled():
+        download_pretrained_nfru_weights()
+
         nfru_datasets_path = Path("tests/usecases/nfru/datasets")
         download_nfru_datasets(nfru_datasets_path)
-        validate_nfru_datasets(nfru_datasets_path)
-        # TODO: validate downloaded NFRU weights
+        validate_nfru_downloads(nfru_datasets_path)
         create_mini_safetensor_dataset(nfru_datasets_path, usecase_name="NFRU")
