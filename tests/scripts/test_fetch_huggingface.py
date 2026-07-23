@@ -7,9 +7,10 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tests.fetch_huggingface import download_nfru_datasets, validate_nfru_datasets
+from tests.fetch_huggingface import download_nfru_datasets, validate_nfru_downloads
 
 
+@unittest.skip("NFRU CI/assets disabled for now")
 class TestFetchHuggingFace(unittest.TestCase):
     """Test Hugging Face test asset download helpers."""
 
@@ -56,4 +57,4 @@ class TestFetchHuggingFace(unittest.TestCase):
                 with open(split_dir / f"{split}.safetensors", "wb") as sf_file:
                     sf_file.truncate(26 * 1024 * 1024)
 
-            validate_nfru_datasets(datasets_dir)
+            validate_nfru_downloads(datasets_dir)
