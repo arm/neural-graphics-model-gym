@@ -126,7 +126,18 @@ class TestBaseNGModelQAT(unittest.TestCase):
     def test_fp32_train_eval_works(self):
         """Test FP32 train and eval modes haven't been changed by overriding .train() method"""
         fp32_model = _TestingNGModel(self.params)
-        fp32_model.train()
+        self.assertIs(fp32_model.train(), fp32_model)
         self.assertTrue(fp32_model.training)
-        fp32_model.eval()
+        self.assertIs(fp32_model.eval(), fp32_model)
         self.assertFalse(fp32_model.training)
+
+    def test_qat_train_eval_updates_training_mode_and_returns_model(self):
+        """Test QAT train and eval preserve the PyTorch module lifecycle contract."""
+        model = _TestingNGModel(self.params)
+        model.is_qat_model = True
+        model.quantize_modules(self.mock_forward_input_trace)
+
+        self.assertIs(model.eval(), model)
+        self.assertFalse(model.training)
+        self.assertIs(model.train(), model)
+        self.assertTrue(model.training)
