@@ -24,25 +24,21 @@ class HuggingfaceModelServer(BaseModelServer):
 
     def __init__(self):
         # Add new HF model repositories here or update hash
-        self.repos = [
-            RepositoryMetadata(
-                namespace="Arm",
-                name="neural-super-sampling",
-                url="https://huggingface.co/Arm/neural-super-sampling",
-                revision="3dd6c4f054827a3d018330d5dfcd0b92e7d37974",
-            )
-        ]
-        # TODO: NFRU HF integration stub:
-        # Keep this disabled until repo/revision are available, otherwise list/download
-        # fails fast when the repository does not exist.
-        # self.nfru_repo_stub = RepositoryMetadata(
-        #     namespace="Arm",
-        #     name="neural-frame-rate-upscaling",  # Placeholder until repo is published
-        #     url="https://huggingface.co/Arm/neural-frame-rate-upscaling",
-        #     revision="<pin-nfru-revision-hash>",
-        # )
+        self.nss_repo = RepositoryMetadata(
+            namespace="Arm",
+            name="neural-super-sampling",
+            url="https://huggingface.co/Arm/neural-super-sampling",
+            revision="3dd6c4f054827a3d018330d5dfcd0b92e7d37974",
+        )
 
-        # self.repos.append(self.nfru_repo_stub)
+        self.nfru_repo = RepositoryMetadata(
+            namespace="Arm",
+            name="neural-frame-rate-upscaling",
+            url="https://huggingface.co/Arm/neural-frame-rate-upscaling",
+            revision="57eb1caaa98338b25d23450802f4adaac63010ce",
+        )
+
+        self.repos = [self.nss_repo, self.nfru_repo]
 
     def list_repositories(
         self,
