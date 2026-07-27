@@ -71,7 +71,7 @@ class EvaluationIntegrationTest(NFRUBaseIntegrationTest):
     def test_evaluate_from_identifier(self):
         """Evaluate using remote model identifier."""
         self._evaluate_from_checkpoints(
-            "@neural-framerate-upscaling/nfru_v1_fp32.pt",
+            "@neural-frame-rate-upscaling/nfru_v1_fp32.pt",
             model_type="fp32",
         )
 

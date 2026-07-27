@@ -47,7 +47,7 @@ class TrainingIntegrationTest(NFRUBaseIntegrationTest):
                 "train",
                 "--no-evaluate",
                 "--finetune",
-                "@neural-framerate-upscaling/nfru_v1_fp32.pt",
+                "@neural-frame-rate-upscaling/nfru_v1_fp32.pt",
             ],
             capture_output=True,
             text=True,
