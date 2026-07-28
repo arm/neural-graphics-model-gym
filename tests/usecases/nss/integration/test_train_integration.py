@@ -43,13 +43,13 @@ class TrainingIntegrationTest(NSSV1BaseIntegrationTest):
                 "train",
                 "--no-evaluate",
                 "--finetune",
-                "@neural-super-sampling/nss_v1_high_fp32.pt",
+                "@neural-super-sampling/nss_v1_0_1_high_fp32.pt",
             ],
             capture_output=True,
             text=True,
         )
         self.assertEqual(sub_proc.returncode, 0)
-        self.check_log(["Fine tuning using weights nss_v1_high_fp32.pt"])
+        self.check_log(["Fine tuning using weights nss_v1_0_1_high_fp32.pt"])
         return sub_proc
 
     def test_model_train(self):

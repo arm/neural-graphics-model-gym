@@ -166,7 +166,7 @@ def download_cli(
         typer.Argument(
             help=(
                 "Model identifier to download "
-                "(e.g. @neural-super-sampling/nss_v1_high_fp32.pt)"
+                "(e.g. @neural-super-sampling/nss_v1_0_1_high_fp32.pt)"
             )
         ),
     ],
