@@ -134,15 +134,15 @@ class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
     @staticmethod
     def _model_path_for_quality(_quality):
         """Return the FP32 checkpoint path for the requested quality mode."""
-        return "tests/usecases/nss/weights/nss_v1_high_fp32.pt"
+        return "tests/usecases/nss/weights/nss_v1_0_1_high_fp32.pt"
 
     @staticmethod
     def _qat_model_path_for_quality(quality):
         """Return the quantized checkpoint path for the requested quality mode."""
         if quality == "high":
-            return "tests/usecases/nss/weights/nss_v1_high_int8.pt"
+            return "tests/usecases/nss/weights/nss_v1_0_1_high_int8.pt"
 
-        return "tests/usecases/nss/weights/nss_v1_mid_low_int8.pt"
+        return "tests/usecases/nss/weights/nss_v1_0_1_mid_low_int8.pt"
 
     def _evaluate_from_checkpoint(
         self,
@@ -219,7 +219,7 @@ class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
     def test_evaluate_from_identifier(self):
         """Evaluate NSS v1 using a remote model identifier."""
         _, results_path = self._evaluate_from_checkpoint(
-            "@neural-super-sampling/nss_v1_high_fp32.pt",
+            "@neural-super-sampling/nss_v1_0_1_high_fp32.pt",
             output_suffix="high_identifier",
         )
 

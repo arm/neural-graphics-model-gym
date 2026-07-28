@@ -53,14 +53,14 @@ class QATIntegrationTest(NSSV1BaseIntegrationTest):
                 "qat",
                 "--no-evaluate",
                 "--finetune",
-                "@neural-super-sampling/nss_v1_high_fp32.pt",
+                "@neural-super-sampling/nss_v1_0_1_high_fp32.pt",
             ],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
         out = sub_proc.stdout.decode("utf-8", errors="ignore")
         err = sub_proc.stderr.decode("utf-8", errors="ignore")
-        self.check_log(["Fine tuning using weights nss_v1_high_fp32.pt"])
+        self.check_log(["Fine tuning using weights nss_v1_0_1_high_fp32.pt"])
 
         self.assertEqual(
             sub_proc.returncode,

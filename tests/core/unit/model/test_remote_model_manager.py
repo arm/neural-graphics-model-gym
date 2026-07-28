@@ -77,9 +77,9 @@ class TestHFModelServer(unittest.TestCase):
         """Test downloading model from HF to tmp dir"""
         with tempfile.TemporaryDirectory() as tmp_dir:
             download_path = download_pretrained_model(
-                "neural-super-sampling/nss_v1_high_fp32.pt", Path(tmp_dir)
+                "neural-super-sampling/nss_v1_0_1_high_fp32.pt", Path(tmp_dir)
             )
-            self.assertEqual(download_path.name, "nss_v1_high_fp32.pt")
+            self.assertEqual(download_path.name, "nss_v1_0_1_high_fp32.pt")
             self.assertEqual(download_path.parent, Path(tmp_dir))
 
             # Check download path is in the temp dir specified
@@ -94,9 +94,9 @@ class TestHFModelServer(unittest.TestCase):
         """Test download using @ in the identifier (used in config)"""
         with tempfile.TemporaryDirectory() as tmp_dir:
             download_path = download_pretrained_model(
-                "@neural-super-sampling/nss_v1_high_fp32.pt", Path(tmp_dir)
+                "@neural-super-sampling/nss_v1_0_1_high_fp32.pt", Path(tmp_dir)
             )
-            self.assertEqual(download_path.name, "nss_v1_high_fp32.pt")
+            self.assertEqual(download_path.name, "nss_v1_0_1_high_fp32.pt")
             self.assertEqual(download_path.parent, Path(tmp_dir))
 
             # Check download path is in the temp dir specified
@@ -112,7 +112,7 @@ class TestHFModelServer(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             with self.assertRaises(ValueError):
                 _ = download_pretrained_model(
-                    "random-repo/nss_v1_high_fp32.pt", Path(tmp_dir)
+                    "random-repo/nss_v1_0_1_high_fp32.pt", Path(tmp_dir)
                 )
 
     def test_download_destination_is_a_dir(self):
@@ -123,7 +123,7 @@ class TestHFModelServer(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 download_pretrained_model(
-                    "neural-super-sampling/nss_v1_high_fp32.pt",
+                    "neural-super-sampling/nss_v1_0_1_high_fp32.pt",
                     destination_file,
                 )
 
