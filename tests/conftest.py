@@ -4,10 +4,9 @@
 import os
 import platform
 import sys
-from pathlib import Path
 
 from ng_model_gym.core.utils.logging_utils import filter_warnings, WARNING_FILTERS
-from tests.fetch_huggingface import validate_nfru_downloads, validate_nss_downloads
+from tests.fetch_huggingface import USECASES, validate_downloads
 from tests.pkgutil_patch import apply_patch
 
 filter_warnings()
@@ -60,10 +59,14 @@ def pytest_configure(config) -> None:
 
 def pytest_sessionstart(session) -> None:  # pylint: disable=unused-argument
     """Hook called after PyTest Session object is created."""
-    nss_dataset_path = Path("tests/usecases/nss/datasets")
-    validate_nss_downloads(nss_dataset_path)
-    nfru_dataset_path = Path("tests/usecases/nfru/datasets")
-    validate_nfru_downloads(nfru_dataset_path)
+
+    for usecase in ["nss", "nfru"]:
+        validate_downloads(
+            usecase_name=usecase,
+            weights_dir=USECASES[usecase]["weights_dir"],
+            datasets_dir=USECASES[usecase]["datasets_dir"],
+            expected_weights=USECASES[usecase]["expected_weights"],
+        )
 
 
 def pytest_unconfigure(config) -> None:  # pylint: disable=unused-argument
