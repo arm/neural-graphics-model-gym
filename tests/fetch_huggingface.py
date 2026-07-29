@@ -2,7 +2,6 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 import shutil
 import sys
 from pathlib import Path
@@ -21,18 +20,13 @@ DATASET_SPLITS = ("train", "test", "val")
 NFRU_DATASET_PREFIX = "nfru"
 
 
-def nfru_test_assets_enabled() -> bool:
-    """Return whether optional NFRU test asset validation is enabled."""
-    return os.getenv("NGMG_ENABLE_NFRU_TEST_ASSETS") == "1"
-
-
 def download_pretrained_nss_weights():
     """Download pretrained NSS weights .pt files."""
     weights_dir = Path("tests/usecases/nss/weights")
 
     hf.snapshot_download(
         repo_id="Arm/neural-super-sampling",
-        allow_patterns=["*.pt", "config.json"],
+        allow_patterns=["nss_*_*.pt", "config.json"],
         local_dir=weights_dir,
         revision="3dd6c4f054827a3d018330d5dfcd0b92e7d37974",
     )
@@ -59,8 +53,6 @@ def validate_nss_downloads(datasets_dir):
         # Validate pretrained weights
         weights_dir = Path("tests/usecases/nss/weights")
         expected_weights = [
-            Path("v0_1/nss_v0.1.0_fp32.pt"),
-            Path("v0_1/nss_v0.1.1_int8.pt"),
             Path("nss_v1_0_1_high_fp32.pt"),
             Path("nss_v1_0_1_high_int8.pt"),
             Path("nss_v1_0_1_mid_low_int8.pt"),
@@ -246,10 +238,9 @@ if __name__ == "__main__":
     validate_nss_downloads(nss_datasets_path)
     create_mini_safetensor_dataset(nss_datasets_path, usecase_name="NSS")
 
-    if nfru_test_assets_enabled():
-        download_pretrained_nfru_weights()
+    download_pretrained_nfru_weights()
 
-        nfru_datasets_path = Path("tests/usecases/nfru/datasets")
-        download_nfru_datasets(nfru_datasets_path)
-        validate_nfru_downloads(nfru_datasets_path)
-        create_mini_safetensor_dataset(nfru_datasets_path, usecase_name="NFRU")
+    nfru_datasets_path = Path("tests/usecases/nfru/datasets")
+    download_nfru_datasets(nfru_datasets_path)
+    validate_nfru_downloads(nfru_datasets_path)
+    create_mini_safetensor_dataset(nfru_datasets_path, usecase_name="NFRU")

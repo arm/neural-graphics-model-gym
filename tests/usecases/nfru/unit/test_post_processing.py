@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: <text>Copyright 2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-import unittest
 from pathlib import Path
 
 import torch
@@ -16,7 +15,6 @@ _GOLDEN_ROOT = Path(__file__).resolve().parent / "data" / "nfru_v1_golden_values
 # pylint: disable=duplicate-code
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class TestPostProcess(BaseGPUMemoryTest):
     """Tests for NFRU usecase postprocessing."""
 
@@ -34,7 +32,7 @@ class TestPostProcess(BaseGPUMemoryTest):
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
 
-        self.params = create_simple_params(usecase="nfru")
+        self.params = create_simple_params(usecase="nfru-v1")
         self.params.model_train_eval_mode = TrainEvalMode.FP32
 
         self.model = create_model(self.params, self.device)
@@ -101,7 +99,6 @@ class TestPostProcess(BaseGPUMemoryTest):
         )
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class TestPostprocessGolden(BaseGPUMemoryTest):
     """Test postprocess implementation against known inputs and outputs"""
 
@@ -118,7 +115,7 @@ class TestPostprocessGolden(BaseGPUMemoryTest):
         torch.manual_seed(1)
         torch.cuda.manual_seed(1)
 
-        self.params = create_simple_params(usecase="nfru")
+        self.params = create_simple_params(usecase="nfru-v1")
         self.params.model_train_eval_mode = TrainEvalMode.FP32
 
         self.model = create_model(self.params, self.device)

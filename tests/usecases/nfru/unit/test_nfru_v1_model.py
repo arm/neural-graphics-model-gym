@@ -32,7 +32,6 @@ _SWAP_COEFF_RTOL = 5e-3
 _DYNAMIC_MASK_MIN_DELTA = 1e-6
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class TestNFRUV1Model(BaseGPUMemoryTest):
     """
     Regression tests for the NFRU v1 model using recorded golden data.

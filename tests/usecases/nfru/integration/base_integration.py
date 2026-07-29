@@ -41,15 +41,15 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
         self.tensorboard_dir = Path(self.test_dir, "tensorboard-logs")
         create_directory(self.tensorboard_dir)
 
-        self.sample_data_dir = "tests/usecases/nfru/data/nfru_sample"
-        self.mini_dataset_dir = "tests/usecases/nfru/data/mini_datasets"
+        self.sample_data_dir = "tests/usecases/nfru/datasets"
+        self.mini_dataset_dir = "tests/usecases/nfru/mini_datasets"
 
         if os.getenv("FAST_TEST") == "1":
             self.train_data_dir = f"{self.mini_dataset_dir}/train"
             self.test_data_dir = f"{self.mini_dataset_dir}/test"
         else:
-            self.train_data_dir = self.sample_data_dir
-            self.test_data_dir = self.sample_data_dir
+            self.train_data_dir = f"{self.sample_data_dir}/train"
+            self.test_data_dir = f"{self.sample_data_dir}/test"
 
         self.eval_weights = "tests/usecases/nfru/weights/nfru_v1_fp32.pt"
         self.qat_eval_weights = "tests/usecases/nfru/weights/nfru_v1_int8.pt"
@@ -78,7 +78,7 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
 
         self.cfg_json["dataset"]["path"]["train"] = self.train_data_dir
         self.cfg_json["dataset"]["path"]["test"] = self.test_data_dir
-        self.cfg_json["dataset"]["path"]["validation"] = ""
+        self.cfg_json["dataset"]["path"]["validation"] = self.test_data_dir
 
         self.cfg_json["output"][
             "export_frame_png"
@@ -214,6 +214,16 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
     def run_model_profiler(self, mode: str):
         """Test that profiler=trace emits a trace file."""
         self.assertIn(mode, ("train", "qat", "eval"))
+
+        with open(self.test_cfg_path, encoding="utf-8") as f:
+            cfg_json = json.load(f)
+
+        cfg_json["dataset"]["path"]["train"] = self.sample_data_dir
+        cfg_json["dataset"]["path"]["test"] = self.sample_data_dir
+        cfg_json["dataset"]["path"]["validation"] = self.sample_data_dir
+
+        with open(self.test_cfg_path, "w", encoding="utf-8") as f:
+            json.dump(cfg_json, f)
 
         if mode == "eval":
             sub_proc = subprocess.run(

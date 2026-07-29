@@ -2,7 +2,6 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import tempfile
-import unittest
 from pathlib import Path
 
 from ng_model_gym.api import do_evaluate, do_export, do_training
@@ -27,7 +26,6 @@ def _assert_one_or_more_files_at_path(path_name, message):
     assert any(f.is_file() for f in files), message
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class ApiIntegrationTest(NFRUBaseIntegrationTest):
     """NFRU specific integration tests for API functions in ng_model_gym."""
 

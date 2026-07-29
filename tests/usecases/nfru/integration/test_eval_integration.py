@@ -4,7 +4,6 @@
 import json
 import os
 import subprocess
-import unittest
 from pathlib import Path
 
 from tests.usecases.nfru.integration.base_integration import NFRUBaseIntegrationTest
@@ -12,7 +11,6 @@ from tests.usecases.nfru.integration.base_integration import NFRUBaseIntegration
 # pylint: disable=duplicate-code
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class EvaluationIntegrationTest(NFRUBaseIntegrationTest):
     """Tests for NFRU evaluation pipeline."""
 
@@ -64,10 +62,6 @@ class EvaluationIntegrationTest(NFRUBaseIntegrationTest):
         """Evaluate using local FP32 model."""
         self._evaluate_from_checkpoints(self.eval_weights, model_type="fp32")
 
-    @unittest.skip(
-        "TODO: add stable remote NFRU checkpoint identifier and CI coverage for "
-        "evaluate-from-identifier flow."
-    )
     def test_evaluate_from_identifier(self):
         """Evaluate using remote model identifier."""
         self._evaluate_from_checkpoints(
@@ -131,12 +125,6 @@ class EvaluationIntegrationTest(NFRUBaseIntegrationTest):
         self.assertIn("Validation: Epoch 3/4", sub_proc.stderr)
         self.assertIn("Validation: Epoch 4/4", sub_proc.stderr)
 
-    @unittest.skip(
-        "Issue: trace profiler export for NFRU eval fails on short runs "
-        "with AssertionError 'Profiler must be initialized before exporting chrome trace'."
-        "NFRU dataset has fewer samples than NSS, so these will be skipped due to the existing "
-        "profiler schedule."
-    )
     def test_trace_profiler(self):
         """Test JSON trace is generated with profiler=trace."""
         self.run_model_profiler("eval")

@@ -10,7 +10,6 @@ from unittest.mock import patch
 from tests.fetch_huggingface import download_nfru_datasets, validate_nfru_downloads
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class TestFetchHuggingFace(unittest.TestCase):
     """Test Hugging Face test asset download helpers."""
 
@@ -58,3 +57,19 @@ class TestFetchHuggingFace(unittest.TestCase):
                     sf_file.truncate(26 * 1024 * 1024)
 
             validate_nfru_downloads(datasets_dir)
+
+    def test_download_nfru_datasets_skips_download_when_flattened_splits_exist(self):
+        """Avoid re-downloading when flattened train/test/val datasets already exist."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            datasets_dir = Path(tmp_dir) / "datasets"
+            for split in ("train", "test", "val"):
+                split_dir = datasets_dir / split
+                split_dir.mkdir(parents=True)
+                (split_dir / f"{split}.safetensors").write_bytes(b"test")
+
+            with patch(
+                "tests.fetch_huggingface.hf.snapshot_download"
+            ) as snapshot_download:
+                download_nfru_datasets(datasets_dir)
+
+            snapshot_download.assert_not_called()

@@ -34,11 +34,31 @@ from ng_model_gym.usecases.nfru.data.processing import (
 from tests.testing_utils import create_simple_params
 
 NFRU_TEMPLATE_PATH = Path("src/ng_model_gym/usecases/nfru/configs/nfru_template.json")
-NFRU_SAMPLE_DIR = Path("tests/usecases/nfru/data/nfru_sample")
+NFRU_SAMPLE_DIR = Path("tests/usecases/nfru/datasets/train")
 NFRU_SAMPLE_FILE = NFRU_SAMPLE_DIR / "0000.safetensors"
 NFRU_GOLDEN_OUTPUT_PATH = Path(
     "tests/usecases/nfru/unit/data/nfru_v1_golden_values/dataloader_output_fp32.pt"
 )
+
+
+def _frame_length(safetensor_path: Path) -> int:
+    with safe_open(safetensor_path, framework="pt", device="cpu") as source_file:
+        return int(source_file.metadata()["Length"])
+
+
+def _expected_starts(frame_count: int, step: int) -> list[int]:
+    # Valid start indices satisfy:
+    # start + min_offset >= first_valid_center and start + min_offset + max_offset < frame_count
+    # which gives starts in [0, frame_count - (min_offset + max_offset + 1)].
+    stop = frame_count - (NFRU_MIN_OFFSET + NFRU_MAX_OFFSET)
+    return list(range(0, max(stop, 0), step))
+
+
+def _expected_starts_for_sequences(sequence_paths: list[Path], step: int) -> list[int]:
+    starts: list[int] = []
+    for seq_path in sequence_paths:
+        starts.extend(_expected_starts(_frame_length(seq_path), step))
+    return starts
 
 
 def _build_nfru_config(
@@ -82,7 +102,29 @@ def _clone_safetensor_without_keys(
     return destination
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
+def _clone_safetensor_with_truncated_frames(
+    source_path: Path,
+    target_dir: Path,
+    frame_count: int,
+    destination_name: str = "0000.safetensors",
+) -> Path:
+    """Clone a safetensors file with frame-aligned tensors truncated to frame_count."""
+    target_dir.mkdir(parents=True, exist_ok=True)
+    destination = target_dir / destination_name
+    tensors = {}
+    with safe_open(source_path, framework="pt", device="cpu") as source_file:
+        metadata = dict(source_file.metadata() or {})
+        source_length = int(metadata.get("Length", frame_count))
+        for key in source_file.keys():
+            tensor = source_file.get_tensor(key)
+            if tensor.ndim > 0 and tensor.shape[0] == source_length:
+                tensor = tensor[:frame_count]
+            tensors[key] = tensor
+    metadata["Length"] = str(frame_count)
+    save_file(tensors, str(destination), metadata=metadata)
+    return destination
+
+
 class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-methods
     """Unit tests for the NFRU dataset."""
 
@@ -102,7 +144,8 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
     def test_existing_safetensors_file(self):
         """Loads sample safetensors data and returns the expected tuple contract."""
         dataset = self._dataset(DataLoaderMode.TRAIN)
-        self.assertEqual(len(dataset.sequences), 1)
+        expected_sequence_count = len(list(NFRU_SAMPLE_DIR.rglob("*.safetensors")))
+        self.assertEqual(len(dataset.sequences), expected_sequence_count)
         self.assertGreater(len(dataset), 0)
 
         x, y = dataset[0]
@@ -246,16 +289,18 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
         self.assertTrue(config.dataset.align_data)
 
     def test_len_matches_expected_window_count_train(self):
-        """Train mode should produce 3 windows for Length=10 with default offsets/stride."""
+        """Train mode should produce the expected window count across all sequences."""
         dataset = self._dataset(DataLoaderMode.TRAIN)
-        self.assertEqual(len(dataset), 3)
+        expected_count = len(_expected_starts_for_sequences(dataset.sequences, 2))
+        self.assertEqual(len(dataset), expected_count)
         self.assertEqual(dataset.min_offset, NFRU_MIN_OFFSET)
         self.assertEqual(dataset.max_offset, NFRU_MAX_OFFSET)
 
     def test_len_matches_expected_window_count_test(self):
-        """Test mode should produce 3 windows for Length=10 with fixed stride=2."""
+        """Test mode should produce the expected window count across all sequences."""
         dataset = self._dataset(DataLoaderMode.TEST)
-        self.assertEqual(len(dataset), 3)
+        expected_count = len(_expected_starts_for_sequences(dataset.sequences, 2))
+        self.assertEqual(len(dataset), expected_count)
 
     def test_getitem_out_of_bounds_raises_stop_iteration(self):
         """Accessing one-past-the-end index raises StopIteration."""
@@ -359,13 +404,13 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
         """Non-legacy train mode should step by 2."""
         dataset = self._dataset(DataLoaderMode.TRAIN)
         starts = [start for _, start, _ in dataset.frame_indexes]
-        self.assertEqual(starts, [0, 2, 4])
+        self.assertEqual(starts, _expected_starts_for_sequences(dataset.sequences, 2))
 
     def test_generate_frame_indexes_test_step_is_two(self):
         """Test mode should step by 2."""
         dataset = self._dataset(DataLoaderMode.TEST)
         starts = [start for _, start, _ in dataset.frame_indexes]
-        self.assertEqual(starts, [0, 2, 4])
+        self.assertEqual(starts, _expected_starts_for_sequences(dataset.sequences, 2))
 
     def test_generate_frame_indexes_legacy_capture_paths_restore_train_step_one_legacy(
         self,
@@ -381,7 +426,9 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
                 model_overrides={"legacy_nfru_capture_paths": ["nfru_sample"]},
             )
             starts = [start for _, start, _ in dataset.frame_indexes]
-            self.assertEqual(starts, [0, 1, 2, 3, 4, 5])
+            self.assertEqual(
+                starts, _expected_starts_for_sequences(dataset.sequences, 1)
+            )
 
     def test_generate_frame_indexes_legacy_tokens_case_insensitive_matches_legacy(self):
         """Legacy token matching is case-insensitive substring matching."""
@@ -395,7 +442,9 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
                 model_overrides={"legacy_nfru_capture_paths": ["NFRU_SAMPLE"]},
             )
             starts = [start for _, start, _ in dataset.frame_indexes]
-            self.assertEqual(starts, [0, 1, 2, 3, 4, 5])
+            self.assertEqual(
+                starts, _expected_starts_for_sequences(dataset.sequences, 1)
+            )
 
     def test_round_up_to_odd_int_helper(self):
         """Odd inputs are unchanged and even inputs are incremented by one."""
@@ -409,7 +458,7 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
         self.assertEqual(dataset.max_offset, NFRU_MAX_OFFSET)
 
         starts = [start for _, start, _ in dataset.frame_indexes]
-        self.assertEqual(starts, [0, 2, 4])
+        self.assertEqual(starts, _expected_starts_for_sequences(dataset.sequences, 2))
         x, _ = dataset[0]
         self.assertIn("ViewProj_m3", x)
 
@@ -428,14 +477,15 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
     def test_test_mode_seq_hash_constant_per_sequence(self):
         """Test mode should keep the same sequence hash for all windows of one sequence."""
         dataset = self._dataset(DataLoaderMode.TEST)
-        seq_ids = []
-        for idx, _ in enumerate(dataset.frame_indexes):
+        seq_ids_by_sequence = defaultdict(set)
+        for idx, (seq_path, _, _) in enumerate(dataset.frame_indexes):
             x, _ = dataset[idx]
             seq_tensor = x["seq"]
             self.assertIsInstance(seq_tensor, torch.Tensor)
             self.assertEqual(seq_tensor.shape, torch.Size([1, 1]))
-            seq_ids.append(int(seq_tensor.view(-1)[0].item()))
-        self.assertEqual(len(set(seq_ids)), 1)
+            seq_ids_by_sequence[seq_path].add(int(seq_tensor.view(-1)[0].item()))
+        for seq_ids in seq_ids_by_sequence.values():
+            self.assertEqual(len(seq_ids), 1)
 
     def test_seq_id_non_legacy_train_uses_halved_start_index_mapping(self):
         """Non-legacy train path maps seq id by start_idx // 2."""
@@ -576,7 +626,7 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
         golden_data = torch.load(
             NFRU_GOLDEN_OUTPUT_PATH,
             map_location=torch.device("cpu"),
-            weights_only=True,
+            weights_only=False,
         )
         golden_x = golden_data.get("inputs")
         golden_y = golden_data.get("targets")
@@ -758,18 +808,26 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
             torch.testing.assert_close(base_x[key], wrapper_x[key])
         torch.testing.assert_close(base_y, wrapper_y)
 
-    @unittest.skip("Short NFRU safetensors fixture removed pending replacement")
     def test_raises_when_sequence_has_fewer_than_minimum_frames(self):
         """A 4-frame sequence cannot satisfy the 5-frame sliding-window minimum."""
-        dataset_path = Path("tests/datasets/test_nfru_4f_short")
-        params = create_simple_params(usecase="nfru-v1", dataset_path=str(dataset_path))
-        params.dataset.path.test = dataset_path
-        params.dataset.health_check = False
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            dataset_path = Path(tmp_dir) / "test_nfru_4f_short"
+            _clone_safetensor_with_truncated_frames(
+                source_path=NFRU_SAMPLE_FILE,
+                target_dir=dataset_path,
+                frame_count=4,
+            )
 
-        with self.assertRaises(RuntimeError) as exc_info:
-            NFRUDataset(params, loader_mode=DataLoaderMode.TEST)
+            params = create_simple_params(
+                usecase="nfru-v1", dataset_path=str(dataset_path)
+            )
+            params.dataset.path.test = dataset_path
+            params.dataset.health_check = False
 
-        message = str(exc_info.exception)
-        self.assertIn("Couldn't find sufficient frame data in dataset", message)
-        self.assertIn("NFRU requires at least 5 frame(s) per sequence.", message)
-        self.assertIn("0000.safetensors: 4 frame(s)", message)
+            with self.assertRaises(RuntimeError) as exc_info:
+                NFRUDataset(params, loader_mode=DataLoaderMode.TEST)
+
+            message = str(exc_info.exception)
+            self.assertIn("Couldn't find sufficient frame data in dataset", message)
+            self.assertIn("NFRU requires at least 5 frame(s) per sequence.", message)
+            self.assertIn("0000.safetensors: 4 frame(s)", message)
