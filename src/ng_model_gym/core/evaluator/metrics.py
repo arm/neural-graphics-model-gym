@@ -21,12 +21,13 @@ logger = logging.getLogger(__name__)
 def calculate_psnr(preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
     """Calculate peak signal to noise ratio between predictions and targets.
 
-    It is expected that the inputs to this are 2 tensors of 5 dimensions:
-    - preds: Predictions from the model of shape (N,T,C,H,W)
-    - target: Ground truth values of shape (N,T,C,H,W)
+    It is expected that the inputs to this are 2 tensors of 5 or 4 dimensions:
+    - preds: Predictions from the model of shape (N,T,C,H,W) or (N,C,H,W)
+    - target: Ground truth values of shape (N,T,C,H,W) or (N,C,H,W)
     """
-    num_dims = len(preds.shape)  # will be 5D during training and evaluation.
-    dims_to_reduce_over = tuple(range(2, num_dims))
+    num_dims = preds.dim()
+    # Reduce C, H and W for both NCHW and NTCHW tensors.
+    dims_to_reduce_over = tuple(range(num_dims - 3, num_dims))
 
     psnr = peak_signal_noise_ratio(
         preds,
