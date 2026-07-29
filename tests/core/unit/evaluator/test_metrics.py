@@ -18,6 +18,7 @@ from ng_model_gym.core.evaluator import (
     TPsnr,
     TPsnrStreaming,
 )
+from ng_model_gym.core.evaluator.metrics import calculate_psnr
 from tests.testing_utils import create_simple_params
 
 
@@ -51,6 +52,24 @@ class TestMetrics(unittest.TestCase):
         )
 
         self.assertAlmostEqual(psnr.numpy(), result.numpy())
+
+    def test_psnr_4d_reduces_channels_and_spatial_dimensions(self):
+        """NCHW PSNR uses one MSE across C, H and W."""
+        preds = torch.zeros((1, 3, 2, 2))
+        targets = torch.empty_like(preds)
+        targets[:, 0] = 0.1
+        targets[:, 1] = 0.2
+        targets[:, 2] = 0.4
+
+        result = calculate_psnr(preds, targets)
+        expected = peak_signal_noise_ratio(
+            preds,
+            targets,
+            data_range=1.0,
+            reduction="elementwise_mean",
+            dim=(1, 2, 3),
+        )
+        torch.testing.assert_close(result, expected)
 
     def test_tpsnr(self):
         """Test Temporal PSNR."""
