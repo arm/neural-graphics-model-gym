@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tests.fetch_huggingface import download_nfru_datasets, validate_nfru_downloads
+from tests.fetch_huggingface import download_datasets, USECASES, validate_downloads
 
 
 class TestFetchHuggingFace(unittest.TestCase):
@@ -19,11 +19,7 @@ class TestFetchHuggingFace(unittest.TestCase):
         def fake_snapshot_download(*, local_dir, **kwargs):
             self.assertEqual(
                 kwargs["allow_patterns"],
-                [
-                    "nfru/train/*.safetensors",
-                    "nfru/test/*.safetensors",
-                    "nfru/val/*.safetensors",
-                ],
+                ["nfru/**"],
             )
             for split in ("train", "test", "val"):
                 split_dir = Path(local_dir) / "nfru" / split
@@ -37,7 +33,13 @@ class TestFetchHuggingFace(unittest.TestCase):
                 "tests.fetch_huggingface.hf.snapshot_download",
                 side_effect=fake_snapshot_download,
             ) as snapshot_download:
-                download_nfru_datasets(datasets_dir)
+                download_datasets(
+                    usecase_name="nfru",
+                    datasets_dir=datasets_dir,
+                    repo_id=USECASES["nfru"]["dataset_repo_id"],
+                    dataset_prefix=USECASES["nfru"]["dataset_prefix"],
+                    revision=USECASES["nfru"]["dataset_revision"],
+                )
 
             snapshot_download.assert_called_once()
             for split in ("train", "test", "val"):
@@ -56,7 +58,12 @@ class TestFetchHuggingFace(unittest.TestCase):
                 with open(split_dir / f"{split}.safetensors", "wb") as sf_file:
                     sf_file.truncate(26 * 1024 * 1024)
 
-            validate_nfru_downloads(datasets_dir)
+            validate_downloads(
+                usecase_name="nfru",
+                weights_dir=USECASES["nfru"]["weights_dir"],
+                datasets_dir=datasets_dir,
+                expected_weights=[],
+            )
 
     def test_download_nfru_datasets_skips_download_when_flattened_splits_exist(self):
         """Avoid re-downloading when flattened train/test/val datasets already exist."""
@@ -70,6 +77,12 @@ class TestFetchHuggingFace(unittest.TestCase):
             with patch(
                 "tests.fetch_huggingface.hf.snapshot_download"
             ) as snapshot_download:
-                download_nfru_datasets(datasets_dir)
+                download_datasets(
+                    usecase_name="nfru",
+                    datasets_dir=datasets_dir,
+                    repo_id=USECASES["nfru"]["dataset_repo_id"],
+                    dataset_prefix=USECASES["nfru"]["dataset_prefix"],
+                    revision=USECASES["nfru"]["dataset_revision"],
+                )
 
             snapshot_download.assert_not_called()
