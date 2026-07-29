@@ -7,11 +7,7 @@ import sys
 from pathlib import Path
 
 from ng_model_gym.core.utils.logging_utils import filter_warnings, WARNING_FILTERS
-from tests.fetch_huggingface import (
-    nfru_test_assets_enabled,
-    validate_nfru_downloads,
-    validate_nss_downloads,
-)
+from tests.fetch_huggingface import validate_nfru_downloads, validate_nss_downloads
 from tests.pkgutil_patch import apply_patch
 
 filter_warnings()
@@ -64,11 +60,10 @@ def pytest_configure(config) -> None:
 
 def pytest_sessionstart(session) -> None:  # pylint: disable=unused-argument
     """Hook called after PyTest Session object is created."""
-    dataset_path = Path("tests/usecases/nss/datasets")
-    validate_nss_downloads(dataset_path)
-    if nfru_test_assets_enabled():
-        nfru_dataset_path = Path("tests/usecases/nfru/datasets")
-        validate_nfru_downloads(nfru_dataset_path)
+    nss_dataset_path = Path("tests/usecases/nss/datasets")
+    validate_nss_downloads(nss_dataset_path)
+    nfru_dataset_path = Path("tests/usecases/nfru/datasets")
+    validate_nfru_downloads(nfru_dataset_path)
 
 
 def pytest_unconfigure(config) -> None:  # pylint: disable=unused-argument

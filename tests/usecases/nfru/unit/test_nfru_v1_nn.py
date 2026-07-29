@@ -12,7 +12,6 @@ from ng_model_gym.usecases.nfru.model.nfru_v1_nn import NFRUAutoEncoder
 _GOLDEN_ROOT = Path(__file__).resolve().parent / "data" / "nfru_v1_golden_values"
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class TestNFRUAutoEncoder(unittest.TestCase):
     """Golden-value regression tests for the NFRU v1 autoencoder."""
 

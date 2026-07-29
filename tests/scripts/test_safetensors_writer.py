@@ -481,7 +481,6 @@ class TestNSSSafetensorsWriter(unittest.TestCase):
             )
 
 
-@unittest.skip("NFRU EXR fixtures removed pending refreshed writer coverage")
 class TestNFRUSafetensorsWriter(unittest.TestCase):
     """Test output .safetensors file generated from NFRU .exr"""
 

@@ -1,7 +1,6 @@
 # SPDX-FileCopyrightText: <text>Copyright 2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-import unittest
 from pathlib import Path
 
 import torch
@@ -16,7 +15,6 @@ _GOLDEN_ROOT = Path(__file__).resolve().parent / "data" / "nfru_v1_golden_values
 # pylint: disable=duplicate-code
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class TestPreProcess(BaseGPUMemoryTest):
     """Tests for NFRU usecase preprocessing."""
 
@@ -115,7 +113,6 @@ class TestPreProcess(BaseGPUMemoryTest):
         )
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class TestNFRUPreprocessGolden(BaseGPUMemoryTest):
     """Test NFRU preprocess implementation against known inputs and outputs."""
 

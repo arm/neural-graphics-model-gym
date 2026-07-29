@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import json
 import subprocess
-import unittest
 from pathlib import Path
 
 from tests.usecases.nfru.integration.base_integration import NFRUBaseIntegrationTest
@@ -11,7 +10,6 @@ from tests.usecases.nfru.integration.base_integration import NFRUBaseIntegration
 # pylint: disable=duplicate-code
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class TrainingIntegrationTest(NFRUBaseIntegrationTest):
     """Tests for NFRU training pipeline."""
 
@@ -34,10 +32,6 @@ class TrainingIntegrationTest(NFRUBaseIntegrationTest):
         self.check_log(["Fine tuning using weights nfru_v1_fp32.pt"])
         return sub_proc
 
-    @unittest.skip(
-        "TODO: add stable remote NFRU checkpoint identifier and CI coverage for "
-        "train-finetune-from-identifier flow."
-    )
     def run_finetune_training_test_model_hf(self):
         """E2E test of model fine-tuning from a remote model identifier."""
         sub_proc = subprocess.run(
@@ -67,10 +61,6 @@ class TrainingIntegrationTest(NFRUBaseIntegrationTest):
         subprocess_out = self.run_finetune_training_test()
         self._assert_peak_vram_usage(subprocess_out.stdout, 14800, 0.005)
 
-    @unittest.skip(
-        "TODO: add stable remote NFRU checkpoint identifier and CI coverage for "
-        "train-finetune-from-identifier flow."
-    )
     def test_model_train_finetune_model_from_hf(self):
         """Run train pipeline with fine-tuning from remote identifier."""
         self.run_finetune_training_test_model_hf()
@@ -105,11 +95,6 @@ class TrainingIntegrationTest(NFRUBaseIntegrationTest):
         for keyword in ("cannot specify both", "resume", "finetune"):
             self.assertIn(keyword, stderr_lower)
 
-    @unittest.skip(
-        "Issue: trace profiler export for NFRU train fails on short runs "
-        "with AssertionError 'Profiler must be initialized before exporting chrome trace'. "
-        "Pending upstream/profiler schedule stabilization."
-    )
     def test_trace_profiler(self):
         """Test JSON trace is generated with profiler=trace."""
         self.run_model_profiler("train")

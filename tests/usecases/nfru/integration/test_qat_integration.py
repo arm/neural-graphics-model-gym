@@ -4,7 +4,6 @@
 import json
 import os
 import subprocess
-import unittest
 from pathlib import Path
 
 from tests.usecases.nfru.integration.base_integration import NFRUBaseIntegrationTest
@@ -12,7 +11,6 @@ from tests.usecases.nfru.integration.base_integration import NFRUBaseIntegration
 # pylint: disable=duplicate-code
 
 
-@unittest.skip("NFRU CI/assets disabled for now")
 class QATIntegrationTest(NFRUBaseIntegrationTest):
     """Tests for NFRU QAT pipeline."""
 
@@ -93,7 +91,6 @@ class QATIntegrationTest(NFRUBaseIntegrationTest):
         """Run entire QAT pipeline with finetuning."""
         self.run_finetune_training_test()
 
-    @unittest.skip("TODO: enable once HF assets are added for NFRU QAT.")
     def test_model_train_finetune_model_from_hf(self):
         """Run finetuning pipeline using model from HF using unique identifier."""
         self.run_finetune_training_test_hf_model()
@@ -128,12 +125,6 @@ class QATIntegrationTest(NFRUBaseIntegrationTest):
         for keyword in ("cannot specify both", "resume", "finetune"):
             self.assertIn(keyword, stderr_lower)
 
-    @unittest.skip(
-        "Issue: trace profiler export for NFRU eval fails on short runs "
-        "with AssertionError 'Profiler must be initialized before exporting chrome trace'."
-        "NFRU dataset has fewer samples than NSS, so these will be skipped due to the existing "
-        "profiler schedule."
-    )
     def test_trace_profiler(self):
         """Test trace file is generated with profiler=trace flag."""
         self.run_model_profiler("qat")
