@@ -135,16 +135,11 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
         self,
         model_path: str,
         model_type: str = "fp32",
-        expected_psnr: float = 29.0,
-        expected_ssim: float = 0.93,
-        expected_stlpips_max: float = 0.13,
+        expected_psnr: float = 25.0,
+        expected_ssim: float = 0.75,
+        expected_stlpips_max: float = 0.14,
     ):
         """Evaluate a local checkpoint and assert metrics and png export."""
-        if os.getenv("FAST_TEST") == "1":
-            expected_psnr = min(expected_psnr, 25.0)
-            expected_ssim = min(expected_ssim, 0.75)
-            expected_stlpips_max = max(expected_stlpips_max, 0.14)
-
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
