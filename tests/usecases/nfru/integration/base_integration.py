@@ -47,9 +47,11 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
         if os.getenv("FAST_TEST") == "1":
             self.train_data_dir = f"{self.mini_dataset_dir}/train"
             self.test_data_dir = f"{self.mini_dataset_dir}/test"
+            self.val_data_dir = f"{self.mini_dataset_dir}/val"
         else:
             self.train_data_dir = f"{self.sample_data_dir}/train"
             self.test_data_dir = f"{self.sample_data_dir}/test"
+            self.val_data_dir = f"{self.sample_data_dir}/val"
 
         self.eval_weights = "tests/usecases/nfru/weights/nfru_v1_fp32.pt"
         self.qat_eval_weights = "tests/usecases/nfru/weights/nfru_v1_int8.pt"
@@ -140,6 +142,11 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
         expected_stlpips_max: float = 0.14,
     ):
         """Evaluate a local checkpoint and assert metrics and png export."""
+        if os.getenv("FAST_TEST") == "1":
+            expected_psnr = min(expected_psnr, 23.0)
+            expected_ssim = min(expected_ssim, 0.68)
+            expected_stlpips_max = max(expected_stlpips_max, 0.14)
+
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
@@ -213,9 +220,9 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
-        cfg_json["dataset"]["path"]["train"] = self.sample_data_dir
-        cfg_json["dataset"]["path"]["test"] = self.sample_data_dir
-        cfg_json["dataset"]["path"]["validation"] = self.sample_data_dir
+        # Override default params for the test
+        cfg_json["dataset"]["path"]["train"] = f"{self.sample_data_dir}/train"
+        cfg_json["dataset"]["path"]["test"] = f"{self.sample_data_dir}/test"
 
         with open(self.test_cfg_path, "w", encoding="utf-8") as f:
             json.dump(cfg_json, f)

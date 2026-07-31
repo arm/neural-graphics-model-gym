@@ -34,7 +34,7 @@ from ng_model_gym.usecases.nfru.data.processing import (
 from tests.testing_utils import create_simple_params
 
 NFRU_TEMPLATE_PATH = Path("src/ng_model_gym/usecases/nfru/configs/nfru_template.json")
-NFRU_SAMPLE_DIR = Path("tests/usecases/nfru/datasets/train")
+NFRU_SAMPLE_DIR = Path("tests/usecases/nfru/mini_datasets/train")
 NFRU_SAMPLE_FILE = NFRU_SAMPLE_DIR / "0000.safetensors"
 NFRU_GOLDEN_OUTPUT_PATH = Path(
     "tests/usecases/nfru/unit/data/nfru_v1_golden_values/dataloader_output_fp32.pt"

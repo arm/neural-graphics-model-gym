@@ -16,7 +16,8 @@ if str(REPO_ROOT) not in sys.path:
 # pylint: disable=wrong-import-position
 from scripts.safetensors_generator.safetensor_truncate import truncate_safetensor_file
 
-MINI_DATASET_DESIRED_FRAMES = 20
+NSS_MINI_DATASET_DESIRED_FRAMES = 20
+NFRU_MINI_DATASET_DESIRED_FRAMES = 10
 DATASET_SPLITS = ("train", "test", "val")
 WEIGHTS_MIN_SIZE_BYTES = 100 * 1024
 DATASET_MIN_SIZE_BYTES = 25 * 1024 * 1024
@@ -43,6 +44,7 @@ USECASES = {
             "nss_v1_0_1_high_int8.pt",
             "nss_v1_0_1_mid_low_int8.pt",
         ],
+        "mini_dataset_frames": NSS_MINI_DATASET_DESIRED_FRAMES,
     },
     "nfru": {
         "weights_dir": Path("tests/usecases/nfru/weights"),
@@ -57,6 +59,7 @@ USECASES = {
             "nfru_v1_fp32.pt",
             "nfru_v1_int8.pt",
         ],
+        "mini_dataset_frames": NFRU_MINI_DATASET_DESIRED_FRAMES,
     },
 }
 
@@ -215,7 +218,8 @@ def validate_downloads(
 
 def create_mini_safetensor_dataset(
     original_dataset_path: Path,
-    usecase_name: str = "dataset",
+    usecase_name: str,
+    desired_frames: int,
 ):
     """Create a smaller split mini dataset from train/test/val safetensors."""
     mini_dataset_root = original_dataset_path.parent / "mini_datasets"
@@ -245,7 +249,7 @@ def create_mini_safetensor_dataset(
             for source_file in safetensor_files:
                 target_file = mini_split_dir / f"{source_file.stem}.safetensors"
                 truncate_safetensor_file(
-                    source_file, target_file, desired_frames=MINI_DATASET_DESIRED_FRAMES
+                    source_file, target_file, desired_frames=desired_frames
                 )
                 print(f"Created {usecase_name} mini dataset at {target_file}")
 
@@ -278,5 +282,7 @@ if __name__ == "__main__":
             expected_weights=config["expected_weights"],
         )
         create_mini_safetensor_dataset(
-            config["datasets_dir"], usecase_name=usecase.upper()
+            original_dataset_path=config["datasets_dir"],
+            usecase_name=usecase.upper(),
+            desired_frames=config["mini_dataset_frames"],
         )
