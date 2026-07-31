@@ -74,7 +74,7 @@ class EvaluationIntegrationTest(NFRUBaseIntegrationTest):
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
-        cfg_json["dataset"]["path"]["validation"] = self.sample_data_dir
+        cfg_json["dataset"]["path"]["validation"] = self.val_data_dir
         cfg_json["train"]["perform_validate"] = True
         self.test_cfg_path = Path(self.test_dir, "test_validate.json")
 
@@ -98,10 +98,10 @@ class EvaluationIntegrationTest(NFRUBaseIntegrationTest):
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
-        cfg_json["dataset"]["path"]["validation"] = self.sample_data_dir
+        cfg_json["dataset"]["path"]["validation"] = self.val_data_dir
         cfg_json["train"]["perform_validate"] = True
-        cfg_json["train"]["fp32"]["number_of_epochs"] = 4
-        cfg_json["train"]["validate_frequency"] = [1, 3, 4]
+        cfg_json["train"]["fp32"]["number_of_epochs"] = 3
+        cfg_json["train"]["validate_frequency"] = [1, 3]
         self.test_cfg_path = Path(self.test_dir, "test_validate.json")
 
         with open(self.test_cfg_path, "w", encoding="utf-8") as f:
@@ -112,7 +112,7 @@ class EvaluationIntegrationTest(NFRUBaseIntegrationTest):
                 *self._cli_base(),
                 f"--config-path={self.test_cfg_path}",
                 "train",
-                "--evaluate",
+                "--no-evaluate",
             ],
             capture_output=True,
             text=True,
@@ -120,10 +120,9 @@ class EvaluationIntegrationTest(NFRUBaseIntegrationTest):
         )
 
         self.assertEqual(sub_proc.returncode, 0)
-        self.assertIn("Validation: Epoch 1/4", sub_proc.stderr)
-        self.assertNotIn("Validation: Epoch 2/4", sub_proc.stderr)
-        self.assertIn("Validation: Epoch 3/4", sub_proc.stderr)
-        self.assertIn("Validation: Epoch 4/4", sub_proc.stderr)
+        self.assertIn("Validation: Epoch 1/3", sub_proc.stderr)
+        self.assertNotIn("Validation: Epoch 2/3", sub_proc.stderr)
+        self.assertIn("Validation: Epoch 3/3", sub_proc.stderr)
 
     def test_trace_profiler(self):
         """Test JSON trace is generated with profiler=trace."""

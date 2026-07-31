@@ -108,7 +108,7 @@ class TrainingIntegrationTest(NFRUBaseIntegrationTest):
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
-        cfg_json["dataset"]["path"]["validation"] = self.sample_data_dir
+        cfg_json["dataset"]["path"]["validation"] = self.val_data_dir
         cfg_json["train"]["perform_validate"] = True
         self.test_cfg_path = Path(self.test_dir, "test_validate.json")
 
@@ -193,7 +193,7 @@ class TrainingIntegrationTest(NFRUBaseIntegrationTest):
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
-        cfg_json["dataset"]["path"]["validation"] = self.sample_data_dir
+        cfg_json["dataset"]["path"]["validation"] = self.val_data_dir
         cfg_json["train"]["perform_validate"] = False
         self.test_cfg_path = Path(self.test_dir, "test_validate_warning.json")
 
