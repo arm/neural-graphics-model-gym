@@ -371,7 +371,7 @@ inline PreProcessLaneData BuildPreProcessLaneData(Globals g, uint b, int2 input_
         int2(0),
         g.pc._InputDims - 1
     );
-    lane.motion = LoadMotionAtPixel(g, b, nearest_input_coord);
+    lane.motion = detach(LoadMotionAtPixel(g, b, nearest_input_coord));
     lane.reproj_uv = lane.uv - (lane.motion * g.pc._InvInputDims);
     return lane;
 }

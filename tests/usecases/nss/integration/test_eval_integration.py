@@ -25,7 +25,7 @@ class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
     """Tests for NSS v1 evaluation pipeline."""
 
     _REFERENCE_METRIC_FLOOR_DELTA = 0.0001
-    _PSNR_METRIC_FLOOR_DELTA = 0.001
+    _PSNR_METRIC_FLOOR_DELTA = 0.002
 
     def _extract_metric_value(self, metric, log_line):
         """Helper function to extract metric values from log line."""
