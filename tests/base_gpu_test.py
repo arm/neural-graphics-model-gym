@@ -33,6 +33,21 @@ class BaseGPUMemoryTest(unittest.TestCase):
         self, stdout: str, expected_vram_usage: int, tolerance: float
     ) -> None:
         """Assert VRAM usage parsed from stdout does not exceed expected tolerance."""
+
+        is_integrated_gpu = torch.cuda.is_available() and any(
+            bool(
+                getattr(
+                    torch.cuda.get_device_properties(device),
+                    "is_integrated",
+                    False,
+                )
+            )
+            for device in range(torch.cuda.device_count())
+        )
+
+        if is_integrated_gpu:
+            self.skipTest("Skipping fixed VRAM limit on integrated/unified-memory GPU")
+
         stdout_lines = stdout.lower().splitlines()
         peak_vram_usage = None
         for line in reversed(stdout_lines):
