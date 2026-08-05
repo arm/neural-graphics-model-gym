@@ -4,6 +4,7 @@
         "name": "NFRU-v1",
         "model_source": "prebuilt",
         "scale_factor": 2.0,
+        "processing_backend": "slang",
         "legacy_nfru_capture_paths": [],
         "dynamic_mask_is_runtime_accurate": false,
         "mv_similarity_threshold": null

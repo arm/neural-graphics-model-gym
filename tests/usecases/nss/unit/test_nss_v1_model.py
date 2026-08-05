@@ -115,6 +115,30 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
 
         self.assertEqual(settings.scale, 1.5)
 
+    def test_processing_backend_config(self) -> None:
+        """NSS v1 validates its processing backend."""
+
+        settings = {
+            "name": "nss-v1",
+            "model_source": "prebuilt",
+            "recurrent_samples": 4,
+        }
+        self.assertEqual(
+            NSSV1ModelSettings(**settings).processing_backend,
+            "slang",
+        )
+        self.assertEqual(
+            NSSV1ModelSettings(
+                **settings, processing_backend="torch"
+            ).processing_backend,
+            "torch",
+        )
+        with self.assertRaises(ValidationError):
+            NSSV1ModelSettings(
+                **settings,
+                processing_backend="unsupported",
+            )
+
     def test_config_rejects_nss_v1_scale_at_or_below_one(self) -> None:
         """NSS config rejects scales that do not upscale."""
 
@@ -214,6 +238,14 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
 
         with self.assertRaisesRegex(RuntimeError, "requires CUDA"):
             model.core_forward(one_frame)
+
+    def test_model_carries_processing_backend(self) -> None:
+        """NSS v1 carries the configured processing backend."""
+
+        self.params.model.processing_backend = "torch"
+        model = create_model(self.params, torch.device("cpu"))
+
+        self.assertEqual(model.processing_backend, "torch")
 
     def test_high_quality_non_multiple_lr_shapes_use_full_res_processing_with_padded_state(
         self,

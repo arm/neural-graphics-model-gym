@@ -10,9 +10,10 @@ from typing import Dict, Optional
 from unittest.mock import Mock, patch
 
 import torch
+from pydantic import ValidationError
 from torch import nn
 
-from ng_model_gym.core.config.config_model import ConfigModel
+from ng_model_gym.core.config.config_model import ConfigModel, NFRUV1ModelSettings
 from ng_model_gym.core.model import BaseNGModel, create_model
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from ng_model_gym.usecases.nfru.model.nfru_v1 import NFRUv1Core
@@ -541,6 +542,37 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
 
 class TestNFRUV1DynamicMaskConfig(unittest.TestCase):
     """Tests for NFRU dynamic mask configuration."""
+
+    def test_processing_backend_config(self) -> None:
+        """NFRU v1 validates its processing backend."""
+
+        settings = {"name": "nfru-v1", "model_source": "prebuilt"}
+        self.assertEqual(
+            NFRUV1ModelSettings(**settings).processing_backend,
+            "slang",
+        )
+        self.assertEqual(
+            NFRUV1ModelSettings(
+                **settings,
+                processing_backend="torch",
+            ).processing_backend,
+            "torch",
+        )
+        with self.assertRaises(ValidationError):
+            NFRUV1ModelSettings(
+                **settings,
+                processing_backend="unsupported",
+            )
+
+    def test_model_carries_processing_backend(self) -> None:
+        """NFRU v1 carries the configured processing backend."""
+
+        params = create_simple_params(usecase="nfru-v1")
+        params.model.processing_backend = "torch"
+        params.model_train_eval_mode = TrainEvalMode.FP32
+        model = create_model(params, torch.device("cpu"))
+
+        self.assertEqual(model.network.processing_backend, "torch")
 
     def test_slang_module_loading(self) -> None:
         """Test the Slang module loading configuration."""

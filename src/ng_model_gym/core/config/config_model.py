@@ -161,6 +161,14 @@ class PrebuiltModelSettingsBase(BaseModelSettings):
     """
 
     model_source: Literal["prebuilt"]
+    processing_backend: Literal["slang", "torch"] = Field(
+        default="slang",
+        description=(
+            "Backend for model pre/post processing. "
+            "'slang' requires an NVIDIA GPU. "
+            "'torch' supports processing on both CPU and GPU "
+        ),
+    )
 
 
 class CustomModelSettings(BaseModelSettings):

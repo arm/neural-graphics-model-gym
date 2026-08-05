@@ -65,6 +65,7 @@ class NSSV1Model(BaseNGModel):
 
         self.scale = self.params.model.scale
         self.recurrent_samples = self.params.model.recurrent_samples
+        self.processing_backend = self.params.model.processing_backend
         self.required_context_keys: Optional[tuple[str, ...]] = None
         self.gt_history_augmentation = bool(self.params.model.gt_history_augmentation)
         self.gt_history_augmentation_chance = float(

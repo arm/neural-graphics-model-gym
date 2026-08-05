@@ -23,6 +23,15 @@
                             "const": "prebuilt",
                             "type": "string"
                         },
+                        "processing_backend": {
+                            "default": "slang",
+                            "description": "Backend for model pre/post processing. 'slang' requires an NVIDIA GPU. 'torch' supports processing on both CPU and GPU ",
+                            "enum": [
+                                "slang",
+                                "torch"
+                            ],
+                            "type": "string"
+                        },
                         "scale": {
                             "default": 2.0,
                             "description": "Upscale parameter for the NSS model. NSS v1 train/eval supports numeric scale values greater than 1.0.",
@@ -81,6 +90,15 @@
                         },
                         "model_source": {
                             "const": "prebuilt",
+                            "type": "string"
+                        },
+                        "processing_backend": {
+                            "default": "slang",
+                            "description": "Backend for model pre/post processing. 'slang' requires an NVIDIA GPU. 'torch' supports processing on both CPU and GPU ",
+                            "enum": [
+                                "slang",
+                                "torch"
+                            ],
                             "type": "string"
                         },
                         "scale_factor": {
