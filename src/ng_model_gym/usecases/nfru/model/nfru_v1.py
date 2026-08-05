@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 import numpy as np
 import torch
@@ -118,6 +118,7 @@ class NFRUv1(BaseNGModel):
                 self.params.model.dynamic_mask_is_runtime_accurate
             ),
             mv_similarity_threshold=self.params.model.mv_similarity_threshold,
+            processing_backend=self.params.model.processing_backend,
         )
         self.quant_params = self.network.quant_params
 
@@ -201,11 +202,14 @@ class NFRUv1Core(nn.Module):
         scale_factor: int = _DEFAULT_SCALE_FACTOR,
         dynamic_mask_is_runtime_accurate: bool = False,
         mv_similarity_threshold: Optional[float] = None,
+        *,
+        processing_backend: Literal["slang", "torch"] = "slang",
     ):
         """If mv_similarity_threshold isn't supplied, a default will be used."""
         super().__init__()
         self.device = device
         self.slang: Optional[object] = None
+        self.processing_backend = processing_backend
         self.flow_method = _FLOW_METHOD
         self.dynamic_flow = True
         self.of_540 = False
