@@ -30,6 +30,7 @@ from ng_model_gym.usecases.nss.model.quality_modes import (
     NSSV1QualitySettings,
     resolve_nss_v1_quality,
 )
+from ng_model_gym.usecases.nss.model.torch_postprocess.pipeline import postprocess_torch
 from ng_model_gym.usecases.nss.model.torch_preprocess.pipeline import preprocess_torch
 from ng_model_gym.usecases.nss.utils.ground_truth_utils import (
     resize_ground_truth_to_spatial_shape,
@@ -340,36 +341,47 @@ class NSSV1Model(BaseNGModel):
     ) -> Dict[str, torch.Tensor]:
         """Postprocess neural network outputs."""
 
-        self._require_cuda_for_slang_forward(inputs)
-        slang = self._get_slang()
         input_shape, _, hr_shape, _, _ = self._calculate_dispatch_dims(inputs)
         self._validate_ground_truth_shape(inputs, hr_shape)
         reset_occurred = 1.0 - (inputs["reset_event"] == 0.0).float()
-        device = str(inputs["colour_linear"].device)
 
         offset_lut, idx_modulo = self._generate_offset_lut(
             inputs["jitter"],
             input_shape,
             hr_shape,
         )
-        output_linear, out_filtered_linear = slang.post_process(
-            in_color=inputs["colour_linear"],
-            in_history=inputs["history"],
-            in_kpn_params=kpn_params,
-            in_temporal_params=temporal_params,
-            in_motion=inputs[self.motion_key],
-            in_nearest_depth_off=nearest_depth_offset,
-            in_exposure=inputs["exposure"],
-            in_jitter=inputs["jitter"],
-            in_offset_lut=offset_lut,
-            in_idx_modulo=idx_modulo,
-            in_reset=reset_occurred,
-            out_constructors={
-                "out_color": SlangOutput(shape=hr_shape, device=device),
-                "out_color_filtered": SlangOutput(shape=hr_shape, device=device),
-            },
-            dispatch_size=[hr_shape[0], hr_shape[2], hr_shape[3]],
-        )
+        if self.processing_backend == "torch":
+            output_linear, out_filtered_linear = postprocess_torch(
+                in_color=inputs["colour_linear"],
+                in_history=inputs["history"],
+                in_kpn_params=kpn_params,
+                in_temporal_params=temporal_params,
+                in_motion=inputs[self.motion_key],
+                in_nearest_depth_off=nearest_depth_offset,
+                in_exposure=inputs["exposure"],
+                in_offset_lut=offset_lut,
+                in_idx_modulo=idx_modulo,
+                in_reset=reset_occurred,
+                output_shape=hr_shape,
+                preprocess_half_res_input=self.preprocess_half_res_input,
+                use_sparse_filter_2x2=self.use_sparse_filter_2x2,
+                use_history_catmull=self.use_history_catmull,
+                packed_nearest_offset_quad=self.packed_nearest_offset_quad,
+                sharp_theta=self.nss_v1_sharp_theta,
+                filter_kernel_taps=self.filter_kernel_taps,
+            )
+        else:
+            self._require_cuda_for_slang_forward(inputs)
+            output_linear, out_filtered_linear = self._postprocess_slang(
+                kpn_params=kpn_params,
+                inputs=inputs,
+                temporal_params=temporal_params,
+                nearest_depth_offset=nearest_depth_offset,
+                offset_lut=offset_lut,
+                idx_modulo=idx_modulo,
+                hr_shape=hr_shape,
+                reset_occurred=reset_occurred,
+            )
 
         output_tm = tonemap_forward(
             output_linear * inputs["exposure"], mode=self.tonemapper
@@ -396,6 +408,41 @@ class NSSV1Model(BaseNGModel):
             "input_color": input_color,
         }
         return outputs
+
+    def _postprocess_slang(  # pylint: disable=too-many-arguments
+        self,
+        *,
+        kpn_params: torch.Tensor,
+        inputs: Dict[str, torch.Tensor],
+        temporal_params: torch.Tensor,
+        nearest_depth_offset: torch.Tensor,
+        offset_lut: torch.Tensor,
+        idx_modulo: torch.Tensor,
+        hr_shape: tuple[int, int, int, int],
+        reset_occurred: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Run the existing Slang NSS v1 post-processing kernel."""
+
+        slang = self._get_slang()
+        device = str(inputs["colour_linear"].device)
+        return slang.post_process(
+            in_color=inputs["colour_linear"],
+            in_history=inputs["history"],
+            in_kpn_params=kpn_params,
+            in_temporal_params=temporal_params,
+            in_motion=inputs[self.motion_key],
+            in_nearest_depth_off=nearest_depth_offset,
+            in_exposure=inputs["exposure"],
+            in_jitter=inputs["jitter"],
+            in_offset_lut=offset_lut,
+            in_idx_modulo=idx_modulo,
+            in_reset=reset_occurred,
+            out_constructors={
+                "out_color": SlangOutput(shape=hr_shape, device=device),
+                "out_color_filtered": SlangOutput(shape=hr_shape, device=device),
+            },
+            dispatch_size=[hr_shape[0], hr_shape[2], hr_shape[3]],
+        )
 
     def define_dynamic_export_model_input(self) -> tuple[dict[int, object], ...]:
         """
