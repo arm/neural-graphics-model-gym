@@ -30,6 +30,7 @@ from ng_model_gym.usecases.nss.model.quality_modes import (
     NSSV1QualitySettings,
     resolve_nss_v1_quality,
 )
+from ng_model_gym.usecases.nss.model.torch_preprocess.pipeline import preprocess_torch
 from ng_model_gym.usecases.nss.utils.ground_truth_utils import (
     resize_ground_truth_to_spatial_shape,
 )
@@ -201,6 +202,40 @@ class NSSV1Model(BaseNGModel):
             depth_shape,
         ) = self._calculate_dispatch_dims(preprocess_input)
         self._validate_ground_truth_shape(preprocess_input, hr_shape)
+
+        if self.processing_backend == "torch":
+            return preprocess_torch(
+                preprocess_input,
+                input_shape=input_shape,
+                process_shape=process_shape,
+                pad_shape=pad_shape,
+                depth_shape=depth_shape,
+                preprocess_half_res_input=self.preprocess_half_res_input,
+                depth_scatter_quarter_res_input=(self.depth_scatter_quarter_res_input),
+                packed_nearest_offset_quad=self.packed_nearest_offset_quad,
+                nss_v1_luma_derivative=self.nss_v1_luma_derivative,
+                nss_v1_low_mid_luma_derivative=(self.nss_v1_low_mid_luma_derivative),
+            )
+
+        return self._preprocess_slang(
+            preprocess_input,
+            input_shape=input_shape,
+            process_shape=process_shape,
+            pad_shape=pad_shape,
+            depth_shape=depth_shape,
+        )
+
+    def _preprocess_slang(
+        self,
+        preprocess_input: Dict[str, torch.Tensor],
+        *,
+        input_shape: tuple[int, int, int, int],
+        process_shape: tuple[int, int, int, int],
+        pad_shape: tuple[int, int, int, int],
+        depth_shape: tuple[int, int, int, int],
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Create the autoencoder input with the existing Slang kernels."""
+
         self._require_cuda_for_slang_forward(preprocess_input)
         slang = self._get_slang()
         device = str(preprocess_input["colour_linear"].device)
