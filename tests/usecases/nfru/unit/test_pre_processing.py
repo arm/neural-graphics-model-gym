@@ -83,7 +83,7 @@ class TestPreProcess(BaseGPUMemoryTest):
         preprocess_input = self.inputs
 
         with torch.no_grad():
-            network_in = self.network._pre_process(
+            network_in = self.network.preprocess(
                 flow_t_f30_xx=preprocess_input["flow_t_f30_xx"],
                 mv_t_f30_m1=preprocess_input["mv_t_f30_m1"],
                 rgb_m1=preprocess_input["rgb_m1"],
@@ -146,7 +146,7 @@ class TestNFRUPreprocessGolden(BaseGPUMemoryTest):
         )
 
         with torch.no_grad():
-            network_in = self.network._pre_process(
+            network_in = self.network.preprocess(
                 flow_t_f30_xx=preprocess_input["flow_t_f30_xx"],
                 mv_t_f30_m1=preprocess_input["mv_t_f30_m1"],
                 rgb_m1=preprocess_input["rgb_m1"],

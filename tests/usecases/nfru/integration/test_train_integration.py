@@ -56,6 +56,57 @@ class TrainingIntegrationTest(NFRUBaseIntegrationTest):
         subprocess_out = self.run_training_test()
         self._assert_peak_vram_usage(subprocess_out.stdout, 14800, 0.005)
 
+    def test_torch_backend_trains_and_evaluates_without_visible_gpu(self):
+        """Run a minimal native-Torch train/evaluate cycle entirely on CPU."""
+
+        cfg_json = json.loads(json.dumps(self.cfg_json))
+        mini_data = f"{self.mini_dataset_dir}/train"
+        cfg_json["model"]["processing_backend"] = "torch"
+        cfg_json["dataset"]["path"] = {
+            "train": mini_data,
+            "validation": mini_data,
+            "test": mini_data,
+        }
+        cfg_json["dataset"]["num_workers"] = 0
+        cfg_json["metrics"] = ["PSNR"]
+        cfg_json["train"]["batch_size"] = 1
+        cfg_json["train"]["fp32"]["number_of_epochs"] = 1
+        with open(self.test_cfg_path, "w", encoding="utf-8") as file:
+            json.dump(cfg_json, file)
+
+        environment = self._test_env()
+        environment["CUDA_VISIBLE_DEVICES"] = ""
+
+        def run_cli(*arguments):
+            return subprocess.run(
+                [
+                    *self._cli_base(),
+                    f"--config-path={self.test_cfg_path}",
+                    *arguments,
+                ],
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+
+        train_result = run_cli("train", "--no-evaluate")
+        train_output = f"{train_result.stdout}\n{train_result.stderr}"
+        self.assertEqual(train_result.returncode, 0, train_output)
+        self.assertIn("Device is cpu", train_output)
+
+        checkpoints = sorted(self.checkpoint_dir.rglob("*.pt"))
+        self.assertTrue(checkpoints)
+        evaluate_result = run_cli(
+            "evaluate",
+            f"--model-path={checkpoints[-1]}",
+            "--model-type=fp32",
+        )
+        evaluate_output = f"{evaluate_result.stdout}\n{evaluate_result.stderr}"
+        self.assertEqual(evaluate_result.returncode, 0, evaluate_output)
+        results_path = self.model_out_dir / "results.log"
+        self.assertTrue(results_path.is_file())
+        self.assertGreater(results_path.stat().st_size, 0)
+
     def test_model_train_finetune(self):
         """Run train pipeline with fine-tuning."""
         subprocess_out = self.run_finetune_training_test()

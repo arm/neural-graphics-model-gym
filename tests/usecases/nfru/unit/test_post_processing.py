@@ -72,7 +72,7 @@ class TestPostProcess(BaseGPUMemoryTest):
         postprocess_input = self.inputs
 
         with torch.no_grad():
-            output = self.network._post_process(
+            output = self.network.postprocess(
                 flow_t_f30_xx=postprocess_input["flow_t_f30_xx"],
                 mv_t_f30_m1=postprocess_input["mv_t_f30_m1"],
                 rgb_m1=postprocess_input["rgb_m1"],
@@ -132,7 +132,7 @@ class TestPostprocessGolden(BaseGPUMemoryTest):
         )
 
         with torch.no_grad():
-            output = self.network._post_process(
+            output = self.network.postprocess(
                 flow_t_f30_xx=postprocess_input["flow_t_f30_xx"],
                 mv_t_f30_m1=postprocess_input["mv_t_f30_m1"],
                 rgb_m1=postprocess_input["rgb_m1"],

@@ -31,6 +31,22 @@ Provide dataset paths for your required workflow:
 
 ## Other settings you may wish to change
 
+### Processing backend
+
+`model` → `processing_backend` selects the implementation used for NFRU's
+motion warping, preprocessing, and postprocessing stages:
+
+- `slang` is the default and preferred backend when CUDA is available. Its
+  shader implementation provides the closest parity with the deployed runtime.
+- `torch` is the portable FP32 alternative for training and evaluation on both
+  CPU and CUDA. It is intended for environments where Slang execution is
+  unavailable or impractical.
+
+The Torch backend is tested for close numerical parity with Slang, but small
+backend or device differences can remain. Use `slang` for parity-sensitive
+validation. Backend selection is explicit: Model Gym does not automatically
+fall back from one backend to the other.
+
 ### Training loss
 
 For NFRU v1, set `train` → `loss_fn` to `lpips_spatial_loss_v1`.
