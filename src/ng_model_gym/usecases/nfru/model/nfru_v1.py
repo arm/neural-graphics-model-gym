@@ -31,6 +31,13 @@ from ng_model_gym.usecases.nfru.model.optical_flow.blockmatch_v321 import (
     BlockMatchV321,
     upscale_and_dilate_flow,
 )
+from ng_model_gym.usecases.nfru.model.torch_processing import (
+    postprocess_torch,
+    preprocess_torch,
+    previous_dynamic_mask_torch,
+    warp_flow_torch,
+    warp_mv_torch,
+)
 from ng_model_gym.usecases.nfru.utils.color_pipeline import build_color_pipeline
 from ng_model_gym.usecases.nfru.utils.constants import (
     _BITS_EXP,
@@ -99,7 +106,6 @@ class NFRUv1(BaseNGModel):
                 "model section in parameter is not of type NFRUV1ModelSettings"
             )
         self.params = params
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         quant_params = {
             "max_val": _MAX_VAL,
@@ -112,7 +118,6 @@ class NFRUv1(BaseNGModel):
         self.network = NFRUv1Core(
             color_config=color_config,
             quant_params=quant_params.copy(),
-            device=self.device,
             scale_factor=self.params.model.scale_factor,
             dynamic_mask_is_runtime_accurate=(
                 self.params.model.dynamic_mask_is_runtime_accurate
@@ -121,6 +126,17 @@ class NFRUv1(BaseNGModel):
             processing_backend=self.params.model.processing_backend,
         )
         self.quant_params = self.network.quant_params
+
+    def _model_device(self) -> torch.device:
+        """Return the device that owns the trainable NFRU network."""
+
+        return self.network._model_device()
+
+    @property
+    def device(self) -> torch.device:
+        """Expose the authoritative evaluator-facing NFRU device."""
+
+        return self._model_device()
 
     def get_neural_network(self) -> nn.Module:
         return self.network.auto_encoder
@@ -196,9 +212,6 @@ class NFRUv1Core(nn.Module):
         self,
         color_config: Dict[str, Dict],
         quant_params: Optional[Dict[str, int]] = None,
-        device: torch.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu"
-        ),
         scale_factor: int = _DEFAULT_SCALE_FACTOR,
         dynamic_mask_is_runtime_accurate: bool = False,
         mv_similarity_threshold: Optional[float] = None,
@@ -207,7 +220,6 @@ class NFRUv1Core(nn.Module):
     ):
         """If mv_similarity_threshold isn't supplied, a default will be used."""
         super().__init__()
-        self.device = device
         self.slang: Optional[object] = None
         self.processing_backend = processing_backend
         self.flow_method = _FLOW_METHOD
@@ -241,6 +253,48 @@ class NFRUv1Core(nn.Module):
             size=_FLOW_RESIZE_FACTOR, interpolation=_NEAREST_INTERPOLATION
         )
         self.coeff_softmax = nn.Softmax(dim=1)
+
+    def _model_device(self) -> torch.device:
+        """Return the device that owns the trainable NFRU autoencoder."""
+
+        return next(self.auto_encoder.parameters()).device
+
+    @property
+    def device(self) -> torch.device:
+        """Return the current parameter-derived model device."""
+
+        return self._model_device()
+
+    def _validate_forward_devices(self, inputs: Dict[str, torch.Tensor]) -> None:
+        """Require every tensor input to share the autoencoder's device."""
+
+        model_device = self._model_device()
+        for name, value in inputs.items():
+            if isinstance(value, torch.Tensor) and value.device != model_device:
+                raise RuntimeError(
+                    f"NFRU-v1 input '{name}' is on {value.device}, but model "
+                    f"parameters are on {model_device}. Move inputs and model to "
+                    "the same device."
+                )
+
+    def _require_cuda_for_slang_forward(self, inputs: Dict[str, torch.Tensor]) -> None:
+        """Reject CPU Slang execution before lazily loading the module."""
+
+        if self._model_device().type == "cuda" and all(
+            not isinstance(value, torch.Tensor) or value.device.type == "cuda"
+            for value in inputs.values()
+        ):
+            return
+        raise RuntimeError(
+            "NFRU-v1 Slang-backed forward requires CUDA. Set "
+            "model.processing_backend='torch' for CPU training or evaluation."
+        )
+
+    @staticmethod
+    def _next_preprocess_seed(device: torch.device) -> int:
+        """Draw one device-local shader seed for an interpolation timestep."""
+
+        return torch.randint(0, _RANDOM_SEED_MAX, (1,), device=device).item()
 
     def _get_slang(self):
         """Lazily load the NFRU v1 Slang module."""
@@ -319,6 +373,55 @@ class NFRUv1Core(nn.Module):
         out_dims: list[int],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Warp motion vectors and return the filled flow plus hole masks."""
+        if self.processing_backend == "torch":
+            return warp_mv_torch(
+                current_depth=depth_p1,
+                previous_depth=depth_m1,
+                rendered_mv=mv_p1_f30_m1,
+                previous_mask=dynamic_mask,
+                previous_to_current=motion_mat_tm1,
+                current_to_previous=motion_mat_tp1,
+                timestep=scale,
+                mv_similarity_threshold=self.mv_similarity_threshold,
+                mv_similarity_noise_threshold=self.mv_similarity_noise_threshold,
+                runtime_accurate=self.dynamic_mask_is_runtime_accurate,
+            )
+        return self._warp_mv_slang(
+            depth_m1,
+            depth_p1,
+            mv_p1_f30_m1,
+            dynamic_mask,
+            motion_mat_tm1,
+            motion_mat_tp1,
+            scale,
+            batch,
+            out_dims,
+        )
+
+    def _warp_mv_slang(
+        self,
+        depth_m1: torch.Tensor,
+        depth_p1: torch.Tensor,
+        mv_p1_f30_m1: torch.Tensor,
+        dynamic_mask: torch.Tensor,
+        motion_mat_tm1: torch.Tensor,
+        motion_mat_tp1: torch.Tensor,
+        scale: float,
+        batch: int,
+        out_dims: list[int],
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Run the existing Slang motion-vector warp."""
+
+        self._require_cuda_for_slang_forward(
+            {
+                "depth_m1": depth_m1,
+                "depth_p1": depth_p1,
+                "mv_p1_f30_m1": mv_p1_f30_m1,
+                "dynamic_mask": dynamic_mask,
+                "motion_mat_tm1": motion_mat_tm1,
+                "motion_mat_tp1": motion_mat_tp1,
+            }
+        )
         slang = self._get_slang()
         out_packed_mv, out_dynamic_mask, out_holes_t, out_holes_tm1 = slang.warp_mv(
             in_depth=depth_p1,
@@ -369,6 +472,21 @@ class NFRUv1Core(nn.Module):
         out_dims: list[int],
     ) -> torch.Tensor:
         """Warp the dense flow field to the requested intermediate timestep."""
+        if self.processing_backend == "torch":
+            return warp_flow_torch(depth, mv, scale)
+        return self._warp_flow_slang(depth, mv, scale, batch, out_dims)
+
+    def _warp_flow_slang(
+        self,
+        depth: torch.Tensor,
+        mv: torch.Tensor,
+        scale: float,
+        batch: int,
+        out_dims: list[int],
+    ) -> torch.Tensor:
+        """Run the existing Slang optical-flow warp."""
+
+        self._require_cuda_for_slang_forward({"depth": depth, "mv": mv})
         slang = self._get_slang()
         out_packed_mv = slang.warp_flow(
             in_depth=depth,
@@ -393,7 +511,7 @@ class NFRUv1Core(nn.Module):
             dispatch_size=[batch, *out_dims],
         )
 
-    def _pre_process(
+    def preprocess(
         self,
         flow_t_f30_xx: torch.Tensor,
         mv_t_f30_m1: torch.Tensor,
@@ -409,14 +527,79 @@ class NFRUv1Core(nn.Module):
         timestep: float,
         random_seed: Optional[int] = None,
     ) -> torch.Tensor:
+        """Create the autoencoder input with the selected processing backend."""
+
+        if random_seed is None:
+            random_seed = self._next_preprocess_seed(rgb_m1.device)
+
+        if self.processing_backend == "torch":
+            return preprocess_torch(
+                warped_flow=flow_t_f30_xx,
+                warped_mv=mv_t_f30_m1,
+                rgb_m1=rgb_m1,
+                rgb_p1=rgb_p1,
+                depth_m1=depth_m1,
+                depth_p1=depth_p1,
+                holes_t=depth_p1_warp_t,
+                holes_tm1=depth_p1_warp_p1,
+                motion_mat_m1p1=motion_mat_m1p1,
+                motion_mat_p1m1=motion_mat_p1m1,
+                depth_params=depth_params,
+                timestep=timestep,
+                random_seed=random_seed,
+            )
+        return self._preprocess_slang(
+            flow_t_f30_xx,
+            mv_t_f30_m1,
+            rgb_m1,
+            rgb_p1,
+            depth_m1,
+            depth_p1,
+            depth_p1_warp_t,
+            depth_p1_warp_p1,
+            motion_mat_m1p1,
+            motion_mat_p1m1,
+            depth_params,
+            timestep,
+            random_seed,
+        )
+
+    def _preprocess_slang(
+        self,
+        flow_t_f30_xx: torch.Tensor,
+        mv_t_f30_m1: torch.Tensor,
+        rgb_m1: torch.Tensor,
+        rgb_p1: torch.Tensor,
+        depth_m1: torch.Tensor,
+        depth_p1: torch.Tensor,
+        depth_p1_warp_t: torch.Tensor,
+        depth_p1_warp_p1: torch.Tensor,
+        motion_mat_m1p1: torch.Tensor,
+        motion_mat_p1m1: torch.Tensor,
+        depth_params: torch.Tensor,
+        timestep: float,
+        random_seed: int,
+    ) -> torch.Tensor:
+        """Run the existing Slang preprocessor."""
+
+        self._require_cuda_for_slang_forward(
+            {
+                "flow_t_f30_xx": flow_t_f30_xx,
+                "mv_t_f30_m1": mv_t_f30_m1,
+                "rgb_m1": rgb_m1,
+                "rgb_p1": rgb_p1,
+                "depth_m1": depth_m1,
+                "depth_p1": depth_p1,
+                "depth_p1_warp_t": depth_p1_warp_t,
+                "depth_p1_warp_p1": depth_p1_warp_p1,
+                "motion_mat_m1p1": motion_mat_m1p1,
+                "motion_mat_p1m1": motion_mat_p1m1,
+                "depth_params": depth_params,
+            }
+        )
         slang = self._get_slang()
         batch = mv_t_f30_m1.shape[0]
         out_dims = [flow_t_f30_xx.shape[2], flow_t_f30_xx.shape[3]]
-
-        if random_seed is None:
-            random_seed = torch.randint(
-                0, _RANDOM_SEED_MAX, (1,), device=rgb_m1.device
-            ).item()
 
         return slang.preprocess(
             in_flow_t_f30_xx=flow_t_f30_xx,
@@ -440,7 +623,7 @@ class NFRUv1Core(nn.Module):
             dispatch_size=[batch, *out_dims],
         )
 
-    def _post_process(
+    def postprocess(
         self,
         flow_t_f30_xx: torch.Tensor,
         mv_t_f30_m1: torch.Tensor,
@@ -449,6 +632,46 @@ class NFRUv1Core(nn.Module):
         learnt_params: torch.Tensor,
         timestep: float,
     ) -> torch.Tensor:
+        """Composite the output with the selected processing backend."""
+
+        if self.processing_backend == "torch":
+            return postprocess_torch(
+                warped_flow=flow_t_f30_xx,
+                warped_mv=mv_t_f30_m1,
+                rgb_m1=rgb_m1,
+                rgb_p1=rgb_p1,
+                learnt_params=learnt_params,
+                timestep=timestep,
+            )
+        return self._postprocess_slang(
+            flow_t_f30_xx,
+            mv_t_f30_m1,
+            rgb_m1,
+            rgb_p1,
+            learnt_params,
+            timestep,
+        )
+
+    def _postprocess_slang(
+        self,
+        flow_t_f30_xx: torch.Tensor,
+        mv_t_f30_m1: torch.Tensor,
+        rgb_m1: torch.Tensor,
+        rgb_p1: torch.Tensor,
+        learnt_params: torch.Tensor,
+        timestep: float,
+    ) -> torch.Tensor:
+        """Run the existing Slang learned compositor."""
+
+        self._require_cuda_for_slang_forward(
+            {
+                "flow_t_f30_xx": flow_t_f30_xx,
+                "mv_t_f30_m1": mv_t_f30_m1,
+                "rgb_m1": rgb_m1,
+                "rgb_p1": rgb_p1,
+                "learnt_params": learnt_params,
+            }
+        )
         slang = self._get_slang()
         output = slang.postprocess(
             in_flow_t_f30_xx=flow_t_f30_xx,
@@ -467,18 +690,22 @@ class NFRUv1Core(nn.Module):
     def forward(self, inputs: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Run the full NFRU interpolation pipeline for all output timesteps."""
         self._validate_scale_factor()
+        self._validate_forward_devices(inputs)
+        if self.processing_backend == "slang":
+            self._require_cuda_for_slang_forward(inputs)
+        model_device = self._model_device()
         batch = inputs["rgb_linear_m1"].shape[0]
         motion_mat = inputs["MotionMat"]
 
         rgb_m1 = self.color_pipeline(inputs["rgb_linear_m1"], inputs, "m1")
         if not isinstance(rgb_m1, torch.Tensor):
             rgb_m1 = torch.from_numpy(rgb_m1)
-        rgb_m1 = rgb_m1.to(self.device)
+        rgb_m1 = rgb_m1.to(device=model_device, dtype=torch.float32)
 
         rgb_p1 = self.color_pipeline(inputs["rgb_linear_p1"], inputs, "p1")
         if not isinstance(rgb_p1, torch.Tensor):
             rgb_p1 = torch.from_numpy(rgb_p1)
-        rgb_p1 = rgb_p1.to(self.device)
+        rgb_p1 = rgb_p1.to(device=model_device, dtype=torch.float32)
 
         depth_m1 = inputs["depth_m1"]
         depth_p1 = inputs["depth_p1"]
@@ -500,26 +727,17 @@ class NFRUv1Core(nn.Module):
         dims_540 = [depth_m1.shape[2], depth_m1.shape[3]]
         dims_270 = [flow_xx_f30_xx.shape[2], flow_xx_f30_xx.shape[3]]
 
-        func_previous_dynamic_mask = self._get_previous_dynamic_mask_fn(
-            self.dynamic_mask_is_runtime_accurate
-        )
-        in_dynamic_mask = func_previous_dynamic_mask(
-            tv_depth=depth_m1,
-            tv_mv_m1_f30_m3=mv_m1_f30_m3,
-            tv_motion_mat_tm1=motion_mat_m3,
-            mv_similarity_threshold=float(self.mv_similarity_threshold),
-            mv_similarity_noise_threshold=float(self.mv_similarity_noise_threshold),
-            out_constructors={
-                "tv_dynamic_mask_p1": SlangOutput(
-                    shape=depth_m1.shape, device=str(depth_m1.device)
-                ),
-            },
+        in_dynamic_mask = self.previous_dynamic_mask(
+            depth_m1,
+            mv_m1_f30_m3,
+            motion_mat_m3,
         )
 
         output_mfg = []
         timestep_range = self._get_timestep_range()
 
         for timestep in timestep_range:
+            preprocess_seed = self._next_preprocess_seed(model_device)
             mv_t_f30_m1, _, out_holes_t, out_holes_tm1 = self.warp_mv(
                 depth_m1,
                 depth_p1,
@@ -539,7 +757,7 @@ class NFRUv1Core(nn.Module):
                 dims_270,
             )
 
-            network_in = self._pre_process(
+            network_in = self.preprocess(
                 flow_t_f30_xx=flow_t_f30_xx,
                 mv_t_f30_m1=mv_t_f30_m1,
                 rgb_m1=rgb_m1,
@@ -552,10 +770,11 @@ class NFRUv1Core(nn.Module):
                 motion_mat_p1m1=motion_mat[:, 0, :, :],
                 depth_params=depth_params,
                 timestep=timestep,
+                random_seed=preprocess_seed,
             )
 
             learnt_params = self.auto_encoder(network_in)
-            output = self._post_process(
+            output = self.postprocess(
                 flow_t_f30_xx=flow_t_f30_xx,
                 mv_t_f30_m1=mv_t_f30_m1,
                 rgb_m1=rgb_m1,
@@ -570,6 +789,60 @@ class NFRUv1Core(nn.Module):
             "coeffs": self.coeff_softmax(learnt_params),
             "output_mfg": output_mfg,
         }
+
+    def previous_dynamic_mask(
+        self,
+        depth: torch.Tensor,
+        rendered_mv: torch.Tensor,
+        previous_transform: torch.Tensor,
+    ) -> torch.Tensor:
+        """Dispatch previous dynamic-mask generation to the selected backend."""
+
+        if self.processing_backend == "torch":
+            return previous_dynamic_mask_torch(
+                depth=depth,
+                rendered_mv=rendered_mv,
+                previous_transform=previous_transform,
+                mv_similarity_threshold=self.mv_similarity_threshold,
+                mv_similarity_noise_threshold=self.mv_similarity_noise_threshold,
+                runtime_accurate=self.dynamic_mask_is_runtime_accurate,
+            )
+        return self._previous_dynamic_mask_slang(
+            depth,
+            rendered_mv,
+            previous_transform,
+        )
+
+    def _previous_dynamic_mask_slang(
+        self,
+        depth: torch.Tensor,
+        rendered_mv: torch.Tensor,
+        previous_transform: torch.Tensor,
+    ) -> torch.Tensor:
+        """Generate the previous dynamic mask with the existing Slang kernel."""
+
+        self._require_cuda_for_slang_forward(
+            {
+                "depth": depth,
+                "rendered_mv": rendered_mv,
+                "previous_transform": previous_transform,
+            }
+        )
+        function = self._get_previous_dynamic_mask_fn(
+            self.dynamic_mask_is_runtime_accurate
+        )
+        return function(
+            tv_depth=depth,
+            tv_mv_m1_f30_m3=rendered_mv,
+            tv_motion_mat_tm1=previous_transform,
+            mv_similarity_threshold=float(self.mv_similarity_threshold),
+            mv_similarity_noise_threshold=float(self.mv_similarity_noise_threshold),
+            out_constructors={
+                "tv_dynamic_mask_p1": SlangOutput(
+                    shape=depth.shape, device=str(depth.device)
+                ),
+            },
+        )
 
     def _get_previous_dynamic_mask_fn(self, dynamic_mask_is_runtime_accurate: bool):
         slang = self._get_slang()
