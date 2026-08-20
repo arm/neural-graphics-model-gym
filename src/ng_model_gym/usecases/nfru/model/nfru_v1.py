@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any, Dict, Literal, Optional
 
 import numpy as np
@@ -106,7 +107,6 @@ class NFRUv1(BaseNGModel):
                 "model section in parameter is not of type NFRUV1ModelSettings"
             )
         self.params = params
-
         quant_params = {
             "max_val": _MAX_VAL,
             "bits_exp": _BITS_EXP,
@@ -143,6 +143,18 @@ class NFRUv1(BaseNGModel):
 
     def set_neural_network(self, neural_network: nn.Module) -> None:
         self.network.auto_encoder = neural_network
+
+    # pylint: disable=unused-argument
+    def get_evaluation_exr_frames(
+        self,
+        inputs: dict[str, torch.Tensor],
+        model_outputs: Mapping[str, Any],
+        target: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return NFRU's tonemapped evaluation prediction and ground truth."""
+        return model_outputs["output"], target
+
+    # pylint: enable=unused-argument
 
     def get_qat_quantization_profile(self) -> QATQuantizationProfile:
         return QATQuantizationProfile(

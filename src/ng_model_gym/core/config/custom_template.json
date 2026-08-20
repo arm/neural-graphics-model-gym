@@ -23,6 +23,7 @@
     "output": {
         "dir": "<OUTPUT/DIR>",
         "export_frame_png": false,
+        "export_frame_exr": false,
         "tensorboard_output_dir": "<TENSORBOARD/OUTPUT/DIR>",
         "export": {
             "dynamic_shape": true,

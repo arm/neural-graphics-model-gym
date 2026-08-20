@@ -111,23 +111,19 @@ class TestNGModelEvaluator(unittest.TestCase):
         self.assertIn("recPSNRStreaming", results.keys())
         self.assertIn("SSIM", results.keys())
 
-    def test_run_model(self):
-        """Check that _run_model() calls forward pass from recurrent_model once"""
-        # Mock the dataloader to yield a single example batch
+    def test_run_model_releases_complete_outputs_when_exr_disabled(self):
+        """Retain only the prediction when EXR export does not need the mapping."""
         sample_input = torch.rand((1, 1, 3, 256, 256))
-        sample_target = torch.rand((1, 1, 3, 256, 256))
+        expected_outputs = {"output": sample_input, "diagnostic": object()}
+        self.model.return_value = expected_outputs
+        model_evaluator = NGModelEvaluator(self.model, self.params)
+        model_evaluator.x_in = sample_input
 
-        with patch(
-            "ng_model_gym.core.evaluator.evaluator.get_dataloader",
-            return_value=[(sample_input, sample_target)],
-        ):
-            # Stub the model to return a dict so it's subscriptable
-            self.model.return_value = {"output": sample_input}
-            model_evaluator = NGModelEvaluator(self.model, self.params)
+        model_outputs = model_evaluator._run_model()
 
-            model_evaluator._run_model()
-            # Ensure the model was called exactly once
-            self.assertEqual(self.model.call_count, 1)
+        self.model.assert_called_once_with(sample_input)
+        self.assertIsNone(model_outputs)
+        self.assertIs(model_evaluator.y_pred, sample_input)
 
     def test_test_begin_calls_evaluation_hook(self):
         """Evaluation startup should switch the model into evaluation preprocessing."""
@@ -149,9 +145,10 @@ class TestNGModelEvaluator(unittest.TestCase):
             "ng_model_gym.core.evaluator.evaluator.get_dataloader",
             return_value=[(sample_input, sample_target)],
         ):
-            # Stub the model to return a dict with the expected output key
             predicted = torch.rand((1, 1, 3, 256, 256))
-            self.model.return_value = {"output": predicted}
+            diagnostic = object()
+            model_outputs = {"output": predicted, "diagnostic": diagnostic}
+            self.model.return_value = model_outputs
             self.model.on_before_batch_transfer.return_value = (
                 sample_input,
                 sample_target,
@@ -167,7 +164,16 @@ class TestNGModelEvaluator(unittest.TestCase):
                 Path(self.params.output.dir).glob("eval_metrics_*.json")
             )
 
-            model_evaluator.evaluate()
+            with patch.object(
+                model_evaluator,
+                "_predict_end",
+                wraps=model_evaluator._predict_end,
+            ) as predict_end:
+                model_evaluator.evaluate()
+
+            self.model.assert_called_once_with(sample_input)
+            predict_end.assert_called_once()
+            self.assertIsNone(predict_end.call_args.args[0])
 
             # Check that results.log and metrics json exist
             expected_results_logfile = Path(self.params.output.dir, "results.log")

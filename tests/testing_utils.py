@@ -178,6 +178,7 @@ def create_simple_params(
         "output": {
             "dir": output_dir,
             "export_frame_png": False,
+            "export_frame_exr": False,
             "tensorboard_output_dir": temp_dir,
             "export": {
                 "vgf_output_dir": temp_dir,

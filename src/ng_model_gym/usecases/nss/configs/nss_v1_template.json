@@ -30,6 +30,7 @@
     "output": {
         "dir": "./output",
         "export_frame_png": false,
+        "export_frame_exr": false,
         "tensorboard_output_dir": "./tensorboard-logs/nss-v1",
         "export": {
             "dynamic_shape": true,

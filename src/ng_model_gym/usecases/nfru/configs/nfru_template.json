@@ -57,6 +57,7 @@
     "output": {
         "dir": "./output",
         "export_frame_png": false,
+        "export_frame_exr": false,
         "tensorboard_output_dir": "./tensorboard-logs/nfru",
         "export": {
             "dynamic_shape": true,

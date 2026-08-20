@@ -197,6 +197,45 @@ class TestConfig(unittest.TestCase):
 
         self.assertEqual(loaded_config.train.validate_frequency, [2, 5])
 
+    def test_exr_export_defaults_false_when_omitted(self) -> None:
+        """Test omitted EXR export defaults to false."""
+        user_config = create_simple_params(usecase="nss-v1").model_dump(mode="json")
+        user_config["output"].pop("export_frame_exr", None)
+
+        parsed = config_model.ConfigModel.model_validate(user_config)
+
+        self.assertFalse(parsed.output.export_frame_exr)
+
+    def test_export_frame_png_remains_required(self) -> None:
+        """Test PNG export remains a required configuration field."""
+        user_config = create_simple_params(usecase="nss-v1").model_dump(mode="json")
+        user_config["output"].pop("export_frame_png")
+
+        with self.assertRaises(ValidationError) as raised:
+            config_model.ConfigModel.model_validate(user_config)
+
+        self.assertIn("output.export_frame_png", str(raised.exception))
+        self.assertIn("Field required", str(raised.exception))
+
+    def test_png_and_exr_flags_are_independent(self) -> None:
+        """Test PNG and EXR export flags independently."""
+        for export_png in (False, True):
+            for export_exr in (False, True):
+                with self.subTest(export_png=export_png, export_exr=export_exr):
+                    user_config = create_simple_params(usecase="nss-v1").model_dump(
+                        mode="json"
+                    )
+                    user_config["output"]["export_frame_png"] = export_png
+                    user_config["output"]["export_frame_exr"] = export_exr
+
+                    parsed = config_model.ConfigModel.model_validate(user_config)
+
+                    self.assertEqual(parsed.output.export_frame_png, export_png)
+                    self.assertEqual(
+                        parsed.output.export_frame_exr,
+                        export_exr,
+                    )
+
     def test_custom_models(self):
         """Test custom model config accepts custom fields"""
 

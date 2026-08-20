@@ -13,6 +13,7 @@ from importlib.resources import files
 from pathlib import Path
 from typing import List
 
+import OpenEXR
 import torch
 
 from ng_model_gym.core.model.checkpoint_loader import latest_checkpoint_in_dir
@@ -133,6 +134,23 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
                     return metric_val
         return None
 
+    def assert_float32_rgb_exr(self, path: Path) -> None:
+        """Assert an EXR file contains exactly float32 RGB channels."""
+        self.assertTrue(path.is_file(), f"Expected EXR file does not exist: {path}")
+        with OpenEXR.File(str(path), separate_channels=True) as exr_file:
+            channels = exr_file.channels()
+            self.assertEqual(
+                set(channels),
+                {"R", "G", "B"},
+                f"Expected exactly RGB channels in {path}",
+            )
+            for channel_name, channel in channels.items():
+                self.assertEqual(
+                    channel.type(),
+                    OpenEXR.FLOAT,
+                    f"Expected float32 channel {channel_name} in {path}",
+                )
+
     def _evaluate_from_checkpoints(
         self,
         model_path: str,
@@ -140,8 +158,10 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
         expected_psnr: float = 25.0,
         expected_ssim: float = 0.75,
         expected_stlpips_max: float = 0.14,
+        export_frame_png: bool = True,
+        export_frame_exr: bool = False,
     ):
-        """Evaluate a local checkpoint and assert metrics and png export."""
+        """Evaluate a local checkpoint, assert metrics and requested debug/vis exports."""
         if os.getenv("FAST_TEST") == "1":
             expected_psnr = min(expected_psnr, 23.0)
             expected_ssim = min(expected_ssim, 0.68)
@@ -150,7 +170,8 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
         with open(self.test_cfg_path, encoding="utf-8") as f:
             cfg_json = json.load(f)
 
-        cfg_json["output"]["export_frame_png"] = True
+        cfg_json["output"]["export_frame_png"] = export_frame_png
+        cfg_json["output"]["export_frame_exr"] = export_frame_exr
         cfg_json["dataset"]["path"]["train"] = self.train_data_dir
         cfg_json["dataset"]["path"]["test"] = self.test_data_dir
         self.test_cfg_path = Path(self.test_dir, "test_eval_export_frame.json")
@@ -204,14 +225,25 @@ class NFRUBaseIntegrationTest(BaseGPUMemoryTest):
             f"STLPIPS should be less than {expected_stlpips_max}",
         )
 
-        exported_png = Path(
-            self.model_out_dir, "png", "predicted", "frame_0000_pred.png"
-        )
-        self.assertTrue(exported_png.exists())
-        exported_png = Path(
-            self.model_out_dir, "png", "ground_truth", "frame_0000_gt.png"
-        )
-        self.assertTrue(exported_png.exists())
+        if export_frame_png:
+            exported_png = Path(
+                self.model_out_dir, "png", "predicted", "frame_0000_pred.png"
+            )
+            self.assertTrue(exported_png.exists())
+            exported_png = Path(
+                self.model_out_dir, "png", "ground_truth", "frame_0000_gt.png"
+            )
+            self.assertTrue(exported_png.exists())
+
+        if export_frame_exr:
+            exported_exr = Path(
+                self.model_out_dir, "exr", "predicted", "frame_0000_pred.exr"
+            )
+            self.assertTrue(exported_exr.exists())
+            exported_exr = Path(
+                self.model_out_dir, "exr", "ground_truth", "frame_0000_gt.exr"
+            )
+            self.assertTrue(exported_exr.exists())
 
     def run_model_profiler(self, mode: str):
         """Test that profiler=trace emits a trace file."""

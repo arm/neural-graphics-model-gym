@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
@@ -53,7 +54,7 @@ class QATQuantizationProfile:
     preserve_qat_qparams: bool = True
 
 
-class BaseNGModel(nn.Module, ABC):
+class BaseNGModel(nn.Module, ABC):  # pylint: disable=too-many-public-methods
     """
     Base class for creating neural-graphics models.
 
@@ -377,6 +378,21 @@ class BaseNGModel(nn.Module, ABC):
     def on_evaluation_start(self) -> None:
         """Hook called at the start of evaluation"""
         return None
+
+    # pylint: disable=unused-argument
+    def get_evaluation_exr_frames(
+        self,
+        inputs: dict[str, torch.Tensor],
+        model_outputs: Mapping[str, Any],
+        target: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Return model-selected EXR frames when the model supports export."""
+        raise NotImplementedError(
+            "The selected model does not support EXR evaluation export requested "
+            "by output.export_frame_exr."
+        )
+
+    # pylint: enable=unused-argument
 
     def on_before_batch_transfer(self, batch: Any) -> Any:
         """Hook called before a batch of data is transferred to a device."""

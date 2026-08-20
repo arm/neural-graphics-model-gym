@@ -504,7 +504,12 @@
             "type": "string"
         },
         "export_frame_png": {
-            "description": "Export frames to PNG (for visualization) during model evaluation",
+            "description": "Write per-frame 8-bit display/tonemapped visualization PNGs during model evaluation.",
+            "type": "boolean"
+        },
+        "export_frame_exr": {
+            "default": false,
+            "description": "Write per-frame float32 RGB prediction and ground-truth EXRs during model evaluation. The model selects the exported color representation.",
             "type": "boolean"
         },
         "tensorboard_output_dir": {

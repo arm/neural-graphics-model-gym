@@ -372,7 +372,17 @@ class Output(PydanticConfigModel):
 
     dir: pathlib.Path = Field(description="Directory path for storing training output")
     export_frame_png: bool = Field(
-        description="Export frames to PNG (for visualization) during model evaluation"
+        description=(
+            "Write per-frame 8-bit display/tonemapped visualization PNGs during "
+            "model evaluation."
+        )
+    )
+    export_frame_exr: bool = Field(
+        default=False,
+        description=(
+            "Write per-frame float32 RGB prediction and ground-truth EXRs during "
+            "model evaluation. The model selects the exported color representation."
+        ),
     )
     tensorboard_output_dir: Optional[pathlib.Path] = Field(
         description="Output directory for tensorboard logs. If None is passed, disable tensorboard",
