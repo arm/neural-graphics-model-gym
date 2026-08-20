@@ -223,6 +223,21 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
                 atol=_OUTPUT_ATOL,
             )
 
+    def test_exr_hook_returns_tonemapped_evaluation_frames(self) -> None:
+        """NFRU explicitly exports ordinary tonemapped evaluation tensors."""
+        self.assertIn("get_evaluation_exr_frames", type(self.model).__dict__)
+        prediction = torch.rand(1, 3, 4, 4, device=self.device)
+        target = torch.rand(1, 3, 4, 4, device=self.device)
+
+        predicted_frame, ground_truth_frame = self.model.get_evaluation_exr_frames(
+            {"y_true": torch.rand_like(target)},
+            {"output": prediction, "diagnostic": object()},
+            target,
+        )
+
+        self.assertIs(predicted_frame, prediction)
+        self.assertIs(ground_truth_frame, target)
+
     def test_forward_pass_scale_factor_three_matches_golden(self) -> None:
         """Regress a 3x interpolation run to exercise the multi-frame loop."""
         inputs = self._prepare_inputs(self.forward_reference_scale3)

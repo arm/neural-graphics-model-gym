@@ -6,7 +6,8 @@
 
 import logging
 import math
-from typing import Dict, Optional
+from collections.abc import Mapping
+from typing import Any, Dict, Optional
 
 import torch
 from torch import nn
@@ -112,6 +113,45 @@ class NSSV1Model(BaseNGModel):
     def set_neural_network(self, neural_network: nn.Module) -> None:
         """Replace the trainable NSS v1 neural network."""
         self.autoencoder = neural_network
+
+    @staticmethod
+    def _select_scene_linear_evaluation_timestep(
+        name: str,
+        tensor: torch.Tensor,
+    ) -> torch.Tensor:
+        """Validate and select the single timestep from an NSS NTCHW tensor."""
+        if not isinstance(tensor, torch.Tensor) or tensor.ndim != 5:
+            shape = tuple(tensor.shape) if isinstance(tensor, torch.Tensor) else None
+            raise ValueError(
+                f"NSS scene-linear {name} must be NTCHW; received shape {shape}."
+            )
+        if tensor.shape[1] != 1:
+            raise ValueError(
+                "NSS scene-linear evaluation export requires exactly one temporal "
+                f"sample; {name} has {tensor.shape[1]}."
+            )
+        return tensor[:, 0]
+
+    # pylint: disable=unused-argument
+    def get_evaluation_exr_frames(
+        self,
+        inputs: dict[str, torch.Tensor],
+        model_outputs: Mapping[str, Any],
+        target: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """Select the existing one-timestep NSS linear output and raw target."""
+        return (
+            self._select_scene_linear_evaluation_timestep(
+                "prediction",
+                model_outputs["output_linear"],
+            ),
+            self._select_scene_linear_evaluation_timestep(
+                "ground truth",
+                inputs["ground_truth_linear"],
+            ),
+        )
+
+    # pylint: enable=unused-argument
 
     def forward(self, x: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Run recurrent NSS v1 forward pass.

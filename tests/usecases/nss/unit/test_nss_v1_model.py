@@ -207,6 +207,50 @@ class TestNSSV1Model(  # pylint: disable=too-many-public-methods
         self.assertIsInstance(model.get_neural_network(), AutoEncoderV1)
         self.assertEqual(model.motion_key, "motion_lr")
 
+    def test_exr_hook_selects_single_scene_linear_timestep(self) -> None:
+        """EXR export selects the sole NSS scene-linear evaluation timestep."""
+        model = create_model(self.params, self.device)
+        predicted = torch.rand(1, 1, 3, 8, 10, device=self.device)
+        ground_truth = torch.rand(1, 1, 3, 8, 10, device=self.device) * 10000.0
+        target = torch.rand(1, 3, 8, 10, device=self.device)
+
+        predicted_frame, ground_truth_frame = model.get_evaluation_exr_frames(
+            {"ground_truth_linear": ground_truth},
+            {"output": torch.zeros_like(predicted), "output_linear": predicted},
+            target,
+        )
+
+        self.assertEqual(predicted_frame.shape, (1, 3, 8, 10))
+        self.assertEqual(ground_truth_frame.shape, (1, 3, 8, 10))
+        torch.testing.assert_close(predicted_frame, predicted[:, 0])
+        torch.testing.assert_close(ground_truth_frame, ground_truth[:, 0])
+
+        incompatible_cases = {
+            "prediction rank": (predicted[:, 0], ground_truth, "must be NTCHW"),
+            "prediction time": (
+                torch.rand(1, 2, 3, 8, 10, device=self.device),
+                ground_truth,
+                "exactly one temporal sample",
+            ),
+            "ground truth rank": (predicted, ground_truth[:, 0], "must be NTCHW"),
+            "ground truth time": (
+                predicted,
+                torch.rand(1, 2, 3, 8, 10, device=self.device),
+                "exactly one temporal sample",
+            ),
+        }
+        for name, (
+            invalid_prediction,
+            invalid_ground_truth,
+            message,
+        ) in incompatible_cases.items():
+            with self.subTest(name=name), self.assertRaisesRegex(ValueError, message):
+                model.get_evaluation_exr_frames(
+                    {"ground_truth_linear": invalid_ground_truth},
+                    {"output_linear": invalid_prediction},
+                    target,
+                )
+
     def test_device_reports_autoencoder_device(self) -> None:
         """NSS v1 device tracks the trainable network device."""
 

@@ -155,6 +155,29 @@ ng-model-gym -c <path/to/config/file> evaluate --model-path=@neural-super-sampli
 
 Ensure you select the correct `--model-type` to match the format of your saved model.
 
+#### Evaluation frame export
+
+`output.export_frame_png` and `output.export_frame_exr` are independent, so either,
+both, or neither can be enabled. PNG exports are display/tonemapped visualizations.
+Every EXR contains float32 RGB channels, and the writer applies no additional value
+transform:
+
+Frame export is intended for inspection and debugging. Enabling either format may
+noticeably slow evaluation, especially for large datasets or slow storage.
+
+Depending on which formats are enabled, exported frames are saved to:
+
+- `<output.dir>/png/predicted/frame_<index>_pred.png`
+- `<output.dir>/png/ground_truth/frame_<index>_gt.png`
+- `<output.dir>/exr/predicted/frame_<index>_pred.exr`
+- `<output.dir>/exr/ground_truth/frame_<index>_gt.exr`
+
+NSS exports its scene-linear prediction and ground truth before exposure and tone
+mapping. NFRU exports its tonemapped evaluation prediction and ground truth. Other
+models must override `BaseNGModel.get_evaluation_exr_frames()` to support EXR export;
+otherwise enabling `output.export_frame_exr` raises `NotImplementedError` on the
+first evaluation item.
+
 ### Quantization aware training (QAT)
 > **The --config-path flag is required when running this command.**
 

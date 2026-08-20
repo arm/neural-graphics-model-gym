@@ -5,8 +5,9 @@ import json
 import logging
 import math
 from datetime import datetime
+from functools import partial
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Mapping, Optional
 
 import torch
 import torchvision
@@ -16,6 +17,7 @@ from ng_model_gym.core.data.data_utils import DataLoaderMode, move_to_device
 from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.model.model_factory import BaseNGModel
+from ng_model_gym.core.utils.io.exr import write_rgb_float32_exr
 from ng_model_gym.core.utils.io.file_utils import create_directory
 
 logger = logging.getLogger(__name__)
@@ -30,6 +32,9 @@ class NGModelEvaluator:
         self.out_dir = self.params.output.dir
         self.export_png_dir = (
             Path(self.out_dir, "png") if self.params.output.export_frame_png else None
+        )
+        self.export_exr_dir = (
+            Path(self.out_dir, "exr") if self.params.output.export_frame_exr else None
         )
         self.metrics = get_metrics(self.params, mode="test")
         self.dataloader = None
@@ -82,10 +87,10 @@ class NGModelEvaluator:
 
             # Run Inference on model - gradients not needed as we only evaluate.
             with torch.no_grad():
-                self._run_model()
+                model_outputs = self._run_model()
 
             # Predict End
-            self._predict_end()
+            self._predict_end(model_outputs)
 
             if profiler:
                 profiler.step()
@@ -98,9 +103,13 @@ class NGModelEvaluator:
 
         self._save_results_json()
 
-    def _run_model(self):
-        """Invoke single forward pass."""
-        self.y_pred = self.model(self.x_in)["output"]
+    def _run_model(self) -> Optional[Mapping[str, Any]]:
+        """Run one forward pass and retain complete outputs only for EXR export."""
+        model_outputs = self.model(self.x_in)
+        self.y_pred = model_outputs["output"]
+        if self.export_exr_dir is not None:
+            return model_outputs
+        return None
 
     def _update_progress_bar(self, pbar, update_interval=1):
         if self.idx % update_interval == 0:
@@ -147,6 +156,12 @@ class NGModelEvaluator:
             )
             create_directory(self.export_png_dir / "predicted")
             create_directory(self.export_png_dir / "ground_truth")
+        if self.export_exr_dir:
+            logger.warning(
+                "Exporting .exr frames is selected, this may slow down evaluation."
+            )
+            create_directory(self.export_exr_dir / "predicted")
+            create_directory(self.export_exr_dir / "ground_truth")
         self.model.eval()
         self.model.on_evaluation_start()
 
@@ -165,7 +180,7 @@ class NGModelEvaluator:
         with open(full_path, "w", encoding="utf-8") as results_file:
             results_file.write(metric_string)
 
-    def _predict_end(self):
+    def _predict_end(self, model_outputs: Optional[Mapping[str, Any]]) -> None:
         """Called after single batch has evaluated."""
         if self.metrics is not None:
             for metric in self.metrics:
@@ -176,15 +191,49 @@ class NGModelEvaluator:
                     )
                 else:
                     metric.update(self.y_pred, self.y_true)
+
         if self.export_png_dir:
-            torchvision.utils.save_image(
-                self.y_pred[0],
+            self._write_frame_export(
                 self.export_png_dir / "predicted" / f"frame_{self.idx:04d}_pred.png",
+                partial(torchvision.utils.save_image, self.y_pred[0]),
             )
-            torchvision.utils.save_image(
-                self.y_true[0],
+            self._write_frame_export(
                 self.export_png_dir / "ground_truth" / f"frame_{self.idx:04d}_gt.png",
+                partial(torchvision.utils.save_image, self.y_true[0]),
             )
+
+        if self.export_exr_dir is not None:
+            if model_outputs is None:
+                raise RuntimeError(
+                    "EXR export requires the complete model output mapping."
+                )
+            predicted_exr, ground_truth_exr = self.model.get_evaluation_exr_frames(
+                self.x_in,
+                model_outputs,
+                self.y_true,
+            )
+            self._write_frame_export(
+                self.export_exr_dir / "predicted" / f"frame_{self.idx:04d}_pred.exr",
+                partial(
+                    write_rgb_float32_exr,
+                    frame=predicted_exr,
+                ),
+            )
+            self._write_frame_export(
+                self.export_exr_dir / "ground_truth" / f"frame_{self.idx:04d}_gt.exr",
+                partial(
+                    write_rgb_float32_exr,
+                    frame=ground_truth_exr,
+                ),
+            )
+
+    def _write_frame_export(self, path: Path, writer: Callable[[Path], None]) -> None:
+        """Write one frame export directly and identify writer failures."""
+        try:
+            writer(path)
+        except Exception:  # pylint: disable=broad-exception-caught
+            logger.exception("Failed to export frame %d to '%s'.", self.idx, path)
+            raise
 
     def _save_results_json(self):
         to_json = {}

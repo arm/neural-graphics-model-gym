@@ -6,6 +6,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import OpenEXR
+
 from tests.usecases.nss.integration.base_integration_v1 import NSSV1BaseIntegrationTest
 
 # pylint: disable=duplicate-code
@@ -55,6 +57,28 @@ class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
             final_key = max(values, key=int)
             final_metrics[metric] = values[final_key]
         return final_metrics
+
+    def _evaluation_item_count(self, output_dir: Path) -> int:
+        """Return the number of evaluated items recorded in the latest metrics."""
+        metrics_paths = sorted(output_dir.glob("eval_metrics_*.json"))
+        self.assertTrue(metrics_paths)
+
+        with open(metrics_paths[-1], encoding="utf-8") as f:
+            metric_history = json.load(f)
+
+        self.assertTrue(metric_history)
+        item_count = len(next(iter(metric_history.values())))
+        self.assertGreater(item_count, 0)
+        return item_count
+
+    def _assert_float32_rgb_exr(self, path: Path) -> None:
+        """Assert an EXR file contains exactly float32 RGB channels."""
+        self.assertTrue(path.is_file())
+        with OpenEXR.File(str(path), separate_channels=True) as exr_file:
+            channels = exr_file.channels()
+            self.assertEqual(set(channels), {"R", "G", "B"})
+            for channel in channels.values():
+                self.assertEqual(channel.type(), OpenEXR.FLOAT)
 
     def _assert_metric_at_least_reference(
         self,
@@ -108,6 +132,7 @@ class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
         *,
         output_suffix=None,
         export_frame_png=False,
+        export_frame_exr=False,
         scale=2.0,
     ):
         """Write an evaluation config for the requested quality mode."""
@@ -119,6 +144,7 @@ class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
         cfg_json["dataset"]["path"]["test"] = "tests/usecases/nss/datasets/test"
         cfg_json["metrics"] = ["PSNR", "SSIM", "tPSNR"]
         cfg_json["output"]["export_frame_png"] = export_frame_png
+        cfg_json["output"]["export_frame_exr"] = export_frame_exr
 
         if output_suffix is None:
             output_suffix = quality
@@ -152,6 +178,7 @@ class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
         quality="high",
         model_type="fp32",
         export_frame_png=False,
+        export_frame_exr=False,
         scale=2.0,
     ):
         """Evaluate an NSS v1 checkpoint."""
@@ -159,6 +186,7 @@ class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
             quality,
             output_suffix=output_suffix,
             export_frame_png=export_frame_png,
+            export_frame_exr=export_frame_exr,
             scale=scale,
         )
 
@@ -281,13 +309,24 @@ class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
                         msg=f"{quality} {metric} differs from reference value.",
                     )
 
-    def test_evaluate_exports_png_frames(self):
-        """Evaluate NSS v1 and export predicted and ground-truth frames."""
+    def test_evaluate_exports_png_and_exr_frames(self):
+        """Export display PNGs and scene-linear EXRs for every NSS test item."""
         output_dir, _ = self._evaluate_from_checkpoint(
             self._model_path_for_quality("high"),
             output_suffix="high_export_frames",
             export_frame_png=True,
+            export_frame_exr=True,
         )
+        item_count = self._evaluation_item_count(output_dir)
+
+        predicted_exrs = sorted(
+            Path(output_dir, "exr", "predicted").glob("frame_*_pred.exr")
+        )
+        ground_truth_exrs = sorted(
+            Path(output_dir, "exr", "ground_truth").glob("frame_*_gt.exr")
+        )
+        self.assertEqual(len(predicted_exrs), item_count)
+        self.assertEqual(len(ground_truth_exrs), item_count)
 
         exported_prediction = Path(
             output_dir,
@@ -303,6 +342,14 @@ class NSSV1EvaluationIntegrationTest(NSSV1BaseIntegrationTest):
         )
         self.assertTrue(exported_prediction.exists())
         self.assertTrue(exported_ground_truth.exists())
+
+        for index, (predicted_exr, ground_truth_exr) in enumerate(
+            zip(predicted_exrs, ground_truth_exrs)
+        ):
+            self.assertEqual(predicted_exr.name, f"frame_{index:04d}_pred.exr")
+            self.assertEqual(ground_truth_exr.name, f"frame_{index:04d}_gt.exr")
+            self._assert_float32_rgb_exr(predicted_exr)
+            self._assert_float32_rgb_exr(ground_truth_exr)
 
     def test_trace_profiler(self):
         """Evaluate NSS v1 with trace profiling enabled."""

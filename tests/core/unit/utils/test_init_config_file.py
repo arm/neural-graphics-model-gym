@@ -41,6 +41,20 @@ class TestGeneratingConfigFile(unittest.TestCase):
                 self.assertTrue(config_path.exists())
                 self.assertTrue(schema_path.exists())
 
+    def test_templates_expose_exr_export(self) -> None:
+        """Test shipped templates disable EXR export by default."""
+        for template in ("NSS-v1", "NFRU-v1", "custom"):
+            with self.subTest(template=template):
+                config_path, _ = generate_config_file(template, self.output_path)
+                with config_path.open(encoding="utf-8") as config_file:
+                    config_data = json.load(config_file)
+
+                self.assertIn(
+                    "export_frame_exr",
+                    config_data["output"],
+                )
+                self.assertFalse(config_data["output"]["export_frame_exr"])
+
     def test_placeholders_exist(self):
         """Test the generated config file has placeholders for the user to edit"""
         config_path, _ = generate_config_file("custom", self.output_path)

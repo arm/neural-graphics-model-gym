@@ -62,6 +62,42 @@ class EvaluationIntegrationTest(NFRUBaseIntegrationTest):
         """Evaluate using local FP32 model."""
         self._evaluate_from_checkpoints(self.eval_weights, model_type="fp32")
 
+    def test_evaluate_exports_exr_for_every_item(self):
+        """Export tonemapped NFRU evaluation frames as readable EXRs."""
+        self._evaluate_from_checkpoints(
+            self.eval_weights,
+            model_type="fp32",
+            export_frame_png=False,
+            export_frame_exr=True,
+        )
+
+        metrics_paths = sorted(self.model_out_dir.glob("eval_metrics_*.json"))
+        self.assertTrue(metrics_paths)
+        with open(metrics_paths[-1], encoding="utf-8") as f:
+            metric_history = json.load(f)
+
+        self.assertTrue(metric_history)
+        item_count = len(next(iter(metric_history.values())))
+        self.assertGreater(item_count, 0)
+
+        predicted_exrs = sorted(
+            Path(self.model_out_dir, "exr", "predicted").glob("*.exr")
+        )
+        ground_truth_exrs = sorted(
+            Path(self.model_out_dir, "exr", "ground_truth").glob("*.exr")
+        )
+        self.assertEqual(len(predicted_exrs), item_count)
+        self.assertEqual(len(ground_truth_exrs), item_count)
+        self.assertFalse(Path(self.model_out_dir, "png").exists())
+
+        for index, (predicted_exr, ground_truth_exr) in enumerate(
+            zip(predicted_exrs, ground_truth_exrs)
+        ):
+            self.assertEqual(predicted_exr.name, f"frame_{index:04d}_pred.exr")
+            self.assertEqual(ground_truth_exr.name, f"frame_{index:04d}_gt.exr")
+            self.assert_float32_rgb_exr(predicted_exr)
+            self.assert_float32_rgb_exr(ground_truth_exr)
+
     def test_evaluate_from_identifier(self):
         """Evaluate using remote model identifier."""
         self._evaluate_from_checkpoints(
