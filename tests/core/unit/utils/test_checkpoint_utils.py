@@ -15,6 +15,7 @@ from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.checkpoint_loader import (
     latest_checkpoint_in_dir,
     load_checkpoint,
+    load_model_state_dict,
 )
 from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from tests.testing_utils import create_simple_params
@@ -115,8 +116,24 @@ class RestorePretrainedModelFromCheckpoints(unittest.TestCase):
                 Path(temp_dir, "ckpt-3.pt"),
             )
 
+    def test_load_model_state_dict_translates_legacy_qat_keys(self):
+        """Shared model loading should translate legacy QAT keys."""
+        model = nn.Module()
+        model.add_module("autoencoder", nn.Linear(1, 1))
+        expected_weight = torch.full((1, 1), 0.9)
+        expected_bias = torch.full((1,), 0.1)
+        legacy_state = {
+            "autoencoder._param_constant0": expected_weight,
+            "autoencoder._param_constant1": expected_bias,
+        }
+
+        load_model_state_dict(model, legacy_state)
+
+        torch.testing.assert_close(model.autoencoder.weight, expected_weight)
+        torch.testing.assert_close(model.autoencoder.bias, expected_bias)
+
     def test_load_checkpoint_calls_weights_only_prepare_hook(self):
-        """Weights-only checkpoint loading should call the optional model hook."""
+        """Compatibility translation should run before the optional model hook."""
         params = create_simple_params(usecase="nss-v1")
         params.model_train_eval_mode = TrainEvalMode.FP32
         model = _HookedCheckpointModel(params)
@@ -127,27 +144,35 @@ class RestorePretrainedModelFromCheckpoints(unittest.TestCase):
                 "network.weight": torch.full((1, 1), -1.0),
                 "network.bias": torch.full((1,), -2.0),
             }
+            translated_state = {
+                "network.weight": torch.full((1, 1), -3.0),
+                "network.bias": torch.full((1,), -4.0),
+            }
             torch.save({"model_state_dict": original_state}, checkpoint_path)
 
             with patch(
                 "ng_model_gym.core.model.checkpoint_loader.create_model",
                 return_value=model,
-            ):
+            ), patch(
+                "ng_model_gym.core.model.checkpoint_loader.prepare_legacy_qat_state_dict",
+                return_value=translated_state,
+            ) as prepare_legacy_state:
                 loaded_model = load_checkpoint(
                     checkpoint_path, params, torch.device("cpu")
                 )
 
         self.assertIs(loaded_model, model)
+        prepare_legacy_state.assert_called_once_with(model, original_state)
         self.assertTrue(
             torch.equal(
                 model.prepare_seen_state_dict["network.weight"],
-                original_state["network.weight"],
+                translated_state["network.weight"],
             )
         )
         self.assertTrue(
             torch.equal(
                 model.prepare_seen_state_dict["network.bias"],
-                original_state["network.bias"],
+                translated_state["network.bias"],
             )
         )
         self.assertTrue(

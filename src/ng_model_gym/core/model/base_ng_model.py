@@ -22,6 +22,7 @@ from torchao.quantization.pt2e import (
     move_exported_model_to_train,
     MovingAverageMinMaxObserver,
     MovingAveragePerChannelMinMaxObserver,
+    PlaceholderObserver,
 )
 from torchao.quantization.pt2e.quantize_pt2e import prepare_qat_pt2e
 from torchao.quantization.pt2e.quantizer import (
@@ -208,7 +209,12 @@ class BaseNGModel(nn.Module, ABC):  # pylint: disable=too-many-public-methods
             )
 
         # Configure TOSA Quantizer
-        quantizer = TOSAQuantizer(TosaSpecification.create_from_string(tosa_spec))
+        # Don't use the composable quantizer to maintain backwards compatability with older
+        # QAT checkpoints for now.
+        quantizer = TOSAQuantizer(
+            TosaSpecification.create_from_string(tosa_spec),
+            use_composable_quantizer=False,
+        )
         qprofile = self.get_qat_quantization_profile()
         fake_quant_ctor = (
             FusedMovingAvgObsFakeQuantizeFix
@@ -275,13 +281,16 @@ class BaseNGModel(nn.Module, ABC):  # pylint: disable=too-many-public-methods
                 observer_or_fake_quant_ctr=fake_quant_ctor.with_args(**extra_args),
             )
 
-        # Bias is assumed to be fine without simulated quantization, because it pre-populates the
-        # accumulate register, it's only quantized to int32, with negligible precision drop
+        # ExecuTorch treats this floating-point placeholder as a sentinel and derives the
+        # convolution bias's int32 quantization from its activation and weight qparams.
         default_qconfig = QuantizationConfig(
             input_activation=qspec,
             output_activation=qspec,
             weight=weight_quantization_spec,
-            bias=None,
+            bias=QuantizationSpec(
+                dtype=torch.float,
+                observer_or_fake_quant_ctr=PlaceholderObserver,
+            ),
         )
         if qprofile.use_global_quantization_config:
             quantizer.set_global(quantization_config=default_qconfig)

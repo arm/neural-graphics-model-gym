@@ -14,6 +14,7 @@ from unittest.mock import DEFAULT, patch
 import torch
 from torch import nn
 
+from ng_model_gym.core.export import model_export
 from ng_model_gym.core.export.model_export import (
     _export_module_to_vgf,
     DataLoaderMode,
@@ -136,6 +137,24 @@ class TestExportUtils(unittest.TestCase):
         if self.load_ckpt_patch is not None:
             self.load_ckpt_patch.stop()
         shutil.rmtree(self.tmp_path)
+
+    def test_vgf_tosa_spec_uses_shape_extension_only_for_dynamic_exports(self):
+        """Dynamic VGF exports require TOSA 1.1 with the shape extension."""
+        expected_specs = {
+            (ExportType.FP32, False): "TOSA-1.00+FP",
+            (ExportType.PTQ_INT8, False): "TOSA-1.00+INT",
+            (ExportType.QAT_INT8, False): "TOSA-1.00+INT",
+            (ExportType.FP32, True): "TOSA-1.1+FP+shape",
+            (ExportType.PTQ_INT8, True): "TOSA-1.1+INT+shape",
+            (ExportType.QAT_INT8, True): "TOSA-1.1+INT+shape",
+        }
+
+        for (export_type, dynamic_shape), expected_spec in expected_specs.items():
+            with self.subTest(export_type=export_type, dynamic_shape=dynamic_shape):
+                self.assertEqual(
+                    model_export._get_vgf_tosa_spec(export_type, dynamic_shape),
+                    expected_spec,
+                )
 
     def test_nfru_dynamic_export_shape_matches_single_tensor_input(self):
         """NFRUv1 should return one dynamic-shape dict for its single tensor input."""

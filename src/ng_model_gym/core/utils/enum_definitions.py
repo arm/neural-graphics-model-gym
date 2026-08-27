@@ -65,6 +65,8 @@ class ExportSpec(str, Enum):
 
     TOSA_INT = "TOSA-1.00+INT"
     TOSA_FP = "TOSA-1.00+FP"
+    TOSA_INT_DYNAMIC = "TOSA-1.1+INT+shape"
+    TOSA_FP_DYNAMIC = "TOSA-1.1+FP+shape"
 
 
 class ModelType(str, Enum):
