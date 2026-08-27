@@ -2,13 +2,16 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import torch
 from torch import nn
-from torchao.quantization.pt2e import FusedMovingAvgObsFakeQuantize
+from torchao.quantization.pt2e import FusedMovingAvgObsFakeQuantize, PlaceholderObserver
 from torchao.quantization.pt2e.fake_quantize import FixedQParamsFakeQuantize
+from torchao.quantization.pt2e.quantizer import QuantizationSpec
 
-from ng_model_gym.core.model import BaseNGModel
+from ng_model_gym.core.model import base_ng_model, BaseNGModel
 from ng_model_gym.core.quantization.observers import (
     FixedQParamsFakeQuantizeFix,
     FusedMovingAvgObsFakeQuantizeFix,
@@ -75,6 +78,63 @@ class TestBaseNGModelQAT(unittest.TestCase):
         self.assertTrue(isinstance(model.get_neural_network(), torch.fx.GraphModule))
         out = model(self.mock_forward_input)
         self.assertEqual(out.shape, (4, 4))
+
+    def test_quantize_modules_uses_non_composable_tosa_quantizer(self):
+        """Bundled QAT checkpoints require the legacy TOSA graph layout."""
+        model = _TestingNGModel(self.params)
+
+        with patch.object(
+            base_ng_model,
+            "TOSAQuantizer",
+            wraps=base_ng_model.TOSAQuantizer,
+        ) as quantizer_constructor:
+            model.quantize_modules(self.mock_forward_input_trace)
+
+        self.assertFalse(
+            quantizer_constructor.call_args.kwargs["use_composable_quantizer"]
+        )
+
+    def test_qat_config_derives_int32_conv_bias_for_each_weight_scheme(self):
+        """ExecuTorch derives convolution bias quantization from activation and weight."""
+        for model_type, usecase, channels, expected_qscheme in (
+            (NSSV1Model, "nss-v1", 12, torch.per_channel_symmetric),
+            (NFRUv1, "nfru-v1", 16, torch.per_tensor_symmetric),
+        ):
+            with self.subTest(usecase=usecase):
+                model = model_type(create_simple_params(usecase=usecase))
+                with patch.object(
+                    base_ng_model,
+                    "QuantizationConfig",
+                    wraps=base_ng_model.QuantizationConfig,
+                ) as config_constructor:
+                    model.quantize_modules((torch.randn(2, channels, 16, 16),))
+
+                config_call = next(
+                    call
+                    for call in config_constructor.call_args_list
+                    if call.kwargs.get("weight") is not None
+                )
+                qconfig = base_ng_model.QuantizationConfig(
+                    *config_call.args, **config_call.kwargs
+                )
+
+                self.assertIsInstance(qconfig.bias, QuantizationSpec)
+                self.assertEqual(qconfig.bias.dtype, torch.float)
+                self.assertIs(
+                    qconfig.bias.observer_or_fake_quant_ctr, PlaceholderObserver
+                )
+
+                non_conv_node = SimpleNamespace(target=torch.ops.aten.add.Tensor)
+                self.assertIs(qconfig.get_bias_qspec(non_conv_node), qconfig.bias)
+
+                conv_node = SimpleNamespace(
+                    target=torch.ops.aten.conv2d.default,
+                    args=("activation", "weight"),
+                )
+                derived_bias = qconfig.get_bias_qspec(conv_node)
+                self.assertEqual(derived_bias.dtype, torch.int32)
+                self.assertEqual(derived_bias.qscheme, expected_qscheme)
+                self.assertEqual(derived_bias.ch_axis, qconfig.weight.ch_axis)
 
     def test_qparam_policy_selects_fake_quantizer(self):
         """Test NSS uses the fake quantizer fix whilst NFRU uses standard torchAO fake quantizer"""

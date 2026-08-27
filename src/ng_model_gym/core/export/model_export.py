@@ -179,6 +179,14 @@ def _loader_context(label: str, dump_dir: str):
         logger.info(f"{label} export complete: {dump_dir}")
 
 
+def _get_vgf_tosa_spec(export_type: ExportType, dynamic_shape: bool) -> ExportSpec:
+    """Return the TOSA specification required for a VGF export."""
+    if export_type == ExportType.FP32:
+        return ExportSpec.TOSA_FP_DYNAMIC if dynamic_shape else ExportSpec.TOSA_FP
+
+    return ExportSpec.TOSA_INT_DYNAMIC if dynamic_shape else ExportSpec.TOSA_INT
+
+
 def _export_module_to_vgf(
     params: ConfigModel,
     ng_model: BaseNGModel,
@@ -188,10 +196,15 @@ def _export_module_to_vgf(
 ):
     """Use ExecuTorch to perform exporting to a VGF file."""
 
-    tosa_spec = (
+    quantizer_tosa_spec = (
         ExportSpec.TOSA_FP if export_type == ExportType.FP32 else ExportSpec.TOSA_INT
     )
-    compile_spec = VgfCompileSpec(TosaSpecification.create_from_string(tosa_spec))
+    compile_tosa_spec = _get_vgf_tosa_spec(
+        export_type, params.output.export.dynamic_shape
+    )
+    compile_spec = VgfCompileSpec(
+        TosaSpecification.create_from_string(compile_tosa_spec)
+    )
 
     dynamic_input_spec = (
         ng_model.define_dynamic_export_model_input()
@@ -207,7 +220,9 @@ def _export_module_to_vgf(
         neural_network = torch.export.export(
             neural_network, model_forward_input, strict=True
         ).module(check_guards=False)
-        quantizer = TOSAQuantizer(TosaSpecification.create_from_string(tosa_spec))
+        quantizer = TOSAQuantizer(
+            TosaSpecification.create_from_string(quantizer_tosa_spec)
+        )
         quantizer.set_global(get_symmetric_quantization_config(is_qat=False))
         neural_network = prepare_pt2e(neural_network, quantizer)
         neural_network(*model_forward_input)  # Calibration with sample data.

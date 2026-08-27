@@ -3,9 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 import logging
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any, Dict, Tuple
 
 import torch
+from torch import nn
 
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.data.data_utils import DataLoaderMode
@@ -13,6 +14,7 @@ from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
 from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
+from ng_model_gym.core.model.qat_checkpoint_compat import prepare_legacy_qat_state_dict
 from ng_model_gym.core.utils.enum_definitions import ModelType, TrainEvalMode
 
 logger = logging.getLogger(__name__)
@@ -78,6 +80,25 @@ def latest_checkpoint_in_dir(user_checkpoint_dir: Path) -> Path:
     return latest_checkpoint_path
 
 
+def load_model_state_dict(
+    model: nn.Module,
+    state_dict: Dict[str, torch.Tensor],
+    *,
+    prepare_for_weights_load: bool = False,
+) -> None:
+    """Apply checkpoint compatibility transforms and load the model state."""
+    state_dict = prepare_legacy_qat_state_dict(model, state_dict)
+    if prepare_for_weights_load:
+        prepare_hook = getattr(
+            model,
+            "prepare_checkpoint_state_dict_for_weights_load",
+            None,
+        )
+        if prepare_hook is not None:
+            state_dict = prepare_hook(state_dict)
+    model.load_state_dict(state_dict)
+
+
 def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device = None):
     """Create a model from checkpoint"""
     if device is None:
@@ -109,13 +130,10 @@ def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device 
 
     logger.info(f"Loading model from checkpoint: {model_path}")
     model_state_dict = checkpoint["model_state_dict"]
-    prepare_for_weights_load = getattr(
+    load_model_state_dict(
         trained_model,
-        "prepare_checkpoint_state_dict_for_weights_load",
-        None,
+        model_state_dict,
+        prepare_for_weights_load=True,
     )
-    if prepare_for_weights_load is not None:
-        model_state_dict = prepare_for_weights_load(model_state_dict)
-    trained_model.load_state_dict(model_state_dict)
 
     return trained_model

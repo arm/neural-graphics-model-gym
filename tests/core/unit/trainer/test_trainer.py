@@ -92,6 +92,14 @@ class TinyModelWithWeightsLoadHook(TinyModel):
         return prepared
 
 
+class TinyQATModel(nn.Module):
+    """Minimal prepared-model shape for legacy QAT resume tests."""
+
+    def __init__(self):
+        super().__init__()
+        self.autoencoder = nn.Linear(1, 1)
+
+
 class TestTrainerMethods(unittest.TestCase):
     """Tests for Trainer class"""
 
@@ -403,6 +411,48 @@ class TestTrainerMethods(unittest.TestCase):
 
             # Check epoch after resuming from saved checkpoint is one after
             self.assertEqual(mock_resume_trainer.starting_epoch, 11)
+
+    def test_resume_translates_legacy_qat_state_dict(self):
+        """Resume should translate legacy QAT keys before strict model loading."""
+        model = TinyQATModel()
+        expected_weight = torch.full_like(model.autoencoder.weight, 0.9)
+        expected_bias = torch.full_like(model.autoencoder.bias, 0.1)
+        optimizer_state = {"state": "optimizer"}
+        scheduler_state = {"state": "scheduler"}
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir, "legacy-qat.pt")
+            torch.save(
+                {
+                    "epoch": 4,
+                    "model_state_dict": {
+                        "autoencoder._param_constant0": expected_weight,
+                        "autoencoder._param_constant1": expected_bias,
+                    },
+                    "optimizer_state_dict": optimizer_state,
+                    "lr_scheduler_state_dict": scheduler_state,
+                },
+                checkpoint_path,
+            )
+
+            trainer = Mock(spec=Trainer)
+            trainer.model = model
+            trainer.optimizer = Mock()
+            trainer.lr_schedule = Mock()
+            trainer.params = create_simple_params(usecase="nss-v1")
+            trainer.params.train.resume = checkpoint_path
+            trainer.params.model_train_eval_mode = TrainEvalMode.QAT_INT8
+            trainer.training_mode_params = trainer.params.train.qat
+            trainer.training_mode_params.number_of_epochs = 10
+            trainer._quantize_modules = Mock()
+
+            Trainer._restore_model_weights(trainer)
+
+        torch.testing.assert_close(model.autoencoder.weight, expected_weight)
+        torch.testing.assert_close(model.autoencoder.bias, expected_bias)
+        trainer.optimizer.load_state_dict.assert_called_once_with(optimizer_state)
+        trainer.lr_schedule.load_state_dict.assert_called_once_with(scheduler_state)
+        self.assertEqual(trainer.starting_epoch, 5)
 
     def test_finetune_calls_weights_only_prepare_hook(self):
         """Finetune should call optional weights-only preparation before load."""
