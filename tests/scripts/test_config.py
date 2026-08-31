@@ -243,7 +243,6 @@ class TestConfig(unittest.TestCase):
         user_config["model"] = {
             "name": "my_model",
             "model_source": "custom",
-            "version": "1",
             "custom_field": 0.1,
         }
 
@@ -254,41 +253,10 @@ class TestConfig(unittest.TestCase):
                 json.dump(user_config, temp_file)
                 temp_path = Path(temp_file.name)
 
-            with self.assertWarnsRegex(DeprecationWarning, "model.version"):
-                loaded = load_config_file(temp_path)
-
-            self.assertEqual(loaded.model.name, "my_model-v1")
+            loaded = load_config_file(temp_path)
+            self.assertEqual(loaded.model.name, "my_model")
             self.assertEqual(loaded.model.model_source, "custom")
             self.assertEqual(loaded.model.custom_field, 0.1)
-
-    def test_legacy_prebuilt_model_version_is_folded_into_name(self):
-        """Test legacy model.version is folded into model.name for prebuilt models."""
-
-        user_config = create_simple_params(usecase="nss-v1").model_dump(mode="json")
-        user_config["model"]["name"] = "NSS"
-        user_config["model"]["version"] = "1"
-
-        with self.assertWarnsRegex(DeprecationWarning, "model.version"):
-            loaded_config = config_model.ConfigModel.model_validate(user_config)
-
-        self.assertEqual(loaded_config.model.name, "nss-v1")
-        self.assertNotIn("version", loaded_config.model.model_dump(mode="json"))
-
-    def test_legacy_model_version_conflict_is_rejected(self):
-        """Test conflicting legacy model.version and versioned model.name is rejected."""
-
-        user_config = create_simple_params(usecase="nss-v1").model_dump(mode="json")
-        user_config["model"]["name"] = "NSS-v1"
-        user_config["model"]["version"] = "2"
-
-        with self.assertWarnsRegex(DeprecationWarning, "model.version"):
-            with self.assertRaises(ValidationError) as exc:
-                config_model.ConfigModel.model_validate(user_config)
-
-        self.assertIn(
-            "model.version conflicts with the version encoded in model.name",
-            str(exc.exception),
-        )
 
     def test_model_specific_config_classes_in_union_type(self):
         """
@@ -327,6 +295,17 @@ class TestConfig(unittest.TestCase):
                 + "\nAdd them to config_model.prebuilt_models_settings union."
             )
             self.fail(message)
+
+    def test_prebuilt_model_rejects_separate_version_field(self):
+        """A prebuilt model identifier must be supplied entirely in model.name."""
+        config = create_simple_params(usecase="nss-v1").model_dump(mode="json")
+        config["model"]["version"] = "1"
+
+        with self.assertRaises(ValidationError) as raised:
+            config_model.ConfigModel.model_validate(config)
+
+        self.assertIn(".version", str(raised.exception))
+        self.assertIn("Extra inputs are not permitted", str(raised.exception))
 
 
 class TestConfigLogging(unittest.TestCase):
