@@ -1,5 +1,5 @@
 {
-    "config_schema_version": "9",
+    "config_schema_version": "10",
     "model": {
         "name": "NFRU-v1",
         "model_source": "prebuilt",
