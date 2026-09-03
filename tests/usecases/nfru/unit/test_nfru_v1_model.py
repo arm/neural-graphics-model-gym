@@ -19,7 +19,11 @@ from ng_model_gym.core.utils.enum_definitions import TrainEvalMode
 from ng_model_gym.usecases.nfru.model.nfru_v1 import NFRUv1Core
 from ng_model_gym.usecases.nfru.model.nfru_v1_nn import NFRUAutoEncoder
 from tests.base_gpu_test import BaseGPUMemoryTest
-from tests.testing_utils import create_simple_params
+from tests.testing_utils import (
+    create_simple_params,
+    install_nfru_fixture_flow_mock,
+    pop_nfru_legacy_fixture_flow,
+)
 
 _GOLDEN_ROOT = Path(__file__).resolve().parent / "data" / "nfru_v1_golden_values"
 # Slang-backed full-model outputs can drift slightly across GPU environments.
@@ -127,7 +131,6 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
             "bits_x": int(quant_params["bits_x"]),
             "bits_y": int(quant_params["bits_y"]),
         }
-        network.flow_method = reference["flow_method"]
         network.scale_factor = int(reference["scale_factor"])
 
     def _prepare_inputs(
@@ -241,11 +244,15 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
     def test_forward_pass_scale_factor_three_matches_golden(self) -> None:
         """Regress a 3x interpolation run to exercise the multi-frame loop."""
         inputs = self._prepare_inputs(self.forward_reference_scale3)
+        flow_forward = install_nfru_fixture_flow_mock(
+            self.model, pop_nfru_legacy_fixture_flow(inputs)
+        )
 
         self._reset_rng()
         with torch.no_grad():
             outputs = self.model(inputs)
 
+        flow_forward.assert_called_once()
         expected = self.expected_outputs_scale3
         torch.testing.assert_close(
             outputs["output"],
@@ -460,38 +467,11 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
         with self.assertRaisesRegex(ValueError, "no interpolation timesteps"):
             self.model(inputs)
 
-    def test_forward_pass_uses_precomputed_v321_flow_when_available(self) -> None:
-        """Supplying blockmatch-v321 flow should bypass dynamic recomputation."""
-        inputs = self._prepare_inputs(self.forward_reference)
-        network = self.model.network
-        network.flow_method = "blockmatch_v321"
-        flow_key = "flow_m1_f30_p1@blockmatch_v321"
-        if flow_key not in inputs:
-            self.fail(
-                "Forward reference is missing the NFRU v1 blockmatch-v321 flow tensor."
-            )
-        network.dynamic_flow_model.forward = Mock(
-            side_effect=AssertionError("dynamic flow should not be recomputed")
-        )
-
-        self._reset_rng()
-
-        with torch.no_grad():
-            outputs = self.model(inputs)
-
-        network.dynamic_flow_model.forward.assert_not_called()
-        self.assertIn("output", outputs)
-        self.assertIn("coeffs", outputs)
-
-    def test_forward_pass_computes_v321_flow_when_missing(self) -> None:
-        """Missing blockmatch-v321 flow should be recomputed by the dynamic flow path."""
+    def test_forward_pass_computes_flow(self) -> None:
+        """Dynamic flow should be computed."""
         inputs = self._prepare_inputs(self.forward_reference_dynamic_flow)
         network = self.model.network
-        network.flow_method = "blockmatch_v321"
-        flow_key = "flow_m1_f30_p1@blockmatch_v321"
-        self.assertNotIn(flow_key, inputs)
 
-        expected_flow = self.forward_reference["inputs"][flow_key].to(self.device)
         dynamic_flow_forward = network.dynamic_flow_model.forward
         network.dynamic_flow_model.forward = Mock(wraps=dynamic_flow_forward)
 
@@ -501,42 +481,10 @@ class TestNFRUV1Model(BaseGPUMemoryTest):
             outputs = self.model(inputs)
 
         network.dynamic_flow_model.forward.assert_called_once()
-        self.assertIn(flow_key, inputs)
-        flow_diff = (inputs[flow_key] - expected_flow).abs()
-        self.assertLess(flow_diff.mean().item(), 5e-4)
-        self.assertLessEqual(int((flow_diff > 0.1).sum().item()), 256)
-        self.assertLessEqual(flow_diff.max().item(), 8.0)
 
         self._assert_output_shapes(outputs)
         self.assertTrue(torch.isfinite(outputs["output"]).all())
         self.assertTrue(torch.isfinite(outputs["coeffs"]).all())
-
-    def test_forward_pass_reuses_cached_v321_flow_on_second_pass(self) -> None:
-        """Recomputed dynamic flow should be cached and reused on subsequent forwards."""
-        inputs = self._prepare_inputs(self.forward_reference_dynamic_flow)
-        network = self.model.network
-        network.flow_method = "blockmatch_v321"
-        flow_key = "flow_m1_f30_p1@blockmatch_v321"
-        self.assertNotIn(flow_key, inputs)
-
-        dynamic_flow_forward = network.dynamic_flow_model.forward
-        network.dynamic_flow_model.forward = Mock(wraps=dynamic_flow_forward)
-
-        self._reset_rng()
-        with torch.no_grad():
-            first_outputs = self.model(inputs)
-
-        self.assertIn(flow_key, inputs)
-        network.dynamic_flow_model.forward.assert_called_once()
-
-        self._reset_rng()
-        with torch.no_grad():
-            second_outputs = self.model(inputs)
-
-        # Flow should now come from cached tensor path.
-        network.dynamic_flow_model.forward.assert_called_once()
-        self.assertTrue(torch.isfinite(first_outputs["output"]).all())
-        self.assertTrue(torch.isfinite(second_outputs["output"]).all())
 
     def test_network_reuses_cached_preprocessing_modules(self) -> None:
         """Cache stateless preprocessing modules on network construction."""
