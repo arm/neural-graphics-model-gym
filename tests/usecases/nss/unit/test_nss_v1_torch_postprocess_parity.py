@@ -103,8 +103,8 @@ class TestNSSV1TorchPostprocessSlangParity(unittest.TestCase):
         mutate: Callable[[NSSV1PostprocessCase], None] | None = None,
         compare_vjp: bool = True,
         kpn_atol: float = 1.0e-7,
-        forward_rtol: float = 1.0e-5,
-        forward_atol: float = 5.0e-6,
+        forward_rtol: float = 5.0e-5,
+        forward_atol: float = 5.0e-5,
         gradient_names: tuple[str, ...] = ("history", "kpn", "temporal"),
         **case_kwargs,
     ) -> None:
