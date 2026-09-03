@@ -43,7 +43,6 @@ NFRU_NON_LEGACY_CAPTURE_FPS = 30
 NFRU_NON_LEGACY_FRAME_STEP = NFRU_REFERENCE_FPS // NFRU_NON_LEGACY_CAPTURE_FPS
 NFRU_MIN_OFFSET = 3
 NFRU_MAX_OFFSET = 1
-NFRU_OPTIONAL_FLOW_KEY = "flow_m1_f30_p1@blockmatch_v321"
 
 
 class NFRUDataset(torch.utils.data.Dataset):
@@ -243,8 +242,6 @@ class NFRUDataset(torch.utils.data.Dataset):
 
     def get_uncropped_model_input_names(self) -> List[str]:
         """Input tensor names expected by the model prior to cropping."""
-        flow = [NFRU_OPTIONAL_FLOW_KEY]
-
         # pylint: disable=duplicate-code
         uncropped_inputs = [
             "rgb_linear_m1",
@@ -263,7 +260,7 @@ class NFRUDataset(torch.utils.data.Dataset):
             "FovY_p1",
             "infinite_zFar_p1",
             "ViewProj_m3",
-        ] + flow
+        ]
         # pylint: enable=duplicate-code
         return uncropped_inputs
 
@@ -315,16 +312,10 @@ class NFRUDataset(torch.utils.data.Dataset):
             if k_short in feature_dict.keys():
                 output_feature_dict[k] = feature_dict[k_short]
             else:
-                if k == NFRU_OPTIONAL_FLOW_KEY:
-                    logger.info(
-                        f"Optional precomputed flow '{k}' not present in safetensors "
-                        "file. NFRU will recompute flow internally."
-                    )
-                else:
-                    logger.error(
-                        f"key {k_short} (from: {k}) not in safetensors file, but "
-                        "requested by the model"
-                    )
+                logger.error(
+                    f"key {k_short} (from: {k}) not in safetensors file, but "
+                    "requested by the model"
+                )
 
         return output_feature_dict
 

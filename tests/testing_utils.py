@@ -5,11 +5,14 @@ import copy
 import logging
 import platform
 import tempfile
+from unittest.mock import Mock
 
 import numpy as np
+import torch
 
 from ng_model_gym.core.config.config_model import ConfigModel
 from ng_model_gym.core.utils.io.file_utils import create_directory
+from ng_model_gym.usecases.nfru.model.constants import _FLOW_DOWNSAMPLE_SCALE
 
 TEST_PARAMS_PRESETS = {
     "nss-v1": {
@@ -105,6 +108,40 @@ TEST_PARAMS_PRESETS = {
         "metrics": ["PSNR", "SSIM", "STLPIPS"],
     },
 }
+
+
+def pop_nfru_legacy_fixture_flow(
+    inputs: dict[str, torch.Tensor],
+) -> torch.Tensor:
+    """Remove and return the retired precomputed flow from an NFRU golden fixture.
+
+    Some immutable NFRU fixtures still contain one ``flow_*`` tensor from when the
+    model accepted precomputed optical flow. Tests pop it from the input dictionary
+    so they cannot accidentally exercise that retired interface. The returned tensor
+    may then be used only as controlled reference data for
+    :func:`install_nfru_fixture_flow_mock`.
+    """
+    flow_names = [name for name in inputs if name.startswith("flow_")]
+    if len(flow_names) != 1:
+        raise AssertionError(f"Expected one fixture flow tensor, found {flow_names}")
+    return inputs.pop(flow_names[0])
+
+
+def install_nfru_fixture_flow_mock(model, fixture_flow: torch.Tensor) -> Mock:
+    """Make runtime flow resolution reproduce an NFRU fixture's controlled flow.
+
+    The legacy fixture stores flow after BlockMatch's upsampling and vector scaling,
+    whereas ``dynamic_flow_model.forward`` now supplies the lower-resolution result
+    before those operations. Converting the fixture with the model's downsampler and
+    inverse vector scale produces the equivalent mocked BlockMatch result. This keeps
+    existing golden and backend-parity tests stable without passing precomputed flow
+    through the production model-input interface.
+    """
+    network = model.network
+    flow_result = network.flow_downsampler(fixture_flow) * _FLOW_DOWNSAMPLE_SCALE
+    flow_forward = Mock(return_value={"output": flow_result})
+    network.dynamic_flow_model.forward = flow_forward
+    return flow_forward
 
 
 def clear_loggers() -> None:

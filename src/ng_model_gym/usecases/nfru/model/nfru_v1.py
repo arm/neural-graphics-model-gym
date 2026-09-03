@@ -53,7 +53,6 @@ logger = logging.getLogger(__name__)
 
 _SHADER_DIR = "ng_model_gym.usecases.nfru.model.shaders"
 _SHADER_FILE = "nfru_v1_sa.slang"
-_FLOW_METHOD = "blockmatch_v321"
 _REQUIRED_COLOR_SPLITS = ("train", "validation", "test")
 _MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK = 0.01
 _MV_SIMILARITY_THRESHOLD_DYNAMIC_MASK_RUNTIME_ACCURATE = 0.3
@@ -234,9 +233,6 @@ class NFRUv1Core(nn.Module):
         super().__init__()
         self.slang: Optional[object] = None
         self.processing_backend = processing_backend
-        self.flow_method = _FLOW_METHOD
-        self.dynamic_flow = True
-        self.of_540 = False
         self.dynamic_mask_is_runtime_accurate = dynamic_mask_is_runtime_accurate
         self.mv_similarity_threshold = self._get_mv_similarity_threshold(
             mv_similarity_threshold, dynamic_mask_is_runtime_accurate
@@ -349,28 +345,19 @@ class NFRUv1Core(nn.Module):
         rgb_p1: torch.Tensor,
         depth_m1: torch.Tensor,
     ) -> torch.Tensor:
-        flow_key = f"flow_m1_f30_p1@{self.flow_method}"
-        flow_xx_f30_xx = inputs.get(flow_key)
-
-        if flow_xx_f30_xx is None:
-            with torch.no_grad():
-                input_mv = upscale_and_dilate_flow(
-                    inputs["sy_m1_f30_p1"], depth_m1, scale=1.0
-                ).contiguous()
-                flow_result = self.dynamic_flow_model(
-                    {"img_t": rgb_p1, "img_tm1": rgb_m1, "input_mv": input_mv}
-                )["output"]
-                flow_xx_f30_xx = (
-                    self.flow_upsampler(flow_result) * _FLOW_RESIZE_FACTOR
-                ).contiguous()
-            flow_xx_f30_xx = flow_xx_f30_xx.to(rgb_p1.dtype)
-            inputs[flow_key] = flow_xx_f30_xx
-
-        if not self.of_540:
+        with torch.no_grad():
+            input_mv = upscale_and_dilate_flow(
+                inputs["sy_m1_f30_p1"], depth_m1, scale=1.0
+            ).contiguous()
+            flow_result = self.dynamic_flow_model(
+                {"img_t": rgb_p1, "img_tm1": rgb_m1, "input_mv": input_mv}
+            )["output"]
             flow_xx_f30_xx = (
-                self.flow_downsampler(flow_xx_f30_xx) * _FLOW_DOWNSAMPLE_SCALE
-            )
-        return flow_xx_f30_xx
+                self.flow_upsampler(flow_result) * _FLOW_RESIZE_FACTOR
+            ).contiguous()
+
+        flow_xx_f30_xx = flow_xx_f30_xx.to(rgb_p1.dtype)
+        return self.flow_downsampler(flow_xx_f30_xx) * _FLOW_DOWNSAMPLE_SCALE
 
     def warp_mv(
         self,

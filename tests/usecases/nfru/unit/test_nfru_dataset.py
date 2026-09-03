@@ -20,7 +20,6 @@ from ng_model_gym.usecases.nfru.data.dataset import (
     _round_up_to_odd_int,
     NFRU_MAX_OFFSET,
     NFRU_MIN_OFFSET,
-    NFRU_OPTIONAL_FLOW_KEY,
     NFRUDataset,
     NFRUDatasetWrapper,
 )
@@ -634,13 +633,6 @@ class TestNFRUDataset(unittest.TestCase):  # pylint: disable=too-many-public-met
         self.assertIsNotNone(golden_y)
         golden_x = dict(golden_x)
         golden_x.pop("seq", None)
-        self.assertNotIn(NFRU_OPTIONAL_FLOW_KEY, data)
-        # Flow is recomputed at runtime, so ignore any precomputed flow goldens.
-        precomputed_flow_keys = [
-            key for key in tuple(golden_x) if key.startswith("flow_m1_f30_p1@")
-        ]
-        for key in precomputed_flow_keys:
-            golden_x.pop(key, None)
 
         self.assertEqual(set(data.keys()), set(golden_x.keys()))
         for key in data:

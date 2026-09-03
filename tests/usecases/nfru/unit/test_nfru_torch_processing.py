@@ -38,7 +38,11 @@ from ng_model_gym.usecases.nfru.model.torch_processing.sampling import (
     gather_pixels,
     ordered_nearest_depth,
 )
-from tests.testing_utils import create_simple_params
+from tests.testing_utils import (
+    create_simple_params,
+    install_nfru_fixture_flow_mock,
+    pop_nfru_legacy_fixture_flow,
+)
 
 _GOLDEN_ROOT = Path(__file__).resolve().parent / "data" / "nfru_v1_golden_values"
 
@@ -632,10 +636,15 @@ class TestNFRUTorchRouting(unittest.TestCase):
         model.eval()
         model.on_evaluation_start()
         model.network._next_preprocess_seed = Mock(return_value=17)
+        inputs = _small_forward_inputs(torch.device("cpu"))
+        flow_forward = install_nfru_fixture_flow_mock(
+            model, pop_nfru_legacy_fixture_flow(inputs)
+        )
 
         with torch.no_grad():
-            outputs = model(_small_forward_inputs(torch.device("cpu")))
+            outputs = model(inputs)
 
+        flow_forward.assert_called_once()
         output_coordinates = (
             (0, 0),
             (0, 63),
@@ -1123,6 +1132,11 @@ class TestNFRUTorchLiveParity(unittest.TestCase):
             slang_model.get_neural_network().state_dict()
         )
         inputs = _small_forward_inputs(torch.device("cuda"))
+        controlled_flow = pop_nfru_legacy_fixture_flow(inputs)
+        slang_flow = install_nfru_fixture_flow_mock(slang_model, controlled_flow)
+        torch_cuda_flow = install_nfru_fixture_flow_mock(
+            torch_cuda_model, controlled_flow
+        )
         with torch.no_grad():
             slang_outputs = slang_model(
                 {name: value.clone() for name, value in inputs.items()}
@@ -1131,6 +1145,8 @@ class TestNFRUTorchLiveParity(unittest.TestCase):
                 {name: value.clone() for name, value in inputs.items()}
             )
 
+        slang_flow.assert_called_once()
+        torch_cuda_flow.assert_called_once()
         self.assertEqual(set(torch_outputs), set(slang_outputs))
         for name in ("output", "coeffs"):
             self.assertEqual(torch_outputs[name].shape, slang_outputs[name].shape)
@@ -1146,12 +1162,16 @@ class TestNFRUTorchLiveParity(unittest.TestCase):
         torch_cpu_model.get_neural_network().load_state_dict(
             torch_cuda_model.get_neural_network().state_dict()
         )
+        torch_cpu_flow = install_nfru_fixture_flow_mock(
+            torch_cpu_model, controlled_flow.cpu()
+        )
         cpu_inputs = {
             name: value.cpu() if isinstance(value, torch.Tensor) else value
             for name, value in inputs.items()
         }
         with torch.no_grad():
             cpu_outputs = torch_cpu_model(cpu_inputs)
+        torch_cpu_flow.assert_called_once()
         for name in ("output", "coeffs"):
             torch.testing.assert_close(
                 cpu_outputs[name],
