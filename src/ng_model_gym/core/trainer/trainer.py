@@ -20,10 +20,7 @@ from ng_model_gym.core.data.dataloader import get_dataloader
 from ng_model_gym.core.evaluator.metrics import get_metrics
 from ng_model_gym.core.loss.losses import LossV1, LPIPSSpatialLossV1
 from ng_model_gym.core.model.base_ng_model import BaseNGModel
-from ng_model_gym.core.model.checkpoint_loader import (
-    latest_checkpoint_in_dir,
-    load_model_state_dict,
-)
+from ng_model_gym.core.model.checkpoint_loader import latest_checkpoint_in_dir
 from ng_model_gym.core.model.model_factory import create_model
 from ng_model_gym.core.model.model_tracer import model_tracer
 from ng_model_gym.core.optimizers.adam import adam_torch
@@ -209,7 +206,7 @@ class Trainer:
             # Restore model weights and optimizer state
             checkpoint = torch.load(checkpoint_path, weights_only=True)
             model_state = checkpoint["model_state_dict"]
-            load_model_state_dict(self.model, model_state)
+            self.model.load_state_dict(model_state)
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
             self.lr_schedule.load_state_dict(checkpoint["lr_scheduler_state_dict"])
             self.starting_epoch = checkpoint["epoch"] + 1
@@ -250,11 +247,14 @@ class Trainer:
                     "use `qat --resume` to continue QAT training, or use "
                     "evaluate/export for QAT checkpoints."
                 )
-            load_model_state_dict(
+            prepare_for_weights_load = getattr(
                 self.model,
-                model_state,
-                prepare_for_weights_load=True,
+                "prepare_checkpoint_state_dict_for_weights_load",
+                None,
             )
+            if prepare_for_weights_load is not None:
+                model_state = prepare_for_weights_load(model_state)
+            self.model.load_state_dict(model_state)
             logger.info(f"Fine tuning using weights {finetune_path.name}")
 
         # If a path has not been defined, create a new directory to store checkpoints
