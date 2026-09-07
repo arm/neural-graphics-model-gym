@@ -157,6 +157,8 @@ def generic_safetensors_reader(seq_path: Path, idx: int) -> dict:
     data_frame = {}
     with safetensors.safe_open(seq_path, framework="numpy", device="cpu") as f:
         for k in f.keys():
-            data_frame[k] = torch.from_numpy(f.get_slice(k)[idx])
+            # torch.from_numpy shares the safetensors-backed NumPy storage. Clone
+            # tensors returned from this function so they do not keep the file mapped.
+            data_frame[k] = torch.from_numpy(f.get_slice(k)[idx]).clone()
 
     return data_frame

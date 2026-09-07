@@ -213,7 +213,7 @@ class NFRUDataset(torch.utils.data.Dataset):
         data_frame = {}
 
         # Load data for every new sequence
-        with safetensors.safe_open(seq_path, framework="pt", device="cpu") as f:
+        with safetensors.safe_open(seq_path, framework="numpy", device="cpu") as f:
             for key in self.to_read:
                 key_data_variable = DataVariable(key)
                 key_for_safetensor = key_data_variable.generate_non_concrete_variable(
@@ -227,9 +227,13 @@ class NFRUDataset(torch.utils.data.Dataset):
                     offset = convert_str_offset_to_int(key_split[-1])
                     key_for_safetensor = "_".join(key_split[:-1])
 
-                data_frame[key] = f.get_slice(key_for_safetensor)[
+                # Copy the frame while the memory map is open, before exposing it to
+                # PyTorch. This avoids indexing a torch.Storage backed directly by a
+                # repeatedly opened/closed memory map, which can access-violate on Windows.
+                frame = f.get_slice(key_for_safetensor)[
                     start + self.min_offset + offset
-                ].unsqueeze(dim=0)
+                ].copy()
+                data_frame[key] = torch.from_numpy(frame).unsqueeze(dim=0)
 
         return data_frame
 
