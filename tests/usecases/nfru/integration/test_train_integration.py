@@ -75,7 +75,8 @@ class TrainingIntegrationTest(NFRUBaseIntegrationTest):
             json.dump(cfg_json, file)
 
         environment = self._test_env()
-        environment["CUDA_VISIBLE_DEVICES"] = ""
+        # An empty value can be treated as unset on Windows; -1 reliably hides all GPUs.
+        environment["CUDA_VISIBLE_DEVICES"] = "-1"
 
         def run_cli(*arguments):
             return subprocess.run(
