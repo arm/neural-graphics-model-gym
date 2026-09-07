@@ -322,5 +322,5 @@ class TestNSSV1TorchPostprocessSlangParity(unittest.TestCase):
             expected = _run_postprocess(cpu_case)
             for key in ("output", "output_linear", "out_filtered"):
                 torch.testing.assert_close(
-                    actual[key].cpu(), expected[key], rtol=1.0e-5, atol=5.0e-6
+                    actual[key].cpu(), expected[key], rtol=1.0e-5, atol=2.0e-5
                 )

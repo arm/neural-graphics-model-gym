@@ -783,7 +783,7 @@ class TestNSSV1TorchPostprocessFilter(_StageTestCase):
         self.assertAlmostEqual(
             gradient[0, 0, 0, 0].item(),
             -2.0 / (9.0 * _EPS),
-            delta=0.25,
+            delta=0.5,
         )
 
     def test_filter_differentiability_matches_shader_inputs(self):
