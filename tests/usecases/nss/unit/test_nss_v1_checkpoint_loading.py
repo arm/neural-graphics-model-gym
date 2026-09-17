@@ -226,6 +226,7 @@ class TestNSSV1CheckpointLoading(unittest.TestCase):
                 model = create_model(params, self.device)
 
                 trainer = Mock(spec=Trainer)
+                trainer.device = self.device
                 trainer.model = model
                 trainer.params = params
                 trainer.params.train.resume = None
@@ -277,6 +278,7 @@ class TestNSSV1CheckpointLoading(unittest.TestCase):
         )
 
         trainer = Mock(spec=Trainer)
+        trainer.device = self.device
         trainer.model = self._create_model("mid")
         trainer.optimizer = Mock()
         trainer.lr_schedule = Mock()

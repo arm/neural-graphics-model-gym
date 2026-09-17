@@ -362,6 +362,7 @@ class TestTrainerMethods(unittest.TestCase):
 
             # Fake a new training run (e.g. re-run training after interruption)
             mock_resume_trainer = Mock(spec=Trainer)
+            mock_resume_trainer.device = torch.device("cpu")
             mock_resume_trainer.model = TinyModel()
             mock_resume_trainer.optimizer = optim.Adam(
                 self.mock_trainer.model.parameters(), lr=0.001
@@ -404,6 +405,61 @@ class TestTrainerMethods(unittest.TestCase):
             # Check epoch after resuming from saved checkpoint is one after
             self.assertEqual(mock_resume_trainer.starting_epoch, 11)
 
+    def _restore_cuda_checkpoint_on_cpu(self, restore_mode):
+        """Exercise the real trainer loader with CUDA-tagged model/optimizer tensors."""
+        trainer = self.mock_trainer
+        trainer.params = create_simple_params(usecase="nss-v1")
+        trainer.params.model.processing_backend = "torch"
+        trainer.params.model_train_eval_mode = TrainEvalMode.FP32
+        trainer.training_mode_params = trainer.params.train.fp32
+        trainer.training_mode_params.number_of_epochs = 10
+        for parameter in trainer.model.parameters():
+            parameter.grad = torch.ones_like(parameter)
+        trainer.optimizer.step()
+        checkpoint = {
+            "model_state_dict": {
+                "layer.weight": torch.full_like(trainer.model.layer.weight, 0.9),
+                "layer.bias": torch.full_like(trainer.model.layer.bias, 0.1),
+            },
+            "optimizer_state_dict": trainer.optimizer.state_dict(),
+            "lr_scheduler_state_dict": {},
+            "epoch": 2,
+        }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir, "cuda-checkpoint.pt")
+            trainer.params.train.fp32.checkpoints.dir = Path(temp_dir)
+            setattr(trainer.params.train, restore_mode, checkpoint_path)
+            # CUDA storage tags reproduce a GPU-saved checkpoint without needing a GPU.
+            with patch("torch.serialization.location_tag", return_value="cuda:0"):
+                torch.save(checkpoint, checkpoint_path)
+            trainer.optimizer.state.clear()
+
+            with patch("torch.cuda.is_available", return_value=False):
+                Trainer._restore_model_weights(trainer)
+
+        for name, tensor in trainer.model.state_dict().items():
+            self.assertEqual(tensor.device, torch.device("cpu"))
+            torch.testing.assert_close(tensor, checkpoint["model_state_dict"][name])
+
+    def test_resume_cuda_checkpoint_on_cpu(self):
+        """Resume must restore GPU-saved weights and optimizer state on CPU."""
+        self._restore_cuda_checkpoint_on_cpu("resume")
+        self.assertEqual(self.mock_trainer.starting_epoch, 3)
+        self.assertEqual(len(self.mock_trainer.optimizer.state), 2)
+        for state in self.mock_trainer.optimizer.state.values():
+            for tensor in state.values():
+                self.assertEqual(tensor.device, torch.device("cpu"))
+            self.assertEqual(state["step"].item(), 1)
+            torch.testing.assert_close(
+                state["exp_avg"], torch.full_like(state["exp_avg"], 0.1)
+            )
+
+    def test_finetune_cuda_checkpoint_on_cpu(self):
+        """Fine-tuning must load GPU-saved weights on CPU."""
+        self._restore_cuda_checkpoint_on_cpu("finetune")
+        self.assertEqual(len(self.mock_trainer.optimizer.state), 0)
+
     def test_finetune_calls_weights_only_prepare_hook(self):
         """Finetune should call optional weights-only preparation before load."""
         model = TinyModelWithWeightsLoadHook()
@@ -418,6 +474,7 @@ class TestTrainerMethods(unittest.TestCase):
 
             trainer = Mock(spec=Trainer)
             trainer.model = model
+            trainer.device = torch.device("cpu")
             trainer.params = create_simple_params(usecase="nss-v1")
             trainer.params.train.resume = None
             trainer.params.train.finetune = checkpoint_path
@@ -474,6 +531,7 @@ class TestTrainerMethods(unittest.TestCase):
 
                     trainer = Mock(spec=Trainer)
                     trainer.model = model
+                    trainer.device = torch.device("cpu")
                     trainer.params = create_simple_params(usecase="nss-v1")
                     trainer.params.train.resume = None
                     trainer.params.train.finetune = checkpoint_path
@@ -502,6 +560,7 @@ class TestTrainerMethods(unittest.TestCase):
 
             trainer = Mock(spec=Trainer)
             trainer.model = model
+            trainer.device = torch.device("cpu")
             trainer.params = create_simple_params(usecase="nss-v1")
             trainer.params.train.resume = None
             trainer.params.train.finetune = checkpoint_path

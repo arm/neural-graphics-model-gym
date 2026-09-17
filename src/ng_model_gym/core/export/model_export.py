@@ -157,7 +157,8 @@ def _check_cuda():
     """Check if CUDA GPU is available"""
     if not torch.cuda.is_available():
         err_msg = (
-            "CUDA build of PyTorch with GPU is currently required for model exporting."
+            "CUDA build of PyTorch with GPU is required for model exporting unless "
+            "model.processing_backend='torch'."
         )
         logger.error(err_msg)
         raise ValueError(err_msg)
@@ -295,7 +296,9 @@ def executorch_vgf_export(
         * partition and lower to a VGF file.
     """
 
-    _check_cuda()
+    if getattr(params.model, "processing_backend", "slang") != "torch":
+        _check_cuda()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if export_type == ExportType.QAT_INT8:
         params.model_train_eval_mode = TrainEvalMode.QAT_INT8  #
@@ -331,9 +334,8 @@ def executorch_vgf_export(
             "Dynamic export is enabled and provided static input shape will be ignored"
         )
 
-    # Resolve weights and load the model on GPU to accommodate the tracing forward
-    # pass of models with shaders.
-    model = load_checkpoint(model_path, params, torch.device("cuda"))
+    # Torch preprocessing can also prepare tracing inputs on CPU.
+    model = load_checkpoint(model_path, params, device)
     model.eval()
 
     if not isinstance(model, BaseNGModel):

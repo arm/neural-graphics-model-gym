@@ -115,6 +115,30 @@ class RestorePretrainedModelFromCheckpoints(unittest.TestCase):
                 Path(temp_dir, "ckpt-3.pt"),
             )
 
+    def test_load_cuda_checkpoint_on_cpu(self):
+        """GPU-tagged weights must load on CPU without CUDA availability."""
+        params = create_simple_params(usecase="nss-v1")
+        params.model_train_eval_mode = TrainEvalMode.FP32
+        model = _HookedCheckpointModel(params)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_path = Path(temp_dir, "checkpoint.pt")
+            # Tag CPU storage as CUDA to exercise deserialization on CPU-only hosts.
+            with patch("torch.serialization.location_tag", return_value="cuda:0"):
+                torch.save({"model_state_dict": model.state_dict()}, checkpoint_path)
+
+            with patch("torch.cuda.is_available", return_value=False), patch(
+                "ng_model_gym.core.model.checkpoint_loader.create_model",
+                return_value=model,
+            ):
+                loaded_model = load_checkpoint(
+                    checkpoint_path, params, torch.device("cpu")
+                )
+
+        self.assertIs(loaded_model, model)
+        for tensor in model.prepare_seen_state_dict.values():
+            self.assertEqual(tensor.device, torch.device("cpu"))
+
     def test_load_checkpoint_calls_weights_only_prepare_hook(self):
         """Weights-only checkpoint loading should call the optional model hook."""
         params = create_simple_params(usecase="nss-v1")

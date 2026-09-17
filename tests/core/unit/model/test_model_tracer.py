@@ -68,7 +68,7 @@ class TestModelTracer(unittest.TestCase):
 
         traced_tensor = traced_data[0]
         self.assertIsInstance(traced_tensor, torch.Tensor)
-        self.assertTrue(traced_tensor.is_cuda, "traced_tensor should be CUDA")
+        self.assertEqual(traced_tensor.device, torch.device("cpu"))
 
         torch.testing.assert_close(traced_tensor.cpu(), t1.cpu())
         self.assertEqual(traced_tensor.dtype, t1.dtype)
@@ -93,7 +93,7 @@ class TestModelTracer(unittest.TestCase):
         for key, input_tensor in input_data.items():
             traced_tensor = traced_data[key]
             self.assertIsInstance(traced_tensor, torch.Tensor, f"{key} not a tensor")
-            self.assertTrue(traced_tensor.is_cuda, f"{key} should be CUDA")
+            self.assertEqual(traced_tensor.device, torch.device("cpu"))
             self.assertEqual(
                 traced_tensor.dtype, input_tensor.dtype, f"{key} dtype mismatch"
             )
@@ -105,6 +105,31 @@ class TestModelTracer(unittest.TestCase):
             torch.testing.assert_close(
                 traced_tensor.cpu(), input_tensor.cpu(), msg=f"{key} value mismatch"
             )
+
+    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is unavailable")
+    def test_tracer_moves_inputs_to_model_device(self):
+        """Trace on CUDA for models with parameters or only buffers."""
+        for tensor_kind in ("parameter", "buffer"):
+            with self.subTest(tensor_kind=tensor_kind):
+                model = _TestNGModel(self.params)
+                if tensor_kind == "parameter":
+                    model.network.register_parameter(
+                        "anchor", nn.Parameter(torch.ones(1))
+                    )
+                else:
+                    model.network.register_buffer("anchor", torch.ones(1))
+                model.to("cuda")
+                inputs = {"nested": [torch.randn(2, 4), "metadata"]}
+
+                traced = model_tracer(model, inputs)[0]
+
+                self.assertEqual(
+                    traced["nested"][0].device, model.network.anchor.device
+                )
+                torch.testing.assert_close(
+                    traced["nested"][0].cpu(), inputs["nested"][0]
+                )
+                self.assertEqual(traced["nested"][1], "metadata")
 
     def test_tracer_raise_missing_input_data(self):
         """Test ValueError is raised if tracer input data is None"""

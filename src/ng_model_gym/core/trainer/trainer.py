@@ -204,7 +204,9 @@ class Trainer:
             self._quantize_modules()
 
             # Restore model weights and optimizer state
-            checkpoint = torch.load(checkpoint_path, weights_only=True)
+            checkpoint = torch.load(
+                checkpoint_path, map_location=self.device, weights_only=True
+            )
             model_state = checkpoint["model_state_dict"]
             self.model.load_state_dict(model_state)
             self.optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
@@ -235,7 +237,9 @@ class Trainer:
                     f"Fine-tune weights must be a .pt file, got {finetune_path.name}"
                 )
 
-            finetune_weight = torch.load(finetune_path, weights_only=True)
+            finetune_weight = torch.load(
+                finetune_path, map_location=self.device, weights_only=True
+            )
             model_state = finetune_weight["model_state_dict"]
             if (
                 self.params.model_train_eval_mode == TrainEvalMode.QAT_INT8
