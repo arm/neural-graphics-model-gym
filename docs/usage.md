@@ -232,6 +232,11 @@ ng-model-gym qat --help
 
 Neural Graphics Model Gym uses ExecuTorch with the Arm backend to export models to a VGF file.
 
+For NSS-v1 and NFRU-v1, set `model.processing_backend` to `"torch"` to allow
+export on a CPU-only machine. Export uses CUDA when available; Slang processing
+still requires CUDA. The VGF contains the neural network, excluding preprocessing
+and postprocessing.
+
 To export a local trained model to a VGF file, run:
 
 ```bash

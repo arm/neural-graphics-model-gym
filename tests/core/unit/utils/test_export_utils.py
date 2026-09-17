@@ -59,6 +59,10 @@ class MockNSS(BaseNGModel):
         """Mock set_neural_network"""
         self.autoencoder = neural_network
 
+    def forward(self, inputs):
+        """Run the network so the real tracer can capture its input."""
+        return self.autoencoder(inputs)
+
     def get_additional_constants(self):
         """Mock method to return additional constants."""
         return {"foo": "bar"}
@@ -145,6 +149,40 @@ class TestExportUtils(unittest.TestCase):
         self.assertEqual(len(dynamic_shape), 1)
         self.assertIsInstance(dynamic_shape[0], dict)
         self.assertEqual(set(dynamic_shape[0]), {0, 2, 3})
+
+    @patch("torch.cuda.is_available", return_value=False)
+    @patch("ng_model_gym.core.export.model_export.get_dataloader", side_effect=fake_dl)
+    @patch("ng_model_gym.core.export.model_export._export_module_to_vgf")
+    def test_torch_export_without_cuda(self, mock_export, _mock_dl, _mock_cuda):
+        """All export modes can prepare Torch inputs on CPU without CUDA."""
+        self.params.model.processing_backend = "torch"
+        for export_type in ExportType:
+            with self.subTest(export_type=export_type), patch(
+                "ng_model_gym.core.export.model_export.load_checkpoint",
+                side_effect=lambda path, params, device: MockNSS(params).to(device),
+            ) as mock_load:
+                executorch_vgf_export(self.params, export_type, Path("checkpoint.pt"))
+
+                mock_load.assert_called_once_with(
+                    Path("checkpoint.pt"), self.params, torch.device("cpu")
+                )
+                inputs = mock_export.call_args.args[2]
+                self.assertEqual(inputs[0].device, torch.device("cpu"))
+                torch.testing.assert_close(inputs[0], torch.zeros(1, 1))
+
+    @patch("torch.cuda.is_available", return_value=False)
+    def test_non_torch_export_still_requires_cuda(self, _mock_cuda):
+        """Slang and models without an explicit Torch backend retain the guard."""
+        for model_settings in (
+            SimpleNamespace(name="NSS-v1", processing_backend="slang"),
+            SimpleNamespace(name="custom-model"),
+        ):
+            with self.subTest(model_settings=model_settings):
+                self.params.model = model_settings
+                with self.assertRaisesRegex(ValueError, "CUDA"):
+                    executorch_vgf_export(
+                        self.params, ExportType.FP32, Path("checkpoint.pt")
+                    )
 
     # Patch the heavy or external dependencies on every test:
     @patch("ng_model_gym.core.export.model_export._update_metadata_file", new=DEFAULT)

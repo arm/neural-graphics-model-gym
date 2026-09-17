@@ -80,6 +80,11 @@ def _trace_profiler_wrapper(func: Callable, *args, trace_output_dir: Path):
 
 def _cuda_profiler_wrapper(func: Callable, *args, trace_output_dir: Path):
     """Wraps a function call with PyTorch's CUDA memory profiling and saves a snapshot."""
+    if not torch.cuda.is_available():
+        raise ValueError(
+            "The gpu_memory profiler requires CUDA. Use 'trace' for CPU profiling."
+        )
+
     torch.cuda.memory._record_memory_history()
     logger.info("CUDA memory profiler is enabled")
     func(*args)

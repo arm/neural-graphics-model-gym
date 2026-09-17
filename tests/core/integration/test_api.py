@@ -4,8 +4,9 @@
 import shutil
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
-from ng_model_gym.api import do_evaluate, do_training
+from ng_model_gym.api import _cuda_profiler_wrapper, do_evaluate, do_training
 from ng_model_gym.core.utils.enum_definitions import ProfilerType, TrainEvalMode
 from ng_model_gym.core.utils.logging_utils import logging_config
 from tests.base_gpu_test import BaseGPUMemoryTest
@@ -33,6 +34,20 @@ class ApiCoreIntegrationTest(BaseGPUMemoryTest):
 
         clear_loggers()
         shutil.rmtree(self.tmp_dir, ignore_errors=True)
+
+    def test_gpu_memory_profiler_requires_cuda(self):
+        """Reject CPU-only profiling before touching CUDA or running the workload."""
+        with patch("torch.cuda.is_available", return_value=False), patch(
+            "torch.cuda.memory._record_memory_history",
+            side_effect=AssertionError("CUDA profiling must not start"),
+        ):
+            with self.assertRaisesRegex(
+                ValueError, "gpu_memory profiler requires CUDA"
+            ):
+                _cuda_profiler_wrapper(
+                    lambda: self.fail("The workload must not run"),
+                    trace_output_dir=self.tmp_dir,
+                )
 
     def test_logging_config_no_mutation(self):
         """logging_config should not modify the config."""

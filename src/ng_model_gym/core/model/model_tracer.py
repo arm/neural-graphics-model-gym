@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
+from itertools import chain
 from typing import Any, Tuple
 
 import torch
@@ -14,16 +15,17 @@ from ng_model_gym.core.utils.torch_utils import TensorData
 def model_tracer(ng_model: BaseNGModel, input_data: TensorData) -> Tuple[Any, ...]:
     """Trace PyTorch module to capture forward pass tensors"""
 
-    # Move input data to GPU
-    to_gpu = lambda x: x.to("cuda") if isinstance(x, torch.Tensor) else x
-    # tree_map is an internal torch util to traverse containers with tensors
-    input_data = tree_map(to_gpu, input_data)
-
     if isinstance(ng_model, BaseNGModel):
         target_module_to_trace = ng_model.get_neural_network()
 
     else:
         raise ValueError("ng_model is not a valid type")
+
+    device = next(
+        chain(ng_model.parameters(), ng_model.buffers()), torch.empty(0)
+    ).device
+    to_device = lambda x: x.to(device) if isinstance(x, torch.Tensor) else x
+    input_data = tree_map(to_device, input_data)
 
     ng_model.on_train_epoch_start()
     captured = None

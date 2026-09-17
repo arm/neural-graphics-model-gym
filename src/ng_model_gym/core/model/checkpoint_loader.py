@@ -92,7 +92,7 @@ def load_checkpoint(model_path: Path, params: ConfigModel, device: torch.device 
 
     trained_model: BaseNGModel = create_model(params, device)
     ng_model = trained_model
-    checkpoint = torch.load(model_path, weights_only=True)
+    checkpoint = torch.load(model_path, map_location=device, weights_only=True)
 
     if isinstance(trained_model, BaseNGModel):
         ng_model = trained_model
