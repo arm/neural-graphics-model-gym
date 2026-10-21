@@ -2,6 +2,8 @@
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
 import logging
+import multiprocessing as mp
+import platform
 import random
 from typing import Type
 
@@ -164,11 +166,20 @@ def get_dataloader(
     g = torch.Generator()
     g.manual_seed(config_params.train.seed)
 
+    multiprocessing_context = (
+        "forkserver"
+        if num_workers > 0
+        and platform.system() == "Linux"
+        and "forkserver" in mp.get_all_start_methods()
+        else None
+    )
+
     dataloader = torch.utils.data.DataLoader(
         dataset,
         shuffle=shuffle,
         batch_size=batch_size,
         num_workers=num_workers,
+        multiprocessing_context=multiprocessing_context,
         pin_memory=True,
         prefetch_factor=prefetch_factor if num_workers > 0 else None,
         drop_last=True,

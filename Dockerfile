@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: <text>Copyright 2025-2026 Arm Limited and/or
 # its affiliates <open-source-office@arm.com></text>
 # SPDX-License-Identifier: Apache-2.0
-FROM nvidia/cuda:13.1.1-devel-ubuntu22.04
+FROM nvidia/cuda:13.1.1-devel-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -10,17 +10,18 @@ LABEL author="Arm Limited"
 
 # Install dependencies
 RUN apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
     git \
     git-lfs \
     locales \
-    python3.10 \
-    python3-pip \
-    python3.10-dev \
-    python3.10-venv \
     ninja-build \
     curl \
     wget \
+    python3 \
+    python3-dev \
+    python3-venv \
+    python3-pip \
+    python-is-python3 \
     libgl1 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
@@ -30,9 +31,6 @@ RUN locale-gen en_GB.UTF-8 && \
     update-locale LC_ALL=en_GB.UTF-8 LANG=en_GB.UTF-8
 ENV LANG=en_GB.UTF-8
 ENV LC_ALL=en_GB.UTF-8
-
-# Link python to python3
-RUN ln -sf /usr/bin/python3 /usr/bin/python
 
 ENV NG_MODEL_GYM_DIR="/home/neural-graphics-model-gym"
 

@@ -3,11 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import platform
-import sys
 
 from ng_model_gym.core.utils.logging_utils import filter_warnings, WARNING_FILTERS
 from tests.fetch_huggingface import USECASES, validate_downloads
-from tests.pkgutil_patch import apply_patch
 
 filter_warnings()
 
@@ -46,10 +44,6 @@ def pytest_configure(config) -> None:
         config.addinivalue_line(
             "filterwarnings", warning_filter_to_pytest(warning_filter)
         )
-
-    # Apply patch for Python 3.10 before running tests.
-    if sys.version_info[:2] == (3, 10):
-        apply_patch()
 
     if config.getoption("--fast-test"):
         _FastTestState.enabled = True
