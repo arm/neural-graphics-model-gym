@@ -16,7 +16,7 @@ name = "ng-model-gym"
 dynamic = ["version", "readme"]
 description = "Neural Graphics Model Gym for training and evaluating neural graphics models."
 license = "Apache-2.0"
-requires-python = ">=3.10, <3.13"
+requires-python = ">=3.11, <3.14"
 authors = [
     { name = "Arm Limited" },
 ]
@@ -310,4 +310,4 @@ template = "test"
 matrix-name-format = "py{value}"
 
 [[tool.hatch.envs.test-matrix.matrix]]
-python = ["3.10", "3.11", "3.12"]
+python = ["3.11", "3.12", "3.13"]

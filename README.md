@@ -9,7 +9,7 @@ SPDX-License-Identifier: Apache-2.0
 <a href="https://huggingface.co/Arm/neural-super-sampling"><img alt="NSS Model Card" src="https://img.shields.io/badge/Hugging%20Face-neural%20super%20sampling-orange?logo=huggingface"></a>
 <a href="https://huggingface.co/Arm/neural-frame-rate-upscaling"><img alt="NFRU Model Card" src="https://img.shields.io/badge/Hugging%20Face-neural%20frame%20rate%20upscaling-orange?logo=huggingface"></a>
 <a href="https://github.com/arm/neural-graphics-model-gym/blob/main/LICENSE.md"><img alt="License" src="https://img.shields.io/badge/license-Apache%20License%202.0-green"></a>
-<img alt="Python versions" src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-slategray?logo=python">
+<img alt="Python versions" src="https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-slategray?logo=python">
 </p>
 <p align="center">
 <img alt="Neural Graphics Model Gym CLI help output" src="docs/ng-model-gym-cli-hero-img.png" width="665" height="395">
@@ -61,7 +61,7 @@ To build and run Neural Graphics Model Gym, the following are required:
 
 * Ubuntu® >= 22.04
   * Neural Graphics Model Gym has been tested on 22.04 LTS and 24.04 LTS, but should work on other Linux® distributions
-* 3.10 <= Python < 3.13
+* 3.11 <= Python < 3.14
 * Python development package (e.g. `python3-dev`)
 * NVIDIA® CUDA® capable GPU
 * CUDA Toolkit v13.1.1 or later
